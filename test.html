@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiTech - Connection Test</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f1117;--ink3:#6b7280;--bg:#f7f7f5;--surface:#fff;--surface2:#f0f0ec;
+  --border:#e2e2dc;--green:#3B6D11;--greenl:#EAF3DE;--red:#A32D2D;--redl:#FCEBEB;
+  --amber:#854F0B;--amberl:#FAEEDA;--y7:#185FA5;--y7l:#E6F1FB;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --radius:8px;--radiuslg:12px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.wrap{max-width:560px;width:100%}
+.card{background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:8px}
+.card-head-title{font-size:13px;font-weight:600}
+.card-head-sub{font-size:11px;color:var(--ink3);margin-left:auto;font-family:var(--mono)}
+.card-body{padding:16px}
+.test-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);margin-bottom:8px;transition:all .2s}
+.test-row:last-child{margin-bottom:0}
+.t-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;transition:all .2s}
+.t-wait{background:var(--surface2);color:var(--ink3)}
+.t-running{background:var(--y7l);color:var(--y7)}
+.t-pass{background:var(--greenl);color:var(--green)}
+.t-fail{background:var(--redl);color:var(--red)}
+.t-warn{background:var(--amberl);color:var(--amber)}
+.t-label{font-size:13px;font-weight:500;flex:1}
+.t-detail{font-size:11px;color:var(--ink3);font-family:var(--mono)}
+.t-time{font-size:10px;color:var(--ink3);font-family:var(--mono);margin-left:auto;flex-shrink:0}
+.log{background:#111;border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;line-height:1.8;max-height:220px;overflow-y:auto;color:#e8e8e0;margin-top:10px}
+.log::-webkit-scrollbar{width:4px}
+.log::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
+.lp{color:#7ec87e}.lf{color:#e87e7e}.li{color:#7ec8e8}.lw{color:#e8c87e}
+.lt{color:#666;margin-right:5px;font-size:10px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:500;font-family:var(--sans);transition:all .13s}
+.btn:hover{opacity:.88}.btn:active{transform:scale(.97)}
+.btn-blue{background:var(--y7);color:white}
+.btn-ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--border)}
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.result-box{border-radius:var(--radius);padding:10px 13px;font-size:12px;font-family:var(--mono);line-height:1.6;margin-top:10px;display:none;word-break:break-all}
+.result-pass{background:var(--greenl);color:var(--green);border:1px solid #C0DD97}
+.result-fail{background:var(--redl);color:var(--red);border:1px solid #F7C1C1}
+.dots{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}
+.dots span{width:4px;height:4px;border-radius:50%;background:var(--y7);animation:dp 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes dp{0%,80%,100%{opacity:.25;transform:scale(.75)}40%{opacity:1;transform:scale(1)}}
+.title-row{text-align:center;margin-bottom:20px}
+.title-row h1{font-size:20px;font-weight:600;letter-spacing:-.3px}
+.title-row p{font-size:13px;color:var(--ink3);margin-top:4px;font-family:var(--mono)}
+.summary{text-align:center;padding:12px;border-radius:var(--radius);font-size:13px;font-weight:500;margin-top:4px;display:none}
+.sum-pass{background:var(--greenl);color:var(--green)}
+.sum-fail{background:var(--redl);color:var(--red)}
+.sum-warn{background:var(--amberl);color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title-row">
+    <h1>&#9881; DigiTech connection test</h1>
+    <p>m7kcst.github.io - Apps Script endpoint check</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-title">Test suite</div>
+      <div class="card-head-sub" id="headSub">ready</div>
+    </div>
+    <div class="card-body">
+      <div class="test-row" id="tr-ping">
+        <div class="t-icon t-wait" id="ti-ping">?</div>
+        <div>
+          <div class="t-label">1. Ping Apps Script</div>
+          <div class="t-detail" id="td-ping">Check endpoint is reachable</div>
+        </div>
+        <div class="t-time" id="tt-ping"></div>
+      </div>
+      <div class="test-row" id="tr-sheet">
+        <div class="t-icon t-wait" id="ti-sheet">?</div>
+        <div>
+          <div class="t-label">2. Read Sheet rows</div>
+          <div class="t-detail" id="td-sheet">Fetch Year 7 Term 2 resources</div>
+        </div>
+        <div class="t-time" id="tt-sheet"></div>
+      </div>
+      <div class="test-row" id="tr-write">
+        <div class="t-icon t-wait" id="ti-write">?</div>
+        <div>
+          <div class="t-label">3. Write test row to Sheet</div>
+          <div class="t-detail" id="td-write">Append a test row then delete it</div>
+        </div>
+        <div class="t-time" id="tt-write"></div>
+      </div>
+      <div class="test-row" id="tr-ai">
+        <div class="t-icon t-wait" id="ti-ai">?</div>
+        <div>
+          <div class="t-label">4. AI proxy call</div>
+          <div class="t-detail" id="td-ai">Send a message through the proxy to Anthropic</div>
+        </div>
+        <div class="t-time" id="tt-ai"></div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <div class="log" id="log"><span style="color:#666">Click Run tests to start...</span></div>
+
+      <div class="btn-row">
+        <button class="btn btn-blue" id="runBtn" onclick="runAll()">&#9656; Run all tests</button>
+        <button class="btn btn-ghost" onclick="clearLog()">&#10005; Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyTuAV_TQXkV0Ob75PkdLUqkEC1B6gfuiIuF0xOpZmL4kxZCKYtiXwClwgflWTw5_kh/exec';
+const TEST_ROW_ID = 'test-row-delete-me-001';
+
+let logEl, running = false;
+
+function log(msg, type='info'){
+  if(!logEl) logEl = document.getElementById('log');
+  if(logEl.querySelector('span')) logEl.innerHTML = '';
+  const t = new Date().toLocaleTimeString('en-AU',{hour12:false});
+  const cls = {pass:'lp',fail:'lf',info:'li',warn:'lw'}[type]||'li';
+  logEl.innerHTML += `<div><span class="lt">${t}</span><span class="${cls}">${esc(msg)}</span></div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setTest(id, status, detail, time){
+  const icon = document.getElementById('ti-'+id);
+  const det = document.getElementById('td-'+id);
+  const tm = document.getElementById('tt-'+id);
+  const row = document.getElementById('tr-'+id);
+  const icons = {wait:'?', running:'...', pass:'&#10003;', fail:'&#10005;', warn:'&#9888;'};
+  const cls = {wait:'t-wait', running:'t-running', pass:'t-pass', fail:'t-fail', warn:'t-warn'};
+  icon.className = 't-icon ' + (cls[status]||'t-wait');
+  icon.innerHTML = icons[status]||'?';
+  if(detail) det.textContent = detail;
+  if(time) tm.textContent = time+'ms';
+}
+
+async function runAll(){
+  if(running) return;
+  running = true;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('headSub').textContent = 'running...';
+  document.getElementById('summary').style.display = 'none';
+  ['ping','sheet','write','ai'].forEach(id => setTest(id,'wait','waiting...',''));
+
+  let passed = 0, failed = 0;
+
+  // TEST 1 - Ping
+  setTest('ping','running','connecting...');
+  log('Test 1: Pinging Apps Script endpoint...','info');
+  let t0 = Date.now();
+  try{
+    const res = await fetch(SCRIPT_URL+'?action=ping');
+    const ms = Date.now()-t0;
+    const data = await res.json();
+    if(data.success){
+      setTest('ping','pass','Endpoint reachable - '+data.message, ms);
+      log('PASS: Ping OK in '+ms+'ms - '+data.message,'pass');
+      passed++;
+    } else {
+      setTest('ping','fail','Unexpected response: '+JSON.stringify(data), ms);
+      log('FAIL: '+JSON.stringify(data),'fail');
+      failed++;
+    }
+  } catch(e){
+    setTest('ping','fail',e.message, Date.now()-t0);
+    log('FAIL: '+e.message,'fail');
+    failed++;
+  }
+
+  // TEST 2 - Read rows
+  setTest('sheet','running','fetching rows...');
+  log('Test 2: Reading Sheet rows (Year 7, Term 2)...','info');
+  t0 = Date.now();
+  try{
+    const res = await fetch(SCRIPT_URL+'?action=getRows&class=Year 7&term=2');
+    const ms = Date.now()-t0;
+    const data = await res.json();
+    if(data.success){
+      const count = data.rows ? data.rows.length : 0;
+      setTest('sheet','pass', count+' rows returned', ms);
+      log('PASS: Got '+count+' rows in '+ms+'ms','pass');
+      if(count > 0) log('First row title: '+(data.rows[0].title||'(no title)'),'info');
+      passed++;
+    } else {
+      setTest('sheet','fail', data.message, ms);
+      log('FAIL: '+data.message,'fail');
+      failed++;
+    }
+  } catch(e){
+    setTest('sheet','fail', e.message, Date.now()-t0);
+    log('FAIL: '+e.message,'fail');
+    failed++;
+  }
+
+  // TEST 3 - Write row
+  setTest('write','running','writing test row...');
+  log('Test 3: Writing test row to Sheet...','info');
+  t0 = Date.now();
+  try{
+    const testRow = {
+      id: TEST_ROW_ID, class:'Year 7', term:'2', week:'99', type:'Reference',
+      title:'TEST ROW - DELETE ME', summary:'Automated test row',
+      topics:'test', file_format:'html', url:'', source:'Drive',
+      print_ready:'false', onenote_path:'', definitions:'', success_criteria:'',
+      tasks:'', key_concepts:'', current:'false', locked:'false'
+    };
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({action:'append', row:testRow})
+    });
+    const ms = Date.now()-t0;
+    const data = await res.json();
+    if(data.success){
+      log('PASS: Row written in '+ms+'ms','pass');
+      // Now delete it
+      log('Cleaning up - deleting test row...','info');
+      const del = await fetch(SCRIPT_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain'},
+        body: JSON.stringify({action:'delete', id:TEST_ROW_ID})
+      });
+      const delData = await del.json();
+      if(delData.success){
+        setTest('write','pass','Write and delete both OK', ms);
+        log('PASS: Test row deleted cleanly','pass');
+      } else {
+        setTest('write','warn','Write OK but delete failed - check Sheet for TEST ROW', ms);
+        log('WARN: Delete failed - '+delData.message,'warn');
+      }
+      passed++;
+    } else {
+      setTest('write','fail', data.message, ms);
+      log('FAIL: '+data.message,'fail');
+      failed++;
+    }
+  } catch(e){
+    setTest('write','fail', e.message, Date.now()-t0);
+    log('FAIL: '+e.message,'fail');
+    failed++;
+  }
+
+  // TEST 4 - AI proxy
+  setTest('ai','running','calling AI proxy...');
+  log('Test 4: Testing AI proxy through Apps Script...','info');
+  t0 = Date.now();
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({
+        action:'ai',
+        system:'You are a test assistant. Reply with exactly 5 words.',
+        messages:[{role:'user', content:'Say hello to Mr Miller'}],
+        max_tokens:20
+      })
+    });
+    const ms = Date.now()-t0;
+    const data = await res.json();
+    if(data.success && data.content){
+      const reply = data.content[0]?.text || '(no text)';
+      setTest('ai','pass','AI replied: "'+reply.substring(0,50)+'"', ms);
+      log('PASS: AI proxy working in '+ms+'ms','pass');
+      log('AI reply: "'+reply+'"','info');
+      passed++;
+    } else {
+      setTest('ai','fail', data.message||'No content returned', ms);
+      log('FAIL: '+(data.message||'No content'),'fail');
+      failed++;
+    }
+  } catch(e){
+    setTest('ai','fail', e.message, Date.now()-t0);
+    log('FAIL: '+e.message,'fail');
+    failed++;
+  }
+
+  // Summary
+  const total = passed + failed;
+  const sumEl = document.getElementById('summary');
+  sumEl.style.display = 'block';
+  if(failed === 0){
+    sumEl.className = 'summary sum-pass';
+    sumEl.textContent = '&#10003; All '+total+' tests passed - system is fully operational';
+    document.getElementById('headSub').textContent = 'all passed';
+  } else if(passed > 0){
+    sumEl.className = 'summary sum-warn';
+    sumEl.textContent = '&#9888; '+passed+' passed, '+failed+' failed - check log for details';
+    document.getElementById('headSub').textContent = failed+' failed';
+  } else {
+    sumEl.className = 'summary sum-fail';
+    sumEl.textContent = '&#10005; All tests failed - check connection and deployment';
+    document.getElementById('headSub').textContent = 'all failed';
+  }
+  sumEl.innerHTML = sumEl.textContent;
+
+  log('--- Done: '+passed+'/'+total+' passed ---', failed===0?'pass':failed<total?'warn':'fail');
+  running = false;
+  document.getElementById('runBtn').disabled = false;
+}
+
+function clearLog(){
+  document.getElementById('log').innerHTML = '<span style="color:#666">Click Run tests to start...</span>';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('headSub').textContent = 'ready';
+  ['ping','sheet','write','ai'].forEach(id => setTest(id,'wait','waiting...',''));
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
