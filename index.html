@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiTech Resource Converter - Mr Miller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f1117;--ink2:#3a3f4d;--ink3:#6b7280;
+  --bg:#f7f7f5;--surface:#ffffff;--surface2:#f0f0ec;
+  --border:#e2e2dc;--border2:#c8c8c0;
+  --y7:#185FA5;--y7l:#E6F1FB;--y7d:#0C447C;
+  --y910:#534AB7;--y910l:#EEEDFE;--y910d:#3C3489;
+  --green:#3B6D11;--greenl:#EAF3DE;
+  --amber:#854F0B;--amberl:#FAEEDA;
+  --red:#A32D2D;--redl:#FCEBEB;
+  --radius:8px;--radiuslg:12px;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6}
+.page{max-width:980px;margin:0 auto;padding:24px 20px 60px}
+.top-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.logo{width:38px;height:38px;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-size:18px}
+.top-title{font-size:17px;font-weight:600;letter-spacing:-0.3px}
+.top-sub{font-size:12px;color:var(--ink3);font-family:var(--mono)}
+.badge-row{margin-left:auto;display:flex;gap:6px}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--mono)}
+.badge-blue{background:var(--y7l);color:var(--y7d)}
+.badge-purple{background:var(--y910l);color:var(--y910d)}
+
+/* Diagnostics panel */
+.diag-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radiuslg);overflow:hidden;margin-bottom:18px}
+.diag-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer}
+.diag-head-title{font-size:13px;font-weight:600}
+.diag-head-sub{font-size:11px;color:var(--ink3);font-family:var(--mono)}
+.diag-toggle{margin-left:auto;font-size:11px;color:var(--ink3);font-family:var(--mono)}
+.diag-body{display:none;padding:14px}
+.diag-body.open{display:block}
+.diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:12px}
+.diag-check{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);padding:10px 12px;display:flex;align-items:flex-start;gap:10px}
+.dc-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.dc-wait{background:var(--surface2);color:var(--ink3)}
+.dc-running{background:var(--y7l);color:var(--y7)}
+.dc-pass{background:var(--greenl);color:var(--green)}
+.dc-fail{background:var(--redl);color:var(--red)}
+.dc-warn{background:var(--amberl);color:var(--amber)}
+.dc-label{font-size:12px;font-weight:500;color:var(--ink)}
+.dc-detail{font-size:11px;color:var(--ink3);margin-top:2px;font-family:var(--mono);line-height:1.4;word-break:break-all}
+.diag-log{background:#111;border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:11px;line-height:1.8;max-height:200px;overflow-y:auto;color:#e8e8e0}
+.diag-log::-webkit-scrollbar{width:4px}
+.diag-log::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
+.log-pass{color:#7ec87e}
+.log-fail{color:#e87e7e}
+.log-warn{color:#e8c87e}
+.log-info{color:#7ec8e8}
+.log-time{color:#888;font-size:10px;margin-right:6px}
+.diag-solution{background:var(--amberl);border:1px solid #FAC775;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:var(--amber);margin-top:10px;line-height:1.6;display:none}
+.diag-solution.show{display:block}
+.diag-solution strong{font-weight:600;display:block;margin-bottom:4px}
+.diag-solution ol{margin-left:16px;margin-top:4px}
+.diag-solution li{margin-bottom:3px}
+
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:700px){.cols{grid-template-columns:1fr}}
+.card{background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);overflow:hidden}
+.card-head{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface2)}
+.card-head-title{font-size:13px;font-weight:600}
+.card-head-sub{font-size:11px;color:var(--ink3);margin-left:auto;font-family:var(--mono)}
+.card-body{padding:14px}
+.dropzone{border:2px dashed var(--border2);border-radius:var(--radiuslg);padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;position:relative;background:var(--surface)}
+.dropzone:hover,.dropzone.over{border-color:var(--y7);background:var(--y7l)}
+.dz-icon{font-size:26px;margin-bottom:8px;display:block;color:var(--ink3)}
+.dz-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.dz-sub{font-size:12px;color:var(--ink3);line-height:1.5}
+.dz-fmts{display:flex;gap:5px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.ft{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;font-family:var(--mono)}
+.ft-html{background:var(--y7l);color:var(--y7d)}
+.ft-pdf{background:var(--redl);color:var(--red)}
+.ft-docx{background:var(--greenl);color:var(--green)}
+.dz-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.queue{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto;padding:2px}
+.queue::-webkit-scrollbar{width:4px}
+.queue::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.qitem{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);transition:all .15s;cursor:pointer}
+.qitem:hover{border-color:var(--border2)}
+.qitem.sel{border-color:var(--y7);background:var(--y7l)}
+.qitem.qdone{border-left:3px solid var(--green)}
+.qitem.qmanual{border-left:3px solid var(--amber)}
+.qitem.qerr{border-left:3px solid var(--red)}
+.qitem.qproc{border-left:3px solid var(--y7)}
+.qi-row{display:flex;align-items:center;gap:8px;padding:9px 12px}
+.qi-fmt{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;font-family:var(--mono);flex-shrink:0}
+.qi-name{font-size:12px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qi-st{font-size:11px;font-family:var(--mono);flex-shrink:0}
+.st-wait{color:var(--ink3)}.st-proc{color:var(--y7)}.st-done{color:var(--green)}.st-man{color:var(--amber)}.st-err{color:var(--red)}
+.dots{display:inline-flex;gap:2px;margin-left:2px;vertical-align:middle}
+.dots span{width:4px;height:4px;border-radius:50%;background:var(--y7);animation:dp 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes dp{0%,80%,100%{opacity:.25;transform:scale(.75)}40%{opacity:1;transform:scale(1)}}
+.field{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.field label{font-size:10px;font-weight:600;color:var(--ink2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select,.field textarea{padding:6px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:12px;font-family:var(--sans);outline:none;transition:border-color .12s;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--y7);background:var(--surface)}
+.field textarea{resize:vertical;min-height:56px;line-height:1.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius);border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:var(--sans);transition:all .13s;white-space:nowrap}
+.btn:hover{opacity:.88}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-blue{background:var(--y7);color:white}
+.btn-green{background:var(--green);color:white}
+.btn-amber{background:var(--amber);color:white}
+.btn-ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--border)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.otabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 14px}
+.otab{padding:8px 13px;font-size:12px;font-weight:500;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s;white-space:nowrap}
+.otab:hover{color:var(--ink)}.otab.on{color:var(--y7);border-bottom-color:var(--y7)}
+.opanel{display:none;padding:14px}.opanel.show{display:block}
+.code-out{background:#111;color:#e8e8e0;border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;line-height:1.7;overflow:auto;white-space:pre;max-height:280px}
+.code-out::-webkit-scrollbar{width:4px;height:4px}
+.code-out::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
+.copy-row{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+.csv-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+.csv-t{border-collapse:collapse;font-size:11px;font-family:var(--mono);min-width:600px;width:100%}
+.csv-t th{padding:6px 9px;background:var(--surface2);border-bottom:1px solid var(--border);font-weight:500;color:var(--ink2);white-space:nowrap;text-align:left}
+.csv-t td{padding:6px 9px;border-bottom:1px solid var(--border);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csv-t tr:last-child td{border-bottom:none}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--surface2);border-radius:var(--radius);padding:9px 10px;text-align:center}
+.stat-n{font-size:20px;font-weight:600;font-family:var(--mono)}
+.stat-l{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+.chunk-sec{margin-bottom:12px}
+.chunk-lbl{font-size:10px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);margin-bottom:5px}
+.ci{display:flex;align-items:flex-start;gap:6px;padding:5px 8px;border-radius:6px;background:var(--surface2);margin-bottom:3px;font-size:12px}
+.ci-t{flex:1;color:var(--ink2);line-height:1.45}
+.ci-del{color:var(--red);cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;background:none;border:none;padding:0;margin-top:-1px}
+.chunk-add{display:flex;gap:6px;margin-top:4px}
+.chunk-add input{flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-family:var(--sans);background:var(--surface);outline:none;color:var(--ink)}
+.chunk-add input:focus{border-color:var(--y7)}
+.chunk-add button{padding:5px 10px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;font-size:11px;font-family:var(--sans);color:var(--ink2)}
+.chunk-add button:hover{background:var(--border)}
+.notice{display:flex;gap:8px;padding:9px 11px;border-radius:var(--radius);font-size:12px;line-height:1.5;margin-bottom:10px}
+.n-blue{background:var(--y7l);color:var(--y7d);border:1px solid #B5D4F4}
+.n-green{background:var(--greenl);color:var(--green);border:1px solid #C0DD97}
+.n-amber{background:var(--amberl);color:var(--amber);border:1px solid #FAC775}
+.n-red{background:var(--redl);color:var(--red);border:1px solid #F7C1C1}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.empty{text-align:center;padding:28px 12px;color:var(--ink3)}
+.empty-icon{font-size:28px;display:block;margin-bottom:8px;opacity:.35}
+.empty-t{font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:3px}
+.empty-s{font-size:12px;line-height:1.5}
+.dl-bar{background:var(--greenl);border:1px solid #C0DD97;border-radius:var(--radiuslg);padding:11px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.dl-bar-t strong{font-size:13px;color:var(--green);display:block}
+.dl-bar-t span{font-size:11px;color:#3B6D11}
+.mode-toggle{display:flex;gap:8px;margin-bottom:12px}
+.mode-btn{flex:1;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:500;font-family:var(--sans);text-align:center;transition:all .13s;color:var(--ink3)}
+.mode-btn.on-ai{border-color:var(--y7);background:var(--y7l);color:var(--y7d)}
+.mode-btn.on-manual{border-color:var(--amber);background:var(--amberl);color:var(--amber)}
+.manual-banner{background:var(--amberl);border:1px solid #FAC775;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:var(--amber);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top-bar">
+    <div class="logo">&#9881;</div>
+    <div>
+      <div class="top-title">DigiTech resource converter</div>
+      <div class="top-sub">Mr Miller - Emmanuel Christian School</div>
+    </div>
+    <div class="badge-row">
+      <span class="badge badge-blue">Year 7</span>
+      <span class="badge badge-purple">Year 9/10</span>
+    </div>
+  </div>
+
+  <!-- DIAGNOSTICS PANEL -->
+  <div class="diag-bar">
+    <div class="diag-head" onclick="toggleDiag()">
+      <span id="diagHeadIcon">&#128270;</span>
+      <div>
+        <div class="diag-head-title">Connection diagnostics</div>
+        <div class="diag-head-sub" id="diagHeadSub">Click to run checks</div>
+      </div>
+      <div class="diag-toggle" id="diagToggleLabel">&#9660; expand</div>
+    </div>
+    <div class="diag-body" id="diagBody">
+      <div class="diag-grid" id="diagGrid">
+        <div class="diag-check" id="dc-env"><div class="dc-icon dc-wait">?</div><div><div class="dc-label">Environment</div><div class="dc-detail" id="dd-env">not checked</div></div></div>
+        <div class="diag-check" id="dc-https"><div class="dc-icon dc-wait">?</div><div><div class="dc-label">HTTPS / protocol</div><div class="dc-detail" id="dd-https">not checked</div></div></div>
+        <div class="diag-check" id="dc-csp"><div class="dc-icon dc-wait">?</div><div><div class="dc-label">Content Security Policy</div><div class="dc-detail" id="dd-csp">not checked</div></div></div>
+        <div class="diag-check" id="dc-cors"><div class="dc-icon dc-wait">?</div><div><div class="dc-label">CORS preflight</div><div class="dc-detail" id="dd-cors">not checked</div></div></div>
+        <div class="diag-check" id="dc-api"><div class="dc-icon dc-wait">?</div><div><div class="dc-label">Anthropic API reach</div><div class="dc-detail" id="dd-api">not checked</div></div></div>
+        <div class="diag-check" id="dc-pdf"><div class="dc-icon dc-wait">?</div><div><div class="dc-label">PDF.js loaded</div><div class="dc-detail" id="dd-pdf">not checked</div></div></div>
+      </div>
+      <div class="diag-log" id="diagLog"><span style="color:#888">Run diagnostics to see detailed output...</span></div>
+      <div id="diagSolution" class="diag-solution"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-blue btn-sm" onclick="runDiag()">&#9656; Run diagnostics</button>
+        <button class="btn btn-ghost btn-sm" onclick="copyDiagLog()">&#10064; Copy log</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dlBar" style="display:none" class="dl-bar">
+    <div class="dl-bar-t">
+      <strong>&#10003; Files ready</strong>
+      <span id="dlBarSub">0 rows ready for your Google Sheet</span>
+    </div>
+    <button class="btn btn-green" onclick="downloadAllCSV()">&#8595; All CSV rows</button>
+    <button class="btn btn-ghost btn-sm" onclick="downloadAllHTML()">&#8595; Updated HTML files</button>
+  </div>
+
+  <div class="cols">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div class="card-head"><div class="card-head-title">Drop your files</div><div class="card-head-sub">HTML / DOCX / PDF</div></div>
+        <div class="card-body">
+          <div class="dropzone" id="dropzone" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+            <input type="file" class="dz-input" id="fileInput" multiple accept=".html,.htm,.docx,.pdf,.doc" onchange="onSelect(event)" />
+            <span class="dz-icon">&#128194;</span>
+            <div class="dz-title">Drop files here or click to browse</div>
+            <div class="dz-sub">HTML, Word and PDF supported<br>AI extracts metadata automatically</div>
+            <div class="dz-fmts">
+              <span class="ft ft-html">.html</span>
+              <span class="ft ft-docx">.docx</span>
+              <span class="ft ft-pdf">.pdf</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-head-title">Queue</div><div class="card-head-sub" id="qCount">0 files</div></div>
+        <div class="card-body" style="padding:10px">
+          <div class="queue" id="queue">
+            <div class="empty"><span class="empty-icon">&#128464;</span><div class="empty-t">No files yet</div><div class="empty-s">Drop files above to start</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="min-height:480px">
+      <div class="card-head"><div class="card-head-title">Output</div><div class="card-head-sub" id="outName">-</div></div>
+      <div id="outEmpty" class="card-body">
+        <div class="empty"><span class="empty-icon">&#9881;</span><div class="empty-t">Select a file from the queue</div><div class="empty-s">Click a processed file to review, edit and generate outputs.</div></div>
+      </div>
+      <div id="outContent" style="display:none">
+        <div class="otabs">
+          <div class="otab on" onclick="showTab('review')">Review and edit</div>
+          <div class="otab" onclick="showTab('csv')">Sheet row</div>
+          <div class="otab" onclick="showTab('meta')">Updated HTML</div>
+        </div>
+        <div class="opanel show" id="tab-review"><div id="reviewBody"></div></div>
+        <div class="opanel" id="tab-csv">
+          <div class="notice n-green">&#10003; Copy this row and paste into your Google Sheet.</div>
+          <div class="csv-wrap"><table class="csv-t" id="csvTable"></table></div>
+          <div class="copy-row">
+            <button class="btn btn-ghost btn-sm" onclick="copyCSV()">&#10064; Copy row</button>
+            <button class="btn btn-green btn-sm" onclick="dlCSV()">&#8595; Download</button>
+          </div>
+        </div>
+        <div class="opanel" id="tab-meta">
+          <div class="notice n-amber">&#9888; Original HTML with meta block injected. Hub reads this to surface chunks without loading the full page.</div>
+          <div class="code-out" id="metaOut"></div>
+          <div class="copy-row">
+            <button class="btn btn-ghost btn-sm" onclick="copyMeta()">&#10064; Copy HTML</button>
+            <button class="btn btn-blue btn-sm" onclick="dlMeta()">&#8595; Download updated HTML</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+if(typeof pdfjsLib!=='undefined') pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const COLS=['id','class','term','week','type','title','summary','topics','file_format','url','source','print_ready','onenote_path','definitions','success_criteria','tasks','key_concepts','current','locked'];
+const FMT_BG={html:'#E6F1FB',htm:'#E6F1FB',docx:'#EAF3DE',doc:'#EAF3DE',pdf:'#FCEBEB'};
+const FMT_COL={html:'#0C447C',htm:'#0C447C',docx:'#27500A',doc:'#27500A',pdf:'#791F1F'};
+const BLANK={id:'',class:'Year 7',term:'2',week:'1',type:'Lesson Outline',title:'',summary:'',topics:'',file_format:'html',url:'',source:'Drive',print_ready:'false',onenote_path:'',definitions:'',success_criteria:'',tasks:'',key_concepts:'',current:'false',locked:'false'};
+
+let fileList=[],results={},active=null,processing=false,diagOpen=false,diagLogs=[];
+
+// ── DIAGNOSTICS ──────────────────────────────────────────────────────────────
+function toggleDiag(){
+  diagOpen=!diagOpen;
+  document.getElementById('diagBody').classList.toggle('open',diagOpen);
+  document.getElementById('diagToggleLabel').textContent=diagOpen?'&#9650; collapse':'&#9660; expand';
+  if(diagOpen && diagLogs.length===0) runDiag();
+}
+
+function diagLog(msg,type='info'){
+  const t=new Date().toLocaleTimeString('en-AU',{hour12:false});
+  diagLogs.push({msg,type,t});
+  const cls={pass:'log-pass',fail:'log-fail',warn:'log-warn',info:'log-info'}[type]||'log-info';
+  const el=document.getElementById('diagLog');
+  if(el.querySelector('span[style]')) el.innerHTML='';
+  el.innerHTML+=`<div><span class="log-time">${t}</span><span class="${cls}">${esc(msg)}</span></div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+function setCheck(id,status,detail){
+  const el=document.getElementById('dc-'+id);
+  const icon=el.querySelector('.dc-icon');
+  const dd=document.getElementById('dd-'+id);
+  const icons={pass:'&#10003;',fail:'&#10005;',warn:'&#9888;',running:'...'};
+  const cls={pass:'dc-pass',fail:'dc-fail',warn:'dc-warn',running:'dc-running'};
+  icon.className='dc-icon '+(cls[status]||'dc-wait');
+  icon.innerHTML=icons[status]||'?';
+  if(dd) dd.textContent=detail;
+}
+
+async function runDiag(){
+  diagLogs=[];
+  document.getElementById('diagLog').innerHTML='';
+  document.getElementById('diagSolution').classList.remove('show');
+  diagLog('Starting diagnostics...','info');
+
+  // 1. Environment detection
+  setCheck('env','running','detecting...');
+  const href=window.location.href;
+  const isFile=href.startsWith('file://');
+  const isSites=href.includes('sites.google.com');
+  const isClaude=href.includes('claude.ai')||window.self!==window.top;
+  const isLocalhost=href.includes('localhost')||href.includes('127.0.0.1');
+  const envName=isFile?'Local file (file://)':isSites?'Google Sites':isClaude?'Embedded iframe (Claude)':isLocalhost?'Localhost':'Other: '+window.location.hostname;
+  setCheck('env', isFile||isLocalhost?'pass':isSites?'warn':isClaude?'fail':'warn', envName);
+  diagLog('Environment: '+envName, isFile||isLocalhost?'pass':isClaude?'fail':'warn');
+
+  // 2. HTTPS check
+  setCheck('https','running','checking...');
+  const isHttps=window.location.protocol==='https:';
+  const isFileProto=window.location.protocol==='file:';
+  if(isFileProto){
+    setCheck('https','pass','file:// - local, OK');
+    diagLog('Protocol: file:// - no HTTPS needed for local','pass');
+  } else if(isHttps){
+    setCheck('https','pass','https:// - OK');
+    diagLog('Protocol: HTTPS - OK','pass');
+  } else {
+    setCheck('https','fail','http:// - API requires HTTPS');
+    diagLog('Protocol: HTTP - Anthropic API requires HTTPS origin','fail');
+  }
+
+  // 3. CSP detection
+  setCheck('csp','running','checking...');
+  try {
+    // Check meta CSP tags on page
+    const cspMetas=[...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')];
+    const cspContent=cspMetas.map(m=>m.getAttribute('content')).join(' ');
+    if(cspMetas.length===0){
+      // Try to detect via a test script injection (CSP would block eval)
+      let cspBlocking=false;
+      try { new Function('return 1')(); } catch(e){ cspBlocking=true; }
+      if(isSites){
+        setCheck('csp','warn','Google Sites may restrict connect-src');
+        diagLog('CSP: Google Sites applies CSP headers server-side - cannot read from JS','warn');
+        diagLog('CSP: Sites typically blocks connect-src to external APIs','warn');
+      } else {
+        setCheck('csp','pass','No meta CSP detected');
+        diagLog('CSP: No meta tag found - likely OK','pass');
+      }
+    } else {
+      const blocksConnect=cspContent.includes('connect-src')&&!cspContent.includes('api.anthropic.com');
+      setCheck('csp', blocksConnect?'fail':'warn', cspContent.substring(0,80)+'...');
+      diagLog('CSP found: '+cspContent.substring(0,120), blocksConnect?'fail':'warn');
+    }
+  } catch(e){
+    setCheck('csp','warn','Could not read CSP: '+e.message);
+    diagLog('CSP check error: '+e.message,'warn');
+  }
+
+  // 4. CORS preflight test (OPTIONS to Anthropic)
+  setCheck('cors','running','testing...');
+  diagLog('Testing CORS preflight to api.anthropic.com...','info');
+  try {
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    const corsRes=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'OPTIONS',
+      signal:controller.signal,
+      headers:{'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,x-api-key,anthropic-version'}
+    });
+    clearTimeout(timeout);
+    setCheck('cors','pass','Preflight OK - status '+corsRes.status);
+    diagLog('CORS preflight: OK ('+corsRes.status+')','pass');
+  } catch(e){
+    const msg=e.name==='AbortError'?'Timeout after 8s':e.message;
+    setCheck('cors','fail',msg);
+    diagLog('CORS preflight failed: '+msg,'fail');
+    diagLog('Error type: '+e.name+' | '+e.constructor.name,'fail');
+  }
+
+  // 5. Actual API test (minimal payload)
+  setCheck('api','running','testing...');
+  diagLog('Testing minimal API call...','info');
+  const t0=Date.now();
+  try {
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      signal:controller.signal,
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:5,messages:[{role:'user',content:'hi'}]})
+    });
+    clearTimeout(timeout);
+    const ms=Date.now()-t0;
+    const data=await res.json();
+    // 401 = reached API but no key (expected in this tool - keys handled server-side in artifacts)
+    // 200 = full success
+    if(res.status===401||res.status===200){
+      setCheck('api','pass','Reachable - HTTP '+res.status+' in '+ms+'ms');
+      diagLog('API reached: HTTP '+res.status+' in '+ms+'ms - connection is working','pass');
+      if(res.status===401) diagLog('HTTP 401 is expected here - API key is injected at artifact level','info');
+    } else {
+      setCheck('api','warn','HTTP '+res.status+' in '+ms+'ms');
+      diagLog('API returned '+res.status+': '+(data.error?.message||JSON.stringify(data).substring(0,100)),'warn');
+    }
+  } catch(e){
+    const ms=Date.now()-t0;
+    const msg=e.name==='AbortError'?'Timeout after 10s':e.message;
+    setCheck('api','fail',msg+' ('+ms+'ms)');
+    diagLog('API call failed: '+msg,'fail');
+    diagLog('Error name: '+e.name,'fail');
+    if(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')){
+      diagLog('DIAGNOSIS: "Failed to fetch" = request blocked before leaving browser','fail');
+      diagLog('Most likely cause: CSP connect-src header blocking api.anthropic.com','fail');
+      diagLog('Second likely cause: Iframe sandboxing restricting outbound fetch','fail');
+      showSolution(isSites, isClaude, isFile);
+    }
+  }
+
+  // 6. PDF.js
+  setCheck('pdf','running','checking...');
+  if(typeof pdfjsLib!=='undefined'){
+    setCheck('pdf','pass','Loaded v'+pdfjsLib.version);
+    diagLog('PDF.js: loaded v'+pdfjsLib.version,'pass');
+  } else {
+    setCheck('pdf','warn','Not loaded - PDF files need manual entry');
+    diagLog('PDF.js: not loaded (CDN may be blocked) - PDFs will fall back to manual mode','warn');
+  }
+
+  // Summary
+  const fails=diagLogs.filter(l=>l.type==='fail').length;
+  const warns=diagLogs.filter(l=>l.type==='warn').length;
+  const summary=fails>0?`${fails} issue(s) found`:warns>0?`${warns} warning(s) - check details`:'All checks passed';
+  document.getElementById('diagHeadSub').textContent=summary;
+  document.getElementById('diagHeadIcon').textContent=fails>0?'&#10005;':warns>0?'&#9888;':'&#10003;';
+  diagLog('--- Done: '+summary+' ---',fails>0?'fail':warns>0?'warn':'pass');
+}
+
+function showSolution(isSites, isClaude, isFile){
+  const el=document.getElementById('diagSolution');
+  el.classList.add('show');
+  if(isClaude){
+    el.innerHTML=`<strong>&#9888; You are inside a Claude sandbox</strong>This tool cannot make API calls from inside Claude.ai previews.<ol><li>Download the HTML file</li><li>Open it in Chrome or Edge on your computer</li><li>OR upload it to Google Sites and open from there</li></ol>`;
+  } else if(isSites){
+    el.innerHTML=`<strong>&#9888; Google Sites is blocking the API call</strong>Google Sites adds a Content-Security-Policy header that blocks outbound fetch to external APIs. Two fixes:<ol><li><strong>Host as a standalone page</strong> - publish the HTML to GitHub Pages, Netlify, or any plain host and embed that URL in Sites instead</li><li><strong>Use a proxy</strong> - a lightweight Cloudflare Worker or Google Apps Script can relay the API call (no CSP restriction)</li><li><strong>Manual mode works now</strong> - use it while you sort hosting - you still get full Sheet rows and updated HTML</li></ol>`;
+  } else if(isFile){
+    el.innerHTML=`<strong>&#9888; Local file with network issue</strong>You are running from file:// which should work. Check:<ol><li>Are you online?</li><li>Is a firewall or proxy blocking api.anthropic.com on port 443?</li><li>Try opening in Chrome (not Firefox - FF has stricter CORS for file://)</li></ol>`;
+  } else {
+    el.innerHTML=`<strong>&#9888; API connection blocked</strong>The fetch to api.anthropic.com is being blocked. Check:<ol><li>Network/firewall rules for your school internet connection</li><li>Browser extensions blocking outbound requests</li><li>Try in an incognito window to rule out extensions</li></ol>`;
+  }
+}
+
+function copyDiagLog(){
+  const text=diagLogs.map(l=>l.t+' ['+l.type.toUpperCase()+'] '+l.msg).join('\n');
+  navigator.clipboard.writeText(text).then(()=>alert('Diagnostic log copied to clipboard'));
+}
+
+// ── FILE PROCESSING ───────────────────────────────────────────────────────────
+let fileList_=[], results_={};
+// use fileList/results as actual vars (declared at top)
+
+function dzOver(e){e.preventDefault();document.getElementById('dropzone').classList.add('over')}
+function dzLeave(){document.getElementById('dropzone').classList.remove('over')}
+function dzDrop(e){e.preventDefault();dzLeave();addFiles([...e.dataTransfer.files])}
+function onSelect(e){addFiles([...e.target.files])}
+
+function addFiles(newFiles){
+  newFiles.forEach(f=>{
+    if(!fileList.find(x=>x.name===f.name)){
+      fileList.push(f);
+      results[f.name]={status:'pending',data:null,raw:null,error:null,mode:'ai'};
+    }
+  });
+  renderQueue();
+  processNext();
+}
+
+function renderQueue(){
+  document.getElementById('qCount').textContent=fileList.length+' file'+(fileList.length!==1?'s':'');
+  const q=document.getElementById('queue');
+  if(!fileList.length){q.innerHTML='<div class="empty"><span class="empty-icon">&#128464;</span><div class="empty-t">No files yet</div><div class="empty-s">Drop files above</div></div>';return;}
+  q.innerHTML=fileList.map(f=>qItemHTML(f)).join('');
+}
+
+function qItemHTML(f){
+  const r=results[f.name];
+  const ext=f.name.split('.').pop().toLowerCase();
+  const statusMap={pending:'waiting',processing:'reading...',done:'ready &#10003;',manual:'manual &#9998;',error:'error &#10005;'};
+  const stCls={pending:'st-wait',processing:'st-proc',done:'st-done',manual:'st-man',error:'st-err'};
+  const borderCls={pending:'',processing:'qproc',done:'qdone',manual:'qmanual',error:'qerr'};
+  return `<div class="qitem ${borderCls[r.status]} ${active===f.name?'sel':''}" onclick="selectFile('${f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+    <div class="qi-row">
+      <div class="qi-fmt" style="background:${FMT_BG[ext]||'#F1EFE8'};color:${FMT_COL[ext]||'#444441'}">${ext.toUpperCase()}</div>
+      <div class="qi-name" title="${esc(f.name)}">${esc(f.name)}</div>
+      ${r.status==='processing'?'<div class="dots"><span></span><span></span><span></span></div>':''}
+      <div class="qi-st ${stCls[r.status]}">${statusMap[r.status]}</div>
+    </div>
+  </div>`;
+}
+
+async function processNext(){
+  if(processing) return;
+  const f=fileList.find(x=>results[x.name].status==='pending');
+  if(!f) return;
+  processing=true;
+  results[f.name].status='processing';
+  renderQueue();
+  try{
+    const {text,fmt,rawHTML}=await readFile(f);
+    results[f.name].raw=rawHTML||null;
+    results[f.name].extractedText=text;
+    try{
+      const data=await extractWithAI(f.name,text,fmt);
+      results[f.name].data=data;
+      results[f.name].status='done';
+      results[f.name].mode='ai';
+    } catch(apiErr){
+      results[f.name].data=guessFromFilename(f.name,fmt);
+      results[f.name].status='manual';
+      results[f.name].mode='manual';
+      results[f.name].apiError=apiErr.message;
+      // Auto-open diagnostics on first API failure
+      if(!diagOpen){ toggleDiag(); }
+    }
+  } catch(readErr){
+    results[f.name].data=guessFromFilename(f.name,'unknown');
+    results[f.name].status='manual';
+    results[f.name].mode='manual';
+    results[f.name].apiError='File read error: '+readErr.message;
+  }
+  processing=false;
+  renderQueue();
+  updateDLBar();
+  if(active===f.name) selectFile(f.name);
+  processNext();
+}
+
+async function readFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='html'||ext==='htm'){
+    const rawHTML=await file.text();
+    return {text:smartExtractHTML(rawHTML),fmt:'html',rawHTML};
+  }
+  if(ext==='pdf'){
+    const text=await extractPDFText(file);
+    return {text,fmt:'pdf',rawHTML:null};
+  }
+  if(ext==='docx'||ext==='doc'){
+    const buf=await file.arrayBuffer();
+    const text=extractDocxText(buf);
+    return {text,fmt:'docx',rawHTML:null};
+  }
+  return {text:'Unknown: '+file.name,fmt:'unknown',rawHTML:null};
+}
+
+async function extractPDFText(file){
+  if(typeof pdfjsLib==='undefined') return '[PDF.js not loaded - check diagnostics]';
+  try{
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    const pages=[];
+    for(let i=1;i<=Math.min(pdf.numPages,8);i++){
+      const page=await pdf.getPage(i);
+      const content=await page.getTextContent();
+      pages.push(content.items.map(item=>item.str).join(' '));
+    }
+    return pages.join('\n').replace(/\s+/g,' ').trim().substring(0,8000)||'[No text extracted]';
+  } catch(e){ return '[PDF error: '+e.message+']'; }
+}
+
+function smartExtractHTML(html){
+  const s=[];
+  const title=html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  if(title) s.push('TITLE: '+title[1]);
+  const h2=html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+  if(h2) s.push('SUBTITLE: '+h2[1].replace(/<[^>]+>/g,''));
+  const labels=[...html.matchAll(/section-label[^>]*>([^<]+)<\//gi)];
+  if(labels.length) s.push('SECTIONS: '+labels.map(m=>m[1]).join(' | '));
+  const sceneTitles=[...html.matchAll(/scene-title[^>]*>([^<]+)<\//gi)];
+  if(sceneTitles.length) s.push('SCENE TITLES: '+sceneTitles.map(m=>m[1]).join(' | '));
+  const blurbs=[...html.matchAll(/scene-blurb[^>]*>([\s\S]*?)<\/div>/gi)];
+  if(blurbs.length) s.push('BLURBS: '+blurbs.slice(0,8).map(m=>m[1].replace(/<[^>]+>/g,' ').trim()).filter(Boolean).join(' | '));
+  const wterms=[...html.matchAll(/wtile-word[^>]*>([^<]+)<\/div>/gi)];
+  const wdefs=[...html.matchAll(/wtile-def[^>]*>([^<]+)<\/div>/gi)];
+  if(wterms.length) s.push('DEFINITIONS: '+wterms.map((t,i)=>t[1].trim()+': '+(wdefs[i]?wdefs[i][1].trim():'')).join(' | '));
+  const accBtns=[...html.matchAll(/accordion-btn[^>]*>([^<]+)<\/button>/gi)];
+  if(accBtns.length) s.push('ACCORDION SECTIONS: '+accBtns.map(m=>m[1]).join(' | '));
+  const iCan=[...new Set([...html.matchAll(/I can [^<"']{5,80}/gi)].map(m=>m[0].replace(/<[^>]+>/g,'').trim()))];
+  if(iCan.length) s.push('SUCCESS CRITERIA: '+iCan.join(' | '));
+  const tts=[...html.matchAll(/tts-text[^>]*>([\s\S]*?)<\//gi)];
+  if(tts.length) s.push('CONTENT: '+tts.slice(0,6).map(m=>m[1].replace(/<[^>]+>/g,' ').trim()).filter(Boolean).join(' | '));
+  const taskboxes=[...html.matchAll(/taskbox[^>]*>([\s\S]*?)<\/div>/gi)];
+  if(taskboxes.length) s.push('TASKS: '+taskboxes.slice(0,6).map(m=>m[1].replace(/<[^>]+>/g,' ').trim().substring(0,100)).filter(Boolean).join(' | '));
+  return s.join('\n\n').substring(0,8000);
+}
+
+function extractDocxText(buf){
+  try{
+    const u8=new Uint8Array(buf);
+    if(u8[0]!==0x50||u8[1]!==0x4B) return '[Not a valid DOCX file]';
+    const dec=new TextDecoder('utf-8',{fatal:false});
+    const matches=[...dec.decode(u8).matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)];
+    return matches.map(m=>m[1]).filter(Boolean).join(' ').substring(0,8000)||'[No text found]';
+  } catch(e){ return '[DOCX error: '+e.message+']'; }
+}
+
+function guessFromFilename(name,fmt){
+  const d=Object.assign({},BLANK);
+  d.file_format=fmt==='unknown'?'html':fmt;
+  d.title=name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ');
+  if(name.match(/y7|year.?7/i)) d.class='Year 7';
+  if(name.match(/y9|y10|year.?9|year.?10/i)) d.class='Year 9/10';
+  const wk=name.match(/w(\d+)|week.?(\d+)/i);
+  if(wk) d.week=wk[1]||wk[2];
+  if(name.match(/t1|term.?1/i)) d.term='1';
+  if(name.match(/t2|term.?2/i)) d.term='2';
+  if(name.match(/rubric/i)) d.type='Rubric';
+  else if(name.match(/worksheet|activity/i)) d.type='Worksheet';
+  else if(name.match(/assessment/i)) d.type='Assessment';
+  else if(name.match(/reference|ref/i)) d.type='Reference';
+  else if(name.match(/outline|lesson/i)) d.type='Lesson Outline';
+  return d;
+}
+
+async function extractWithAI(filename,content,fmt){
+  const sys='You are a metadata extractor for DigiTech resources at Emmanuel Christian School Tasmania. Year 7: T1=MS Office, T2=Digital Systems/Hardware/Binary/File Journeys. Year 9/10: T1=Tinkercad/3D Printing, T2=Python/micro:bit/Bit:Bot. Return ONLY valid JSON, no markdown.';
+  const msg='FILE: '+filename+'\nFORMAT: '+fmt+'\nCONTENT:\n'+content+'\n\nReturn this exact JSON:\n{"id":"e.g. y7-t2-w4-worksheet-01","class":"Year 7 or Year 9/10","term":"1 or 2","week":"1-10 or range","type":"Lesson Outline|Worksheet|Assessment|Rubric|Reference|Explainer|Video","title":"","summary":"1-2 sentences","topics":"comma list","file_format":"'+fmt+'","url":"","source":"Drive","print_ready":"false","onenote_path":"","definitions":"pipe-separated Term: Definition","success_criteria":"pipe-separated I can...","tasks":"pipe-separated task names","key_concepts":"comma list","current":"false","locked":"false"}';
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':'','anthropic-version':'2023-06-01'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:msg}]})
+  });
+  if(!res.ok){const t=await res.text();throw new Error('HTTP '+res.status+': '+t.substring(0,120));}
+  const apiData=await res.json();
+  if(apiData.error) throw new Error(apiData.error.message||'API error');
+  const raw=(apiData.content?.[0]?.text||'{}').replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'').trim();
+  try{return JSON.parse(raw);}
+  catch(e){const m=raw.match(/\{[\s\S]*\}/);if(m)try{return JSON.parse(m[0]);}catch(e2){}
+    throw new Error('JSON parse failed: '+raw.substring(0,200));}
+}
+
+function selectFile(name){
+  active=name;
+  renderQueue();
+  const r=results[name];
+  document.getElementById('outName').textContent=name;
+  const ready=['done','manual'].includes(r.status);
+  document.getElementById('outEmpty').style.display=ready?'none':'block';
+  document.getElementById('outContent').style.display=ready?'block':'none';
+  if(ready) renderReview(r.data,r.mode,r.apiError);
+  buildCSV(r.data||BLANK);
+  buildMeta(name,r.data||BLANK,r.raw);
+}
+
+function retryFile(name){
+  if(!results[name]) return;
+  results[name].status='pending';
+  results[name].error=null;
+  renderQueue();
+  document.getElementById('outEmpty').style.display='block';
+  document.getElementById('outContent').style.display='none';
+  processNext();
+}
+
+function switchMode(name,mode){
+  if(!results[name]) return;
+  results[name].mode=mode;
+  if(mode==='manual'){results[name].status='manual';if(!results[name].data)results[name].data=guessFromFilename(name,'html');}
+  renderQueue();
+  selectFile(name);
+}
+
+function renderReview(d,mode,apiError){
+  const isManual=mode==='manual';
+  const isY7=d.class==='Year 7';
+  const col=isY7?'var(--y7)':'var(--y910)';
+  document.getElementById('reviewBody').innerHTML=`<div style="padding:12px 14px">
+    <div class="mode-toggle">
+      <button class="mode-btn ${!isManual?'on-ai':''}" onclick="switchMode('${esc(active)}','ai')">&#9889; AI extraction${apiError?' (retry)':''}</button>
+      <button class="mode-btn ${isManual?'on-manual':''}" onclick="switchMode('${esc(active)}','manual')">&#9998; Fill in manually</button>
+    </div>
+    ${isManual?`<div class="manual-banner"><span>&#9998;</span><div><strong>Manual mode</strong>${apiError?' - AI error: '+esc(apiError.substring(0,100)):''}<br>Run diagnostics above to see why. Fill in fields and click Generate.</div></div>`:''}
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" style="color:${col};font-size:11px;line-height:1.3;padding-top:4px">${esc(d.class||'?')}</div><div class="stat-l">Class</div></div>
+      <div class="stat"><div class="stat-n">T${esc(String(d.term||'?'))}</div><div class="stat-l">Term</div></div>
+      <div class="stat"><div class="stat-n">Wk ${esc(String(d.week||'?'))}</div><div class="stat-l">Week</div></div>
+      <div class="stat"><div class="stat-n" style="font-size:10px;line-height:1.3;padding-top:5px">${esc(d.type||'?')}</div><div class="stat-l">Type</div></div>
+    </div>
+    <div class="field"><label>Title</label><input value="${esc(d.title||'')}" oninput="upd('title',this.value)" /></div>
+    <div class="grid3">
+      <div class="field"><label>Class</label><select onchange="upd('class',this.value)"><option ${d.class==='Year 7'?'selected':''}>Year 7</option><option ${d.class==='Year 9/10'?'selected':''}>Year 9/10</option></select></div>
+      <div class="field"><label>Term</label><input value="${esc(String(d.term||''))}" oninput="upd('term',this.value)" /></div>
+      <div class="field"><label>Week</label><input value="${esc(String(d.week||''))}" placeholder="e.g. 4 or 1-3" oninput="upd('week',this.value)" /></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Type</label><select onchange="upd('type',this.value)">${['Lesson Outline','Worksheet','Assessment','Rubric','Reference','Explainer','Video'].map(t=>`<option ${d.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Format</label><select onchange="upd('file_format',this.value)">${['html','docx','pdf','gdoc','onenote','video'].map(t=>`<option ${d.file_format===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>Summary</label><textarea oninput="upd('summary',this.value)">${esc(d.summary||'')}</textarea></div>
+    <div class="grid2">
+      <div class="field"><label>Print ready</label><select onchange="upd('print_ready',this.value)"><option value="false" ${!d.print_ready||d.print_ready==='false'?'selected':''}>No</option><option value="true" ${d.print_ready==='true'||d.print_ready===true?'selected':''}>Yes</option></select></div>
+      <div class="field"><label>Current week</label><select onchange="upd('current',this.value)"><option value="false">No</option><option value="true">Yes</option></select></div>
+    </div>
+    <div class="field"><label>Google Drive URL</label><input value="${esc(d.url||'')}" placeholder="https://drive.google.com/..." oninput="upd('url',this.value)" /></div>
+    <div class="divider"></div>
+    <div class="chunk-sec"><div class="chunk-lbl">&#128218; Definitions</div><div id="ch-defs">${chunkList(d.definitions,'defs')}</div><div class="chunk-add"><input id="in-defs" placeholder="Term: Definition" onkeydown="if(event.key==='Enter')addChunk('defs')" /><button onclick="addChunk('defs')">+ Add</button></div></div>
+    <div class="chunk-sec"><div class="chunk-lbl">&#9989; Success criteria</div><div id="ch-sc">${chunkList(d.success_criteria,'sc')}</div><div class="chunk-add"><input id="in-sc" placeholder="I can..." onkeydown="if(event.key==='Enter')addChunk('sc')" /><button onclick="addChunk('sc')">+ Add</button></div></div>
+    <div class="chunk-sec"><div class="chunk-lbl">&#128203; Tasks</div><div id="ch-tasks">${chunkList(d.tasks,'tasks')}</div><div class="chunk-add"><input id="in-tasks" placeholder="Task name" onkeydown="if(event.key==='Enter')addChunk('tasks')" /><button onclick="addChunk('tasks')">+ Add</button></div></div>
+    <div class="divider"></div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="generate()">&#10003; Generate Sheet row + updated HTML</button>
+      <button class="btn btn-ghost btn-sm" onclick="retryFile('${esc(active)}')">&#8635; Re-extract with AI</button>
+    </div>
+  </div>`;
+}
+
+function chunkList(pipe,key){
+  const items=(pipe||'').split('|').filter(Boolean);
+  if(!items.length) return `<div style="font-size:11px;color:var(--ink3);padding:3px 0">Nothing extracted - add manually</div>`;
+  return items.map((item,i)=>`<div class="ci"><div class="ci-t">${esc(item)}</div><button class="ci-del" onclick="delChunk('${key}',${i})">&#215;</button></div>`).join('');
+}
+
+const CF={defs:'definitions',sc:'success_criteria',tasks:'tasks'};
+function delChunk(key,i){if(!active)return;const f=CF[key];const a=(results[active].data[f]||'').split('|').filter(Boolean);a.splice(i,1);results[active].data[f]=a.join('|');document.getElementById('ch-'+key).innerHTML=chunkList(results[active].data[f],key);}
+function addChunk(key){if(!active)return;const f=CF[key];const inp=document.getElementById('in-'+key);const v=inp.value.trim();if(!v)return;const a=(results[active].data[f]||'').split('|').filter(Boolean);a.push(v);results[active].data[f]=a.join('|');inp.value='';document.getElementById('ch-'+key).innerHTML=chunkList(results[active].data[f],key);}
+function upd(field,value){if(!active)return;results[active].data[field]=value;}
+
+function generate(){
+  if(!active) return;
+  buildCSV(results[active].data);
+  buildMeta(active,results[active].data,results[active].raw);
+  results[active].status='done';
+  renderQueue();
+  updateDLBar();
+  showTab('csv');
+}
+
+function buildCSV(d){
+  if(!active) return;
+  const row=COLS.map(c=>'"'+String(d[c]||'').replace(/"/g,'""')+'"').join(',');
+  results[active]._csv=row;
+  results[active]._csvHeader=COLS.join(',');
+  document.getElementById('csvTable').innerHTML=`<thead><tr>${COLS.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody><tr>${COLS.map(c=>{const v=String(d[c]||'');return`<td title="${esc(v)}">${esc(v.length>35?v.substring(0,35)+'...':v)}</td>`;}).join('')}</tr></tbody>`;
+}
+
+function buildMeta(fname,d,rawHTML){
+  if(!active) return;
+  const meta={id:d.id||'',class:d.class||'',term:d.term||'',week:d.week||'',type:d.type||'',title:d.title||'',summary:d.summary||'',
+    topics:(d.topics||'').split(',').map(t=>t.trim()).filter(Boolean),
+    chunks:{
+      definitions:(d.definitions||'').split('|').filter(Boolean).map(item=>{const i=item.indexOf(':');return i>0?{term:item.substring(0,i).trim(),def:item.substring(i+1).trim()}:{term:item.trim(),def:''}}),
+      success_criteria:(d.success_criteria||'').split('|').filter(Boolean),
+      tasks:(d.tasks||'').split('|').filter(Boolean),
+      key_concepts:(d.key_concepts||'').split(',').map(t=>t.trim()).filter(Boolean)
+    }};
+  const tag=`<script type="application/json" id="page-meta">\n${JSON.stringify(meta,null,2)}\n<\/script>`;
+  let updated=rawHTML||'';
+  if(updated){
+    const ex=updated.match(/<script[^>]+id="page-meta"[^>]*>[\s\S]*?<\/script>/);
+    if(ex){updated=updated.replace(ex[0],tag);}
+    else if(updated.match(/<head[^>]*>/i)){updated=updated.replace(/(<head[^>]*>)/i,'$1\n'+tag);}
+    else{updated=tag+'\n'+updated;}
+  } else{updated=tag;}
+  results[active]._html=updated;
+  document.getElementById('metaOut').textContent=updated.substring(0,2500)+(updated.length>2500?'\n\n[... truncated - full file on download]':'');
+}
+
+function showTab(id){
+  document.querySelectorAll('.opanel').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.otab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('show');
+  document.querySelectorAll('.otab')[{review:0,csv:1,meta:2}[id]].classList.add('on');
+}
+
+function copyCSV(){if(!active||!results[active]._csv)return;navigator.clipboard.writeText(results[active]._csv).then(()=>alert('Copied'));}
+function copyMeta(){if(!active||!results[active]._html)return;navigator.clipboard.writeText(results[active]._html).then(()=>alert('Copied'));}
+function dlCSV(){if(!active||!results[active]._csv)return;dl(results[active]._csvHeader+'\n'+results[active]._csv,active.replace(/\.[^.]+$/,'')+'_row.csv','text/csv');}
+function dlMeta(){if(!active||!results[active]._html)return;dl(results[active]._html,active.replace(/\.[^.]+$/,'')+'_updated.html','text/html');}
+function downloadAllCSV(){const done=fileList.filter(f=>results[f.name]._csv);if(!done.length){alert('Click Generate on each file first');return;}dl(COLS.join(',')+'\n'+done.map(f=>results[f.name]._csv).join('\n'),'digitech_sheet_rows.csv','text/csv');}
+function downloadAllHTML(){const done=fileList.filter(f=>results[f.name]._html&&(f.name.endsWith('.html')||f.name.endsWith('.htm')));if(!done.length){alert('No HTML files generated yet');return;}done.forEach((f,i)=>setTimeout(()=>dl(results[f.name]._html,f.name.replace(/\.[^.]+$/,'')+'_updated.html','text/html'),i*200));}
+function dl(content,filename,mime){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:mime}));a.download=filename;a.click();URL.revokeObjectURL(a.href);}
+function updateDLBar(){const n=fileList.filter(f=>results[f.name]._csv).length;if(n>0){document.getElementById('dlBar').style.display='flex';document.getElementById('dlBarSub').textContent=n+' row'+(n!==1?'s':'')+' ready';}}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Auto-run diagnostics on load
+window.addEventListener('load',()=>{ toggleDiag(); });
+</script>
+</body>
+</html>

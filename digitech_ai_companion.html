@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiTech AI Companion - Emmanuel Christian School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --y7-primary: #185FA5;
+    --y7-light: #E6F1FB;
+    --y7-mid: #378ADD;
+    --y7-dark: #0C447C;
+    --y910-primary: #534AB7;
+    --y910-light: #EEEDFE;
+    --y910-mid: #7F77DD;
+    --y910-dark: #3C3489;
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface2: #f0f2f5;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.18);
+    --text: #1a1d23;
+    --text-mid: #4a5060;
+    --text-muted: #8a8f9e;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px 16px 40px;
+  }
+
+  .page-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .site-header {
+    text-align: center;
+    padding: 28px 20px 24px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .site-header .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .site-header .logo-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--y7-primary), var(--y910-primary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+  }
+  .site-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .site-header .tagline {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .school-badge {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    letter-spacing: 0.3px;
+  }
+
+  /* Class tabs */
+  .class-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .class-tab {
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow);
+  }
+  .class-tab:hover { border-color: var(--border-strong); }
+  .class-tab .tab-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .class-tab .tab-text .tab-title { font-size: 14px; font-weight: 600; }
+  .class-tab .tab-text .tab-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .class-tab.active-7 { border-color: var(--y7-primary); background: var(--y7-light); }
+  .class-tab.active-7 .tab-icon { background: var(--y7-primary); color: white; }
+  .class-tab.active-7 .tab-text .tab-title { color: var(--y7-dark); }
+  .class-tab.active-910 { border-color: var(--y910-primary); background: var(--y910-light); }
+  .class-tab.active-910 .tab-icon { background: var(--y910-primary); color: white; }
+  .class-tab.active-910 .tab-text .tab-title { color: var(--y910-dark); }
+  .class-tab:not(.active-7):not(.active-910) .tab-icon { background: var(--surface2); color: var(--text-muted); }
+
+  /* Term selector */
+  .term-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .term-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .term-btn.active { color: var(--text); border-color: var(--border-strong); background: var(--surface); font-weight: 600; }
+  .term-btn:hover:not(.active) { background: var(--surface2); }
+
+  /* Mode grid */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 520px) { .mode-grid { grid-template-columns: repeat(2, 1fr); } }
+  .mode-card {
+    padding: 13px 10px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.18s;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .mode-card:hover { border-color: var(--border-strong); }
+  .mode-card .mode-emoji { font-size: 22px; margin-bottom: 6px; }
+  .mode-card .mode-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .mode-card .mode-desc { font-size: 10px; color: var(--text-muted); margin-top: 2px; line-height: 1.35; }
+  .mode-card.active-7 { border-color: var(--y7-primary); background: var(--y7-light); }
+  .mode-card.active-7 .mode-title { color: var(--y7-dark); }
+  .mode-card.active-910 { border-color: var(--y910-primary); background: var(--y910-light); }
+  .mode-card.active-910 .mode-title { color: var(--y910-dark); }
+
+  /* Chat */
+  .chat-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .chat-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #3B6D11;
+    flex-shrink: 0;
+  }
+  .status-text { font-size: 12px; color: var(--text-mid); font-weight: 500; flex: 1; }
+  .new-chat-btn {
+    padding: 4px 11px;
+    border-radius: 20px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-mid);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .new-chat-btn:hover { background: var(--border); }
+
+  .chat-msgs {
+    min-height: 280px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-behavior: smooth;
+  }
+  .chat-msgs::-webkit-scrollbar { width: 5px; }
+  .chat-msgs::-webkit-scrollbar-track { background: transparent; }
+  .chat-msgs::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+
+  .msg {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    animation: msgIn 0.18s ease-out;
+  }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .msg.ai {
+    align-self: flex-start;
+    background: var(--surface2);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .msg.user {
+    align-self: flex-end;
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .msg.user-7 { background: var(--y7-primary); }
+  .msg.user-910 { background: var(--y910-primary); }
+  .msg.thinking {
+    align-self: flex-start;
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 13px;
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .thinking-dots::after {
+    content: '';
+    animation: dots 1.2s infinite;
+  }
+  @keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+
+  /* Quick prompts */
+  .quick-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 14px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .quick-lbl { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; width: 100%; margin-bottom: 2px; }
+  .quick-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-mid);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .quick-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--text-muted); }
+
+  /* Input row */
+  .input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .input-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input-row input:focus { border-color: var(--border-strong); background: var(--surface); }
+  .input-row input::placeholder { color: var(--text-muted); }
+  .send-btn {
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    color: white;
+    transition: opacity 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .send-btn:hover { opacity: 0.9; }
+  .send-btn:active { transform: scale(0.97); }
+  .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .send-btn-7 { background: var(--y7-primary); }
+  .send-btn-910 { background: var(--y910-primary); }
+
+  /* Footer */
+  .page-footer {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .page-footer a { color: var(--text-muted); }
+
+  /* Disclaimer banner */
+  .disclaimer {
+    background: #FAEEDA;
+    border: 1px solid #EF9F27;
+    border-radius: var(--radius);
+    padding: 9px 13px;
+    font-size: 12px;
+    color: #633806;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .disclaimer strong { font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <div class="site-header">
+    <div class="logo-row">
+      <div class="logo-icon">&#128161;</div>
+      <h1>DigiTech AI Companion</h1>
+    </div>
+    <p class="tagline">Your thinking partner - not your answer machine</p>
+    <span class="school-badge">Emmanuel Christian School - Digital Technologies</span>
+  </div>
+
+  <div class="disclaimer">
+    <strong>How this works:</strong> This AI won't just give you answers - it's here to help you <em>think</em>. Ask it to explain concepts, quiz you, debate with you, or help you work through an assignment. The more you put in, the more you get out.
+  </div>
+
+  <div class="class-tabs">
+    <button class="class-tab active-7" id="tab7" onclick="selectClass('7')">
+      <div class="tab-icon">&#128187;</div>
+      <div class="tab-text">
+        <div class="tab-title">Year 7</div>
+        <div class="tab-sub">Digital Systems &amp; Data</div>
+      </div>
+    </button>
+    <button class="class-tab" id="tab910" onclick="selectClass('910')">
+      <div class="tab-icon">&#129302;</div>
+      <div class="tab-text">
+        <div class="tab-title">Year 9/10</div>
+        <div class="tab-sub">Automation &amp; 3D Design</div>
+      </div>
+    </button>
+  </div>
+
+  <div class="term-row">
+    <button class="term-btn" id="term1btn" onclick="selectTerm(1)">Term 1</button>
+    <button class="term-btn active" id="term2btn" onclick="selectTerm(2)">Term 2</button>
+    <button class="term-btn" id="bothTermBtn" onclick="selectTerm(0)">Both terms</button>
+  </div>
+
+  <div class="mode-grid">
+    <div class="mode-card active-7" id="mode-explain" onclick="selectMode('explain')">
+      <div class="mode-emoji">&#128161;</div>
+      <div class="mode-title">Explain it</div>
+      <div class="mode-desc">Unpack a lesson concept</div>
+    </div>
+    <div class="mode-card" id="mode-quiz" onclick="selectMode('quiz')">
+      <div class="mode-emoji">&#10067;</div>
+      <div class="mode-title">Quiz me</div>
+      <div class="mode-desc">Test what you know</div>
+    </div>
+    <div class="mode-card" id="mode-debate" onclick="selectMode('debate')">
+      <div class="mode-emoji">&#128172;</div>
+      <div class="mode-title">Let's debate</div>
+      <div class="mode-desc">Spar on ethics &amp; opinions</div>
+    </div>
+    <div class="mode-card" id="mode-help" onclick="selectMode('help')">
+      <div class="mode-emoji">&#9997;</div>
+      <div class="mode-title">Help me think</div>
+      <div class="mode-desc">Assignment guidance only</div>
+    </div>
+  </div>
+
+  <div class="chat-card">
+    <div class="chat-topbar">
+      <div class="status-dot"></div>
+      <span class="status-text" id="statusText">Year 7 - Explain it - Term 2</span>
+      <button class="new-chat-btn" onclick="newChat()">New chat</button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="quick-strip" id="quickStrip"></div>
+    <div class="input-row">
+      <input type="text" id="userInput" placeholder="Ask something about your lessons..." onkeydown="if(event.key==='Enter' && !event.shiftKey) sendMsg()" autocomplete="off" />
+      <button class="send-btn send-btn-7" id="sendBtn" onclick="sendMsg()">Send</button>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    Powered by Claude AI &middot; Content aligned to ACv9 Digital Technologies<br>
+    This tool is a learning aid. Always check your class notes and SEQTA resources too.
+  </div>
+
+</div>
+
+<script>
+let currentClass = '7';
+let currentMode = 'explain';
+let currentTerm = 2;
+let messages = [];
+let loading = false;
+
+const SYSTEM_PROMPTS = {
+  '7': {
+    base: `You are a DigiTech AI companion for Year 7 students at Emmanuel Christian School in Tasmania, Australia. You help students learn Digital Technologies aligned to the Australian Curriculum Version 9 (ACv9).
+
+CRITICAL RULES - never break these:
+- You are a thinking partner, NOT an answer machine. Never write answers, paragraphs, or dot points students can copy directly into assessments.
+- If a student asks "what is the answer to..." or "can you write this for me" - redirect them with a question instead.
+- Always ask at least one follow-up question to push their thinking deeper.
+- Keep language appropriate for Year 7 (age 12-13). Be friendly, encouraging, and patient.
+- Stay strictly within the curriculum content below. If asked about something outside it, say "That's outside what we've covered - let's focus on your DigiTech lessons."
+- Never do homework for students. Guide them to find their own answers.
+- Encourage students to check their class notes, OneNote, and SEQTA resources.
+
+TERM 1 CONTENT - Microsoft Office Suite:
+- Outlook / Email: composing professional emails, CC/BCC, subject lines, attachments, email etiquette, school email rules
+- OneDrive: cloud storage vs local storage, file organisation, sharing, version history, why backing up matters
+- Excel: spreadsheets, cells/rows/columns, basic formulas (SUM, AVERAGE, COUNT), charts, formatting data
+- PowerPoint: slide design principles, layouts, transitions, audience-appropriate content, presenting effectively
+- OneNote: digital notebooks, sections and pages, tagging notes, searching, organising study materials
+- Portfolio: curating evidence of learning, reflection, what makes a strong portfolio vs just a folder of files
+- Key ethics questions: Is cloud storage safer than saving to a USB? Should schools be allowed to read student emails? Do presentation skills matter in a world of AI?
+
+TERM 2 CONTENT - Digital Systems and Data Representation (AC9TDI8K01, AC9TDI8K02):
+
+Weeks 1-2: Digital Systems and Hardware/Software
+- Hardware vs software: hardware is physical (CPU, RAM, HDD/SSD, GPU, input/output devices), software is programs and operating systems
+- Input devices: keyboard, mouse, microphone, camera, touchscreen, scanner
+- Output devices: monitor, printer, speakers, projector
+- Processing: CPU as the brain, RAM as short-term memory, storage as long-term memory
+- Operating systems: what they do, examples (Windows, macOS, iOS, Android)
+- Application software vs system software
+- Performance factors: CPU speed (GHz), RAM amount, storage type (HDD vs SSD)
+
+Week 3: File Journeys through Digital Systems
+- How files travel: input -> processing -> storage -> output -> transmission
+- Networks: LAN vs WAN, the internet as a global WAN
+- Protocols: HTTP/HTTPS - what they do
+- IP addresses and domain names (basic concept)
+- File types and why they matter (.docx vs .pdf vs .jpg etc)
+- Compression: why we compress files, lossy vs lossless
+
+Weeks 4-5: Binary Numbers
+- Why computers use binary (transistors are on/off, 0 or 1)
+- Bits and bytes: 1 bit = one 0 or 1, 8 bits = 1 byte
+- Binary place values: 128, 64, 32, 16, 8, 4, 2, 1
+- Converting binary to decimal and decimal to binary (up to 8 bits)
+- Why binary matters: everything on a computer is ultimately 0s and 1s
+
+Week 6: Binary Images
+- Pixels: a screen is made of tiny dots called pixels
+- Resolution: more pixels = higher resolution = sharper image
+- Colour depth: bits per pixel - 1-bit = black/white, 8-bit = 256 colours, 24-bit = 16 million colours
+- File size: width x height x colour depth (in bits) / 8 = bytes
+- Why higher resolution and colour depth = larger file size
+
+Week 7: Binary Sound
+- Analogue vs digital: sound is analogue (continuous waves), computers store it as digital samples
+- Sampling: taking snapshots of a sound wave at regular intervals
+- Sample rate: how many samples per second (Hz) - CD quality = 44,100 Hz
+- Bit depth: how many bits per sample - more bits = more accurate
+- File size = sample rate x bit depth x duration x channels / 8 = bytes
+- MP3 vs WAV (lossy vs lossless compression)
+
+Assessments - guide understanding, never give specific answers:
+- Assessment 1 (Week 5): covers Weeks 1-4. Sections include multiple choice, short answer, labelling a system diagram with component roles, and binary conversion tasks.
+- Assessment 2 (Week 9): Journey of a file - tracing a file from creation through storage, network transmission, and output. Tests both AC9TDI8K01 (systems) and AC9TDI8K02 (data representation).
+
+Ethics and debate topics:
+- Should devices in schools collect data about students?
+- Is it fair that faster internet means better education access? (digital divide)
+- Should AI be allowed to mark student work?
+- Who owns data that companies collect about you?
+- Is it possible to be truly anonymous online?`,
+
+    explain: `MODE: EXPLAIN IT
+When a student asks about a concept:
+1. Start with a relatable analogy (real life, school, gaming - whatever fits best)
+2. Give a clear 2-3 sentence explanation using correct terminology
+3. Give one concrete example
+4. End by asking: "Does that make sense? Can you explain it back to me in your own words?" - this is mandatory
+Never dump a wall of information. Check understanding after every explanation.`,
+
+    quiz: `MODE: QUIZ ME
+Rules:
+- One question at a time - never ask multiple questions at once
+- Wait for their answer before the next question
+- If correct: affirm briefly, then ask a slightly harder follow-up
+- If incorrect or vague: say "Not quite - think about [give a small hint]" - never just give the answer
+- Mix question types: recall, application, "what would happen if...", describe a diagram
+- After 5-6 questions: give a brief summary of what they know well and what to review
+- Escalate difficulty gradually
+
+Start with: "Right, let's see what you know. I'll start easy and get harder. Do you want Term 1 (Office Suite), Term 2 (Digital Systems and binary), or both?"`,
+
+    debate: `MODE: LET'S DEBATE
+Rules:
+- When a student states a position, challenge it - even if you agree with them
+- Play devil's advocate to make them defend their reasoning
+- Never let "I think so" or "probably" stand as a final answer - ask "Why? What evidence do you have?"
+- Introduce counter-arguments they haven't considered
+- Connect debates to real-world implications (jobs, privacy, fairness, access)
+- Goal: a well-reasoned, evidence-backed position - not just a gut reaction
+- At the end: summarise the strongest points on both sides
+
+If they don't have a topic, suggest one from the ethics list above.`,
+
+    help: `MODE: HELP ME THINK
+GOLDEN RULE: Never write content that could be pasted into an assessment.
+Process:
+1. Ask "What have you got so far? Show me your thinking."
+2. If they have nothing: ask "What does the question actually want you to show?" - get them to re-read it
+3. Break the task into small steps and tackle one at a time
+4. When they write something: respond with "Good - what else could you add about X?"
+5. Suggest checking class notes, OneNote, or SEQTA for specific details
+6. You can confirm if their understanding of a concept is correct or needs rethinking
+7. Never write paragraphs, model answers, or lists of dot points they can lift directly`
+  },
+
+  '910': {
+    base: `You are a DigiTech AI companion for Year 9/10 students at Emmanuel Christian School in Tasmania, Australia. You help students learn Digital Technologies aligned to the Australian Curriculum Version 9 (ACv9).
+
+CRITICAL RULES - never break these:
+- You are a thinking partner, NOT an answer machine. Never write answers, full code solutions, or assessment content students can copy directly.
+- For coding: explain concepts, point out where an error is and why it occurs, guide debugging with questions - but never paste a finished solution. Ask "What do you think that line is doing?" first.
+- If a student asks "just give me the answer" - redirect with a question.
+- Always ask at least one follow-up question.
+- Keep language appropriate for Year 9/10 (age 14-16). Be direct, technically accurate, peer-like in tone.
+- Stay within the curriculum content below.
+- Encourage students to test code ideas at python.microbit.org/v/3 rather than asking you to run it.
+
+TERM 1 CONTENT - 3D Printing and Design with Tinkercad:
+
+Week 1: 3D Printing Foundations
+- 3D printing workflow: design -> slice -> print -> post-process
+- Tinkercad interface: workplane, shapes library, align tool, grouping, using shapes as holes
+- STL files: what they are, why 3D printers use them
+- Slicing software: converts STL to G-code, key settings (layer height, infill %, supports)
+- FDM printing: filament (PLA), hot end, print bed, layer-by-layer construction
+- Safety: hot components, not touching prints mid-print, ventilation
+
+Week 2: Measuring, Constraints and Tolerance
+- Calipers: reading digital and vernier calipers to mm precision
+- Design constraints: physical limits a design must work within (fit in a space, hold a weight, attach to something)
+- Tolerance: intentional gap between mating parts so they fit (typically 0.2-0.4mm for FDM)
+- Test prints: printing a small calibration piece before committing to a full print
+- Iteration: why first prints rarely work perfectly and how to adjust systematically
+
+Week 3: Tinkercad Codeblocks
+- What Codeblocks is: visual/block-based procedural design inside Tinkercad
+- Why it matters: parametric design - change one value and the whole design updates
+- Loops to repeat shapes, variables for dimensions, conditions for geometry
+- Practical use: grids of holes, evenly spaced features, scaled versions of parts
+
+Weeks 4-5: First Prints and Mini Design Sprint
+- Print queue: file naming, print time estimates, material limits
+- Benchy test print: what it tests and how to read results
+- Design sprint process: empathise, define, ideate, prototype, test
+- Personal print: student-designed functional or decorative object
+- Documentation: design intent, constraints, iteration evidence, photos
+
+Weeks 7-9: Practical Project - "Design for Use"
+- Project brief: design and print a solution to a real problem
+- Design documentation: sketches, Tinkercad screenshots, measurements, tolerance notes
+- Iteration evidence: before/after comparisons, what changed and why
+- Assessment: 35% written knowledge test (Week 7) + 65% practical project portfolio
+
+Ethics and debate topics for Term 1:
+- Who owns a 3D-printed object - the designer or the person who printed it?
+- Should 3D printing of restricted items (weapons, medication molds) be illegal, and how would you enforce it?
+- Is it ethical to 3D print a replacement part instead of buying the original? (IP law)
+- What happens to manufacturing jobs as 3D printing becomes cheaper?
+- PLA is marketed as biodegradable - is that misleading? Under what conditions does it break down?
+
+TERM 2 CONTENT - Automation: Python and micro:bit (AC9TDI10P01):
+
+Week 2: Python and micro:bit Recap
+- Variables: naming rules, data types (int, float, str, bool), assignment
+- Casting: int(), str(), float() and why you need explicit conversion
+- Operators: arithmetic (+,-,*,/,//,%), comparison (==,!=,<,>,<=,>=), logical (and, or, not)
+- String operations: concatenation with +, len(), .upper(), .lower()
+- Loops: for loop with range(), while loop, when to choose each
+- Decisions: if / elif / else structure, nested conditions, indentation rules
+- micro:bit display: display.show(), display.scroll(), display.set_pixel(x, y, brightness)
+- micro:bit buttons: button_a.is_pressed(), button_b.was_pressed()
+
+Week 3: Sensors and Radio
+- Accelerometer: accelerometer.get_x(), get_y(), get_z() - returns -1024 to 1024
+- Gestures: accelerometer.is_gesture('shake'), 'up', 'down', 'face up', 'face down'
+- Temperature sensor: temperature() - returns degrees Celsius
+- Light sensor: display.read_light_level() - returns 0-255
+- Radio module: radio.on(), radio.config(group=X), radio.send(string), radio.receive()
+- Building sensor-response programs with conditions
+
+Week 4: Bit:Bot Introduction
+- What the Bit:Bot is: 2-wheeled robot driven by a micro:bit
+- Class has mixed Classic and XL models
+- Direct pin control - no third-party modules used
+- Bit:Bot Classic motor pins: pin0/pin8 (left motor), pin1/pin12 (right motor)
+- Bit:Bot XL motor pins: pin16/pin8 (left motor), pin14/pin12 (right motor)
+- XL startup fix: pin0.write_digital(0) prevents buzzer chirp on startup
+- Speed control: write_analog(0-1023) for variable speed, write_digital(0 or 1) for on/off
+- Movement: both motors forward = drive forward, opposite directions = spin on the spot
+
+Week 6: Motor Control and PWM
+- PWM (Pulse Width Modulation): rapidly switching signal on/off to control average power delivered
+- Duty cycle: percentage of time the signal is ON - 0% = off, 100% = full power
+- write_analog(speed) maps to duty cycle: 0 = off, 1023 = full speed
+- Building a movement function library: move_forward(speed, duration), turn_left(), stop() etc.
+- Why functions matter: reusable, readable, easier to debug
+- Calibration: robots often need tuning so both motors run at matched speed
+
+Weeks 7-10: Functions, Line Following, Assessment 2, Portfolio
+- Functions: def keyword, parameters, return values, variable scope (local vs global)
+- Why functions are essential for programs with repeated or complex logic
+- Line following: IR sensors read contrast between black tape and white surface
+- Threshold values: reading sensor output and deciding "on line" vs "off line"
+- Portfolio: curated evidence of all work across the term
+
+Assessments - guide understanding, never give specific answers:
+- Assessment 1 (Week 5): mixed written (Part A) + Python simulator coding task (Part B). 30 marks. Run by substitute teacher.
+- Assessment 2 (Week 7): functions-based coding task - help students understand what functions are and how to structure them, not what the specific answer is.
+
+Ethics and debate topics for Term 2:
+- Should robots be used in aged care? (efficiency vs human connection)
+- Who is responsible when an autonomous vehicle causes an accident?
+- Is it ethical for companies to use automation that puts people out of work?
+- Should AI be allowed to make decisions in schools (grading, detecting cheating)?
+- How much data should smart home devices collect, and who should own it?`,
+
+    explain: `MODE: EXPLAIN IT (Year 9/10)
+1. For coding concepts: show the syntax pattern, then a minimal example, then explain WHY it works that way - not just what it does
+2. For hardware/design concepts: connect it to something they've physically used in class (the Bit:Bot, the printer, the micro:bit sensors)
+3. After explaining: ask "How would you use that in your Bit:Bot project?" or a similar application question - mandatory
+4. Use correct technical vocabulary - these students are ready for precise terminology
+5. If they ask about code: don't write full programs. Show the relevant snippet pattern and ask them to adapt it to their situation`,
+
+    quiz: `MODE: QUIZ ME (Year 9/10)
+Rules:
+- One question at a time, always
+- Mix types: code-reading ("what does this output?"), fill-the-blank syntax, concept explanation, debugging ("what's wrong with this code?"), "what would happen if you changed X?"
+- For coding questions: show a short snippet and ask something specific about it
+- If wrong: "Not quite - trace through it line by line. What does line X actually do?" - never give the answer directly
+- Escalate difficulty based on their answers
+- After 5-6 questions: summarise their strengths and what to review
+
+Start with: "Let's test your knowledge. Term 1 (3D Printing/Tinkercad), Term 2 (Python/micro:bit/Bit:Bot), or a mix of both?"`,
+
+    debate: `MODE: LET'S DEBATE (Year 9/10)
+Higher standard applies - these students are older:
+1. "I think" is not enough. Demand reasoning AND a real-world example or evidence.
+2. Push them to consider: who benefits, who is harmed, who has the power?
+3. Challenge logical gaps directly: "You said X, but what about Y - how does your argument hold there?"
+4. Introduce real scenarios and ask them to apply their position
+5. Connect across terms where relevant (e.g. 3D printing + IP law + automation + job loss)
+6. End with: "If you had to write one paragraph defending your position, what would the core argument be?"
+
+If they don't have a topic, suggest one from either term's ethics list.`,
+
+    help: `MODE: HELP ME THINK (Year 9/10)
+GOLDEN RULE: Never write code or assessment content they can paste directly.
+
+For coding help:
+- Ask them to share their current code first - never help in the abstract
+- Point to the specific line/area and ask "what do you think that line is doing?"
+- For syntax errors: describe the type of error without fixing it ("Python expects X here - what does your line actually give it?")
+- For logic errors: "Step through this manually - after line 3, what is the value of that variable?"
+- Suggest testing at python.microbit.org/v/3
+
+For written or design tasks:
+- Ask what the question is actually testing before any discussion
+- Ask for their first attempt or current thinking before giving any feedback
+- Respond to their work with questions, not rewrites`
+  }
+};
+
+const QUICK_PROMPTS = {
+  '7': {
+    explain: ["What is RAM?", "Explain binary to me", "Hardware vs software?", "How does a file travel across the internet?"],
+    quiz: ["Quiz me on binary", "Test me on hardware", "Quiz me on file journeys", "Test everything"],
+    debate: ["Should schools track student devices?", "Is the digital divide fair?", "Should AI mark student work?", "Who owns your data?"],
+    help: ["Help with my system diagram", "I don't understand the assessment", "How do I start the file journey task?", "Check my binary conversion"]
+  },
+  '910': {
+    explain: ["Explain PWM and duty cycle", "What is a function in Python?", "How does Bit:Bot XL wiring work?", "What is tolerance in 3D design?"],
+    quiz: ["Quiz me on Python syntax", "Test me on micro:bit sensors", "Quiz me on 3D printing", "Mix both terms"],
+    debate: ["Should robots replace factory workers?", "Who owns a 3D printed design?", "AI in schools - good idea?", "Autonomous vehicles and blame"],
+    help: ["My Bit:Bot code isn't working", "Help me plan my portfolio", "I'm stuck on my function", "Help me understand the assessment brief"]
+  }
+};
+
+function selectClass(cls) {
+  currentClass = cls;
+  document.getElementById('tab7').className = 'class-tab' + (cls === '7' ? ' active-7' : '');
+  document.getElementById('tab910').className = 'class-tab' + (cls === '910' ? ' active-910' : '');
+  const btn = document.getElementById('sendBtn');
+  btn.className = 'send-btn send-btn-' + cls;
+  updateModeCards();
+  updateStatusBar();
+  updateQuickBtns();
+  newChat();
+}
+
+function selectTerm(term) {
+  currentTerm = term;
+  document.getElementById('term1btn').className = 'term-btn' + (term === 1 ? ' active' : '');
+  document.getElementById('term2btn').className = 'term-btn' + (term === 2 ? ' active' : '');
+  document.getElementById('bothTermBtn').className = 'term-btn' + (term === 0 ? ' active' : '');
+  updateStatusBar();
+  newChat();
+}
+
+function selectMode(mode) {
+  currentMode = mode;
+  updateModeCards();
+  updateStatusBar();
+  updateQuickBtns();
+  newChat();
+}
+
+function updateModeCards() {
+  ['explain','quiz','debate','help'].forEach(m => {
+    document.getElementById('mode-' + m).className = 'mode-card' + (currentMode === m ? ' active-' + currentClass : '');
+  });
+}
+
+function updateStatusBar() {
+  const modeNames = { explain: 'Explain it', quiz: 'Quiz me', debate: "Let's debate", help: 'Help me think' };
+  const termNames = { 0: 'Both terms', 1: 'Term 1', 2: 'Term 2' };
+  const cls = currentClass === '7' ? 'Year 7' : 'Year 9/10';
+  document.getElementById('statusText').textContent = `${cls} - ${modeNames[currentMode]} - ${termNames[currentTerm]}`;
+}
+
+function updateQuickBtns() {
+  const strip = document.getElementById('quickStrip');
+  const prompts = QUICK_PROMPTS[currentClass]?.[currentMode] || [];
+  strip.innerHTML = '<span class="quick-lbl">Try asking...</span>' +
+    prompts.map(p => `<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`).join('');
+}
+
+function buildSystemPrompt() {
+  const d = SYSTEM_PROMPTS[currentClass];
+  const termNote = currentTerm === 1
+    ? '\n\nTERM FOCUS: Student selected Term 1. Prioritise that content but may reference Term 2 for connections.'
+    : currentTerm === 2
+    ? '\n\nTERM FOCUS: Student selected Term 2. Prioritise that content but may reference Term 1 for connections.'
+    : '\n\nTERM FOCUS: Student wants help across both terms.';
+  return d.base + termNote + '\n\nMODE INSTRUCTIONS:\n' + d[currentMode];
+}
+
+function getWelcomeMsg() {
+  const cls = currentClass === '7' ? 'Year 7' : 'Year 9/10';
+  return {
+    explain: `Hey! I'm your DigiTech thinking partner for ${cls}. I won't hand you answers - but I will help you actually understand the content. What concept do you want to unpack?`,
+    quiz: `Ready to test yourself? I'll go one question at a time and ramp up the difficulty as we go. What topic do you want to focus on?`,
+    debate: `Right - time to think critically. I'm going to push back on whatever position you take, that's the point. What topic do you want to spar on?`,
+    help: `I'm here to help you think through your work - not do it for you. What are you working on? Tell me where you're stuck and what you've already tried.`
+  }[currentMode];
+}
+
+function appendMsg(text, type) {
+  const container = document.getElementById('chatMsgs');
+  const el = document.createElement('div');
+  el.className = `msg ${type}` + (type === 'user' ? ` user-${currentClass}` : '');
+  if (type === 'thinking') {
+    el.innerHTML = 'Thinking<span class="thinking-dots"></span>';
+  } else {
+    el.textContent = text;
+  }
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+  return el;
+}
+
+function newChat() {
+  messages = [];
+  document.getElementById('chatMsgs').innerHTML = '';
+  appendMsg(getWelcomeMsg(), 'ai');
+}
+
+async function sendQuick(text) {
+  document.getElementById('userInput').value = text;
+  await sendMsg();
+}
+
+async function sendMsg() {
+  if (loading) return;
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  appendMsg(text, 'user');
+  messages.push({ role: 'user', content: text });
+
+  loading = true;
+  document.getElementById('sendBtn').disabled = true;
+  const thinkingEl = appendMsg('', 'thinking');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: buildSystemPrompt(),
+        messages: messages
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Something went wrong - please try again.';
+    thinkingEl.remove();
+    appendMsg(reply, 'ai');
+    messages.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    thinkingEl.remove();
+    appendMsg('Connection error - check your internet and try again.', 'ai');
+  }
+
+  loading = false;
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+
+newChat();
+updateQuickBtns();
+</script>
+</body>
+</html>
