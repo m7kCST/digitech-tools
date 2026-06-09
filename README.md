@@ -12,17 +12,16 @@
                     ██╔══██║██║   ██║██╔══██╗
                     ██║  ██║╚██████╔╝██████╔╝
                     ╚═╝  ╚═╝ ╚═════╝ ╚═════╝
-
 ```
 ```
                           /\_____/\
                          /  o   o  \
-                        ( ==  ^  == )        DIGITECH HUB v1.0
+                        ( ==  ^  == )        DIGITECH HUB v2.0
                          )         (         Emmanuel Christian School
                         (           )        Tasmania, Australia
                        ( (  )   (  ) )
                       (__(__)___(__)__)
-                      
+
               [ Mr Miller :: Digital Technologies :: 2026 ]
 ```
 
@@ -30,14 +29,14 @@
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                           DIGITECH HUB  v1.0                               ║
+║                           DIGITECH HUB  v2.0                               ║
 ║                    An Agentic AI System for Education                       ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║  Author   :  M. Miller  (m7kcst)                                            ║
 ║  School   :  Emmanuel Christian School, Tasmania, Australia                 ║
-║  Subject  :  Digital Technologies - Year 7 and Year 9/10                   ║
+║  Subject  :  Digital Technologies - Year 7, 8, 9/10, Inquiry               ║
 ║  Curriculum: Australian Curriculum v9 (ACv9)                               ║
-║  Status   :  Active Development                                             ║
+║  Status   :  Active - Term 2 2026                                           ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -45,214 +44,311 @@
 
 ## What is this?
 
-DigiTech Hub is a full-stack agentic AI system built for a secondary Digital Technologies classroom. It combines a **resource management pipeline**, a **live content delivery system**, and an **AI companion** that thinks and responds like a sparring partner rather than a search engine.
+DigiTech Hub is a full-stack agentic AI system built for a secondary Digital
+Technologies classroom. It combines a resource management pipeline, a live
+content delivery system, and an AI companion that adapts to what the class is
+actually studying right now - automatically, without any code changes.
 
-This project was built entirely without a backend server. Every component runs in the browser or through Google Apps Script, making it deployable by a single teacher with no infrastructure budget.
+Built entirely without a backend server. Everything runs in the browser or
+through Google Apps Script, making it deployable by a single teacher with no
+infrastructure budget and minimal ongoing cost.
 
 ---
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        DIGITECH HUB                             │
-│                                                                 │
-│  ┌──────────────┐     ┌──────────────┐     ┌────────────────┐  │
-│  │   CONVERTER  │     │  APPS SCRIPT │     │  STUDENT HUB   │  │
-│  │  (Teacher)   │────▶│   PROXY &    │◀────│  (Students)    │  │
-│  │              │     │  SHEET API   │     │                │  │
-│  │ Drop a file  │     │              │     │ Ask questions  │  │
-│  │ AI extracts  │     │ • AI proxy   │     │ Browse files   │  │
-│  │ Row → Sheet  │     │ • Row CRUD   │     │ Chat with AI   │  │
-│  └──────────────┘     │ • Auth token │     └────────────────┘  │
-│                       └──────┬───────┘                         │
-│                              │                                  │
-│                    ┌─────────▼────────┐                        │
-│                    │  GOOGLE SHEET    │                        │
-│                    │  (Content CMS)   │                        │
-│                    │                  │                        │
-│                    │ 19-column schema │                        │
-│                    │ All resources    │                        │
-│                    │ Chunk metadata   │                        │
-│                    └──────────────────┘                        │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              ANTHROPIC CLAUDE API                        │  │
-│  │  Accessed server-side via Apps Script proxy only         │  │
-│  │  API key never exposed to browser or client code         │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          DIGITECH HUB v2.0                              │
+│                                                                         │
+│  ┌──────────────┐      ┌───────────────────┐      ┌─────────────────┐  │
+│  │  CONVERTER   │      │   APPS SCRIPT     │      │   STUDENT HUB   │  │
+│  │  (Teacher)   │─────▶│   Web App API     │◀─────│  hub.html       │  │
+│  │  index.html  │      │                   │      │                 │  │
+│  │              │      │  • chat action    │      │  Sends only:    │  │
+│  │  Drop file   │      │    (public)       │      │  class + mode   │  │
+│  │  AI extracts │      │  • Sheet CRUD     │      │  + messages     │  │
+│  │  Row→Sheet   │      │    (token auth)   │      │                 │  │
+│  └──────────────┘      │  • Prompt builder │      │  Never sees:    │  │
+│                        │    (server-side)  │      │  API key        │  │
+│                        └────────┬──────────┘      │  Prompt logic   │  │
+│                                 │                  │  Write token    │  │
+│                    ┌────────────▼─────────┐        └─────────────────┘  │
+│                    │    GOOGLE SHEET      │                             │
+│                    │                      │                             │
+│                    │  Tab 1: Resources    │                             │
+│                    │  Tab 2: Schedule     │◀── Teacher flips            │
+│                    │                      │    active=TRUE              │
+│                    │  module column joins │    to change module         │
+│                    │  both tabs together  │                             │
+│                    └──────────────────────┘                             │
+│                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                   ANTHROPIC CLAUDE API                           │  │
+│  │  Called server-side only via Apps Script UrlFetchApp.            │  │
+│  │  API key never touches the browser or any file on GitHub.        │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## How the AI knows what to teach
+
+The system prompt is built **server-side** in Apps Script on every request:
+
+```
+Apps Script receives: { class: '910', mode: 'explain', messages: [...] }
+
+Apps Script reads Schedule tab  →  finds active=TRUE for Year 9/10
+                                →  module = 'Bit:Bot Automation'
+                                →  ac_codes = 'P05, P06, P09'
+
+Apps Script reads Resources tab →  finds rows where module matches
+                                →  extracts definitions, criteria, tasks
+
+Apps Script builds prompt       →  identity (~50 tokens)
+                                +  current module context (~150 tokens)
+                                +  mode instructions (~250 tokens)
+                                =  ~450 tokens total
+
+Apps Script calls Anthropic     →  returns response to hub
+```
+
+The student never sees the prompt. The teacher never touches code to update it.
+Changing the current module = flipping two cells in the Schedule tab.
+
+---
+
+## Updating the schedule
+
+**Public holiday eats a lesson:**
+```
+Schedule tab → find the active module row → change end_week from 6 to 7
+```
+
+**Moving to the next module:**
+```
+Schedule tab → set current module active=FALSE
+             → set next module active=TRUE
+```
+
+**Adding a new module mid-year:**
+```
+Resources tab → add rows with new module name
+Schedule tab  → add a row for the new module
+```
+
+No code changes. No GitHub uploads. Takes 30 seconds.
 
 ---
 
 ## Components
 
-### 1. Resource Converter (`index.html`)
-A drag-and-drop teacher tool for processing resource files into the content pipeline.
+### hub.html - Student interface
+- Four class tabs: Year 7 (blue), Year 8 (green), Year 9/10 (purple), Inquiry (teal)
+- Five AI modes: ELI5, Explain it, Quiz me, Lets debate, Help me think
+- Inquiry modes: ELI5, Explain it, Quiz me, Give me ideas, Help me build
+- Resources filtered and sorted by current module automatically
+- Module banner shows what the class is studying right now
+- URL parameter `?class=7` pre-selects the class (used by homepage cards)
+- TTS read-aloud (Australian English, Web Speech API)
+- Chat history capped at 8 messages to control cost
 
-- Accepts `.html`, `.docx`, and `.pdf` files
-- Extracts metadata via AI (title, class, term, week, type, definitions, tasks, success criteria)
-- Auto-detects Google Drive URLs from embedded footer metadata
-- Pushes structured rows directly to the Google Sheet via Apps Script
-- Falls back to manual entry if AI extraction is unavailable
-- Full connection diagnostics panel
+### index.html - Resource converter (teacher tool)
+- Drag and drop HTML, DOCX, PDF files
+- AI extracts metadata via Apps Script proxy
+- Detects DRIVE-URL from file footer automatically
+- Pushes rows to Google Sheet via Apps Script
+- Falls back to manual entry if extraction fails
 
-### 2. Apps Script API (`digitech_sheet_script.js`)
-A Google Apps Script deployed as a Web App that serves as both a Sheet API and an AI proxy.
+### Apps Script - API and AI proxy
+- `chat` action: public, no token, builds prompt server-side, calls Anthropic
+- `getRows` action: public read of Resources tab
+- `getSchedule` action: public read of Schedule tab
+- `append/update/delete` actions: token-protected write operations
+- Formula injection prevention on all cell writes
+- Message history capped server-side at 8 messages
+- All inputs sanitised and length-capped before forwarding to Anthropic
 
-- **Sheet CRUD** — append, update, delete rows
-- **AI proxy** — routes Anthropic API calls server-side (API key never leaves Google's servers)
-- **Token authentication** — write operations require a shared secret
-- **Input sanitisation** — formula injection prevention, content length capping
-- **Locked row filtering** — teacher-only rows never returned to student requests
+### Google Sheet - Content CMS
+Two tabs:
 
-### 3. Google Sheet (Content CMS)
-A 19-column spreadsheet that acts as the single source of truth for all resources.
-
+**Tab 1: Resources** (20 columns)
 ```
-id | class | term | week | type | title | summary | topics |
+id | class | term | week | module | type | title | summary | topics |
 file_format | url | source | print_ready | onenote_path |
-definitions | success_criteria | tasks | key_concepts |
-current | locked
+definitions | success_criteria | tasks | key_concepts | current | locked
 ```
 
-### 4. Student Hub (`hub.html`) *(in development)*
-A student-facing interface that reads live from the Sheet and uses the AI proxy.
+**Tab 2: Schedule** (8 columns)
+```
+class | term | year | module | start_week | end_week | active | ac_codes | notes
+```
 
-- Class and term selector
-- Four AI modes: Explain It / Quiz Me / Let's Debate / Help Me Think
-- Inline resource cards surfaced by the AI in response to natural questions
-- TTS, chunked explanations, safe curated links
-- Sparring partner logic — redirects answer-seeking toward reasoning
+The `module` column joins both tabs. One row per class has `active=TRUE` at any time.
 
 ---
 
-## TASC Agentic AI — Design Notes
-
-This project is documented as a TASC example of building an **Agentic AI system**. The following concepts are demonstrated:
-
-### What makes it agentic?
-
-An agent is a system that:
-1. **Perceives** its environment (reads the Sheet, reads uploaded files)
-2. **Reasons** about what action to take (AI extraction, mode detection)
-3. **Acts** on the environment (writes to Sheet, surfaces resources, responds to students)
-4. **Learns from feedback** (manual corrections feed back into the knowledge base)
-
-### Key design decisions
-
-**Why a Google Sheet as CMS?**  
-No database, no server, no cost. The Sheet is human-readable, teacher-editable, and publishable as CSV. Any teacher can update it without touching code.
-
-**Why Apps Script as proxy?**  
-Browser-based AI calls are blocked by CSP headers on hosted platforms (Google Sites, GitHub Pages). Running the API call server-side via Apps Script bypasses this cleanly without needing a real backend.
-
-**Why chunked metadata?**  
-Sending an entire HTML lesson file to the AI on every student question is expensive and slow. Extracting definitions, tasks, and criteria into the Sheet means the AI gets precise, relevant context injected per question — not a wall of HTML.
-
-**Why a sparring partner instead of a tutor?**  
-Students who get direct answers stop thinking. The sparring partner model forces them to defend positions, explain reasoning, and dig deeper — skills that transfer to real work environments.
-
----
-
-## Security Model
+## Security model
 
 ```
-┌─────────────────────┬──────────────────────────────────────────┐
-│ Operation           │ Protection                               │
-├─────────────────────┼──────────────────────────────────────────┤
-│ Read Sheet rows     │ Public (curriculum content, not PII)     │
-│ Write/update rows   │ Requires WRITE_TOKEN                     │
-│ Delete rows         │ Requires WRITE_TOKEN                     │
-│ AI proxy calls      │ Requires WRITE_TOKEN                     │
-│ API key             │ Server-side only, never in browser code  │
-│ Locked rows         │ Filtered server-side, never sent         │
-│ Cell input          │ Formula injection prevented              │
-│ AI messages         │ Sanitised, length-capped before relay    │
-│ Student data        │ Nothing collected or stored              │
-└─────────────────────┴──────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────┐
+│ What                │ Protection                                     │
+├─────────────────────┼────────────────────────────────────────────────┤
+│ Anthropic API key   │ Apps Script only - never in any browser file   │
+│ Write token         │ Converter HTML only - not in hub.html          │
+│ System prompt       │ Built server-side - students cannot see it     │
+│ Chat action         │ Public but validates class + mode inputs       │
+│ Write actions       │ Require WRITE_TOKEN header                     │
+│ Locked rows         │ Filtered server-side, never sent to browser    │
+│ Formula injection   │ sanitiseCell() prefixes = + - @ with apostrophe│
+│ Message content     │ Sanitised and capped at 2000 chars per message │
+│ Token cost abuse    │ max_tokens capped at 1500, history capped at 8 │
+│ Student data        │ Nothing collected or stored anywhere           │
+└─────────────────────┴────────────────────────────────────────────────┘
 ```
 
 ---
 
-## File Structure
+## Cost model
+
+At ~$0.003 per message with history capping and server-side prompts:
+
+```
+One student, 10 questions          ~$0.03
+Full class of 25, 10 questions each  ~$0.75
+100 sessions per week              ~$1.50
+Full term (10 weeks)               ~$15.00
+Full year (4 terms)                ~$60.00
+```
+
+Key cost levers implemented:
+- System prompt trimmed to current module only (~450 tokens vs ~850 hardcoded)
+- Chat history capped at 8 messages server-side
+- max_tokens capped at 900 per response
+
+---
+
+## Curriculum coverage
+
+Full four-year plan across all classes. Every AC code covered by end of band.
+
+| Band | Codes | Covered by |
+|------|-------|-----------|
+| Years 7/8 | 18 codes (K01-K04, P01-P14) | End of Year 8 T2 |
+| Years 9/10 | 17 codes (K01-K03, P01-P14) | End of Year 10 T2 |
+
+Assessment structure every term: Week 4 (Assessment 1), Week 7 (Assessment 2),
+Weeks 8-9 (buffer for missed lessons), Week 10 (portfolio and reflection).
+
+---
+
+## File structure
 
 ```
 digitech-tools/
-├── index.html              # Resource converter (teacher tool)
-├── hub.html                # Student hub (in development)
-├── test.html               # Connection test suite
-├── drive_url_footer.html   # Reusable footer snippet for resources
-├── README.md               # This file
-└── digitech_sheet_script.js  # Apps Script source (deploy via Google)
+├── index.html                    # Resource converter (teacher tool)
+├── hub.html                      # Student hub (AI + resources)
+├── homepage.html                 # Google Sites embed page
+├── test.html                     # Connection test suite
+├── README.md                     # This file
+├── digitech_sheet_script.js      # Apps Script source (deploy via Google)
+├── digitech_resources_template.csv   # Sheet Tab 1 template
+├── digitech_schedule_template.csv    # Sheet Tab 2 template
+├── digitech_curriculum_map.md        # Full AC code mapping
+├── digitech_10week_programs.md       # All 16 term programs
+├── drive_folder_ids.md               # All Drive folder IDs
+└── create_drive_folders.js           # Drive folder setup script
 ```
 
 ---
 
 ## Setup
 
-### Prerequisites
-- Google account (personal — school accounts may block Cloud Console)
-- Anthropic API account (`console.anthropic.com`)
-- GitHub account (for hosting via GitHub Pages)
-
-### Deployment Steps
-
 **1. Google Sheet**
 ```
-1. Create a new Google Sheet named "DigiTech Resources 2026"
-2. Import digitech_resources_template.csv
-3. Note the Sheet ID from the URL
+Create sheet named DigiTech Resources 2026
+Tab 1: import digitech_resources_template.csv
+Tab 2: create tab named Schedule, import digitech_schedule_template.csv
 ```
 
 **2. Apps Script**
 ```
-1. Extensions > Apps Script
-2. Paste digitech_sheet_script.js
-3. Set ANTHROPIC_KEY = 'your-key-here'
-4. Set WRITE_TOKEN = 'your-secret-token'
-5. Deploy as Web App
-   - Execute as: Me
-   - Access: Anyone
-6. Copy the /exec URL
+Extensions > Apps Script
+Paste digitech_sheet_script.js
+Set ANTHROPIC_KEY = 'your-key'
+Set WRITE_TOKEN = 'your-token'
+Deploy as Web App: Execute as Me, Anyone can access
+Authorise UrlFetchApp when prompted
+Copy /exec URL
 ```
 
-**3. Converter**
+**3. Update URLs**
 ```
-1. Open index.html in a text editor
-2. Set SHEET_URL = 'your-apps-script-url'
-3. Set WRITE_TOKEN = 'same-token-as-script'
-4. Upload to GitHub repository
+hub.html line 300:    SCRIPT_URL = 'your-apps-script-url'
+index.html line ~3:   SHEET_URL  = 'your-apps-script-url'
+                      WRITE_TOKEN = 'your-token'  (converter only)
 ```
 
 **4. GitHub Pages**
 ```
-1. Repository Settings > Pages
-2. Source: main branch / root
-3. Access at: yourusername.github.io/digitech-tools
+Repository Settings > Pages > main branch > Save
+Hub live at: yourusername.github.io/digitech-tools/hub.html
+```
+
+**5. Google Sites**
+```
+Insert > Embed > paste homepage.html contents
+Publish
 ```
 
 ---
 
-## Curriculum Links
+## Weekly maintenance
 
-| Component | AC Code | Descriptor |
-|-----------|---------|------------|
-| AI companion — Year 7 | AC9TDI8K01 | How digital systems represent data |
-| AI companion — Year 7 | AC9TDI8K02 | Transmission of data through networks |
-| AI companion — Year 9/10 | AC9TDI10P01 | Implement algorithms in a general-purpose language |
-| Agentic system design | AC9TDI10P02 | Design and implement a digital solution |
+```
+Monday morning (2 minutes):
+  hub.html line 302:  CURRENT_WEEK = 7   (update, commit to GitHub)
+
+Moving to next module (30 seconds):
+  Schedule tab:  set old module active=FALSE
+                 set new module active=TRUE
+  Done - hub and AI update automatically on next load
+```
 
 ---
 
-## Licence
+## TASC - Agentic AI design notes
 
-Built for educational use at Emmanuel Christian School, Tasmania.  
-Not for redistribution without permission.
+This project demonstrates an agentic AI system for TASC documentation purposes.
+
+**Agent loop:**
+```
+Perceive   →  Reads Schedule tab to know current module
+             Reads Resources tab for content chunks
+Reason     →  Builds context-appropriate system prompt server-side
+             Selects mode instructions based on class and mode
+Act        →  Calls Anthropic API with capped, sanitised messages
+             Returns structured response to student
+Learn      →  Teacher updates Sheet → agent adapts next load
+             No redeployment needed
+```
+
+**Why serverless:**
+No backend server means no infrastructure to maintain, no uptime to monitor,
+and no cost when not in use. Google Apps Script handles 0 to 500 requests
+per day with identical reliability and zero configuration.
+
+**Why Google Sheet as CMS:**
+Human-readable, teacher-editable, publishable as CSV, zero API cost for reads.
+Any teacher can update it without touching code. The Schedule tab makes
+timetable changes a 30-second task instead of a code deployment.
+
+---
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  DigiTech Hub  |  m7kcst  |  Emmanuel Christian School  |  2026
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  DigiTech Hub v2.0  |  m7kcst  |  Emmanuel Christian School  |  2026
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
