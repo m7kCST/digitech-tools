@@ -1,38 +1,31 @@
 <!DOCTYPE html>
 <!--
   =============================================================================
-  DigiTech Hub - Student Interface
+  DigiTech Hub - Student Interface v2
   =============================================================================
 
-  Student-facing course companion that combines a live resource browser
-  with an AI sparring partner. All content is driven by the Google Sheet
-  CMS - updating the Sheet immediately updates what students see here.
+  Student-facing AI companion and resource browser.
+  Reads live from two Google Sheet tabs:
+    - Resources  : all files, links, definitions, success criteria
+    - Schedule   : which module is active for each class right now
 
-  Architecture:
-    - Fetches resource rows from the Sheet via Apps Script GET (public read)
-    - AI conversations route through the Apps Script proxy (POST with token)
-    - No API keys in client code - all sensitive operations are server-side
-    - Sheet data is cached in memory for the session to reduce API calls
+  The Schedule tab drives everything:
+    1. Hub fetches Schedule - finds active=TRUE row for student's class
+    2. Gets current module name from that row
+    3. Filters Resources to matching module rows
+    4. Injects definitions + criteria + tasks into AI system prompt
+    5. AI answers with full context of what the class is actually doing
 
-  AI modes:
-    Explain it     - Concept explainer with analogies, always asks for
-                     the student to explain back before moving on
-    Quiz me        - One question at a time, escalating difficulty,
-                     never gives the answer when the student is wrong
-    Let's debate   - Sparring partner that challenges every position,
-                     holds Year 9/10 to a higher standard than Year 7
-    Help me think  - Assignment guidance that never writes content the
-                     student can paste directly into their work
+  Updating the current module: flip active=TRUE/FALSE in the Schedule tab.
+  Public holiday: change start_week or end_week in the Schedule tab.
+  No code changes needed for either.
 
-  Resource surfacing:
-    The AI receives matching Sheet rows as injected context on every
-    message. When a student asks for a resource ("show me the worksheet
-    for week 6") the AI detects the retrieval intent and renders an
-    inline resource card rather than triggering sparring mode.
+  Classes: Year 7 (blue), Year 8 (green), Year 9/10 (purple), Inquiry (teal)
+  AI modes: ELI5, Explain it, Quiz me, Let's debate, Help me think
+  Inquiry modes: ELI5, Explain it, Quiz me, Give me ideas, Help me build
 
-  Author  : M. Miller
-  School  : Emmanuel Christian School, Tasmania
-  Version : 1.0
+  Author  : M. Miller - Emmanuel Christian School, Tasmania
+  Version : 2.0 - Schedule tab integration + 4 classes
   =============================================================================
 -->
 <html lang="en">
@@ -43,506 +36,203 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/*
- * Design tokens
- * Year 7 uses a blue accent, Year 9/10 uses purple.
- * The active class drives which token set is used across the whole UI.
- */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --ink:#1a1d23;
-  --ink2:#4a5060;
-  --ink3:#8a8f9e;
-  --bg:#f4f6f9;
-  --surface:#ffffff;
-  --surface2:#f0f2f5;
-  --border:rgba(0,0,0,0.09);
-  --border2:rgba(0,0,0,0.16);
-  --y7:#185FA5;
-  --y7l:#E6F1FB;
-  --y7d:#0C447C;
-  --y7m:#378ADD;
-  --y910:#534AB7;
-  --y910l:#EEEDFE;
-  --y910d:#3C3489;
-  --y910m:#7F77DD;
-  --y8:#2E7D32;
-  --y8l:#E8F5E9;
-  --y8d:#1B5E20;
-  --y8m:#43A047;
-  --inq:#00695C;
-  --inql:#E0F2F1;
-  --inqd:#004D40;
-  --inqm:#26A69A;
-  --green:#3B6D11;
-  --greenl:#EAF3DE;
-  --amber:#854F0B;
-  --amberl:#FAEEDA;
-  --red:#A32D2D;
-  --redl:#FCEBEB;
-  --radius:10px;
-  --radiuslg:14px;
+  --ink:#1a1d23;--ink2:#4a5060;--ink3:#8a8f9e;
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f5;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --y7:#185FA5;--y7l:#E6F1FB;--y7d:#0C447C;--y7m:#378ADD;
+  --y8:#2E7D32;--y8l:#E8F5E9;--y8d:#1B5E20;--y8m:#43A047;
+  --y910:#534AB7;--y910l:#EEEDFE;--y910d:#3C3489;--y910m:#7F77DD;
+  --inq:#00695C;--inql:#E0F2F1;--inqd:#004D40;--inqm:#26A69A;
+  --green:#3B6D11;--greenl:#EAF3DE;
+  --amber:#854F0B;--amberl:#FAEEDA;
+  --red:#A32D2D;--redl:#FCEBEB;
+  --radius:10px;--radiuslg:14px;
   --shadow:0 1px 3px rgba(0,0,0,0.07),0 4px 12px rgba(0,0,0,0.05);
-  --mono:'DM Mono',monospace;
-  --sans:'Nunito',sans-serif;
+  --mono:'DM Mono',monospace;--sans:'Nunito',sans-serif;
 }
-body{
-  font-family:var(--sans);
-  background:var(--bg);
-  color:var(--ink);
-  min-height:100vh;
-  font-size:14px;
-  line-height:1.6;
-}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6}
+.page{max-width:1100px;margin:0 auto;padding:16px 14px 60px}
 
-/* =============================================================================
-   LAYOUT
-   ============================================================================= */
-.page{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
+/* Header */
+.site-header{display:flex;align-items:center;gap:12px;padding:14px 18px;margin-bottom:14px;background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);box-shadow:var(--shadow)}
+.header-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--y7),var(--y910));display:flex;align-items:center;justify-content:center;color:white;font-size:17px;flex-shrink:0}
+.header-title{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.header-sub{font-size:11px;color:var(--ink3);margin-top:1px}
+.header-badges{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.hb-week{background:var(--greenl);color:var(--green);border:1px solid rgba(59,109,17,.2)}
+.hb-module{background:var(--amberl);color:var(--amber);border:1px solid rgba(133,79,11,.2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* Site header */
-.site-header{
-  display:flex;align-items:center;gap:12px;
-  padding:16px 20px;margin-bottom:16px;
-  background:var(--surface);border-radius:var(--radiuslg);
-  border:1px solid var(--border);box-shadow:var(--shadow);
-}
-.header-logo{
-  width:40px;height:40px;border-radius:10px;
-  background:linear-gradient(135deg,var(--y7),var(--y910));
-  display:flex;align-items:center;justify-content:center;
-  color:white;font-size:18px;flex-shrink:0;
-}
-.header-title{font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--ink)}
-.header-sub{font-size:12px;color:var(--ink3);margin-top:1px}
-.header-week{
-  margin-left:auto;
-  font-size:12px;font-weight:600;
-  padding:4px 12px;border-radius:20px;
-  background:var(--greenl);color:var(--green);
-  border:1px solid rgba(59,109,17,.2);
-}
-
-/* Class selector tabs */
-.class-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
-@media(max-width:700px){.class-tabs{grid-template-columns:1fr 1fr}}
-.class-tab{
-  padding:13px 16px;border-radius:var(--radiuslg);
-  border:1.5px solid var(--border);background:var(--surface);
-  cursor:pointer;display:flex;align-items:center;gap:10px;
-  transition:all .18s;box-shadow:var(--shadow);
-}
+/* Class tabs - 4 cols */
+.class-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:680px){.class-tabs{grid-template-columns:1fr 1fr}}
+.class-tab{padding:11px 12px;border-radius:var(--radiuslg);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .18s;box-shadow:var(--shadow)}
 .class-tab:hover{border-color:var(--border2)}
-.class-tab-icon{
-  width:34px;height:34px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:16px;flex-shrink:0;
-  background:var(--surface2);color:var(--ink3);
-  transition:all .18s;
-}
-.class-tab-title{font-size:14px;font-weight:700;color:var(--ink)}
-.class-tab-sub{font-size:11px;color:var(--ink3);margin-top:1px}
-.class-tab.active-7{border-color:var(--y7);background:var(--y7l)}
-.class-tab.active-7 .class-tab-icon{background:var(--y7);color:white}
-.class-tab.active-7 .class-tab-title{color:var(--y7d)}
-.class-tab.active-8{border-color:var(--y8);background:var(--y8l)}
-.class-tab.active-8 .class-tab-icon{background:var(--y8);color:white}
-.class-tab.active-8 .class-tab-title{color:var(--y8d)}
-.class-tab.active-910{border-color:var(--y910);background:var(--y910l)}
-.class-tab.active-910 .class-tab-icon{background:var(--y910);color:white}
-.class-tab.active-910 .class-tab-title{color:var(--y910d)}
-.class-tab.active-inq{border-color:var(--inq);background:var(--inql)}
-.class-tab.active-inq .class-tab-icon{background:var(--inq);color:white}
-.class-tab.active-inq .class-tab-title{color:var(--inqd)}
+.class-tab-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--surface2);color:var(--ink3);transition:all .18s}
+.class-tab-title{font-size:13px;font-weight:700}
+.class-tab-sub{font-size:10px;color:var(--ink3);margin-top:1px}
+.class-tab.active-7{border-color:var(--y7);background:var(--y7l)}.class-tab.active-7 .class-tab-icon{background:var(--y7);color:white}.class-tab.active-7 .class-tab-title{color:var(--y7d)}
+.class-tab.active-8{border-color:var(--y8);background:var(--y8l)}.class-tab.active-8 .class-tab-icon{background:var(--y8);color:white}.class-tab.active-8 .class-tab-title{color:var(--y8d)}
+.class-tab.active-910{border-color:var(--y910);background:var(--y910l)}.class-tab.active-910 .class-tab-icon{background:var(--y910);color:white}.class-tab.active-910 .class-tab-title{color:var(--y910d)}
+.class-tab.active-inq{border-color:var(--inq);background:var(--inql)}.class-tab.active-inq .class-tab-icon{background:var(--inq);color:white}.class-tab.active-inq .class-tab-title{color:var(--inqd)}
 
-/* Two-panel main layout */
-.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0}
+/* Two panel layout */
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:680px){.main-grid{grid-template-columns:1fr}}
-
-/* Shared panel card */
-.panel{
-  background:var(--surface);border-radius:var(--radiuslg);
-  border:1px solid var(--border);overflow:visible;
-  box-shadow:var(--shadow);display:flex;flex-direction:column;
-  min-width:0;
-}
-.panel-head{
-  display:flex;align-items:center;gap:8px;
-  padding:10px 14px;border-bottom:1px solid var(--border);
-  background:var(--surface2);flex-shrink:0;
-  border-radius:var(--radiuslg) var(--radiuslg) 0 0;
-}
-.panel-head-title{font-size:13px;font-weight:700;color:var(--ink)}
+.panel{background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);overflow:visible;box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0}
+.panel-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;border-radius:var(--radiuslg) var(--radiuslg) 0 0}
+.panel-head-title{font-size:13px;font-weight:700}
 .panel-head-icon{font-size:15px;color:var(--ink3)}
 
-/* =============================================================================
-   RESOURCE BROWSER (left panel)
-   ============================================================================= */
-
-/* Term and type filter pills */
-.filter-row{
-  display:flex;gap:6px;padding:10px 12px;
-  border-bottom:1px solid var(--border);
-  flex-wrap:wrap;background:var(--surface);
-}
-.filter-pill{
-  padding:6px 14px;border-radius:20px;
-  border:1px solid var(--border2);background:var(--surface2);
-  cursor:pointer;font-size:13px;font-weight:600;color:var(--ink3);
-  transition:all .13s;white-space:nowrap;
-}
+/* Resource browser */
+.filter-row{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface)}
+.filter-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink3);transition:all .13s;white-space:nowrap}
 .filter-pill:hover{background:var(--surface);color:var(--ink)}
-.filter-pill.active-7  {background:var(--y7l);  color:var(--y7d);  border-color:var(--y7)}
-.filter-pill.active-8  {background:var(--y8l);  color:var(--y8d);  border-color:var(--y8)}
+.filter-pill.active-7{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
+.filter-pill.active-8{background:var(--y8l);color:var(--y8d);border-color:var(--y8)}
 .filter-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
-.filter-pill.active-inq{background:var(--inql); color:var(--inqd); border-color:var(--inq)}
-
-/* Search input */
+.filter-pill.active-inq{background:var(--inql);color:var(--inqd);border-color:var(--inq)}
 .search-row{padding:8px 10px;border-bottom:1px solid var(--border)}
-.search-row input{
-  width:100%;padding:7px 11px;
-  border-radius:var(--radius);border:1px solid var(--border);
-  background:var(--surface2);color:var(--ink);
-  font-size:13px;font-family:var(--sans);outline:none;
-  transition:border-color .13s;
-}
+.search-row input{width:100%;padding:7px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
 .search-row input:focus{border-color:var(--border2);background:var(--surface)}
 .search-row input::placeholder{color:var(--ink3)}
+.res-list{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:520px;width:100%}
+.res-list::-webkit-scrollbar{width:4px}.res-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 
-/* Resource list */
-.res-list{
-  flex:1;overflow-y:auto;overflow-x:hidden;padding:10px;
-  display:flex;flex-direction:column;gap:8px;
-  min-height:300px;max-height:520px;
-  width:100%;
-}
-.res-list::-webkit-scrollbar{width:4px}
-.res-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
-
-/* Individual resource card */
-.rcard{
-  border-radius:var(--radius);border:1px solid var(--border);
-  background:var(--surface);transition:border-color .13s;
-  width:100%;box-sizing:border-box;
-}
+/* Resource cards */
+.rcard{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);transition:border-color .13s;width:100%}
 .rcard:hover{border-color:var(--border2)}
-.rcard.current-wk{border-left:3px solid var(--green)}
+.rcard.current-mod{border-left:3px solid var(--green)}
 .rcard-head{display:flex;align-items:flex-start;gap:10px;padding:11px 13px 6px}
-.rcard-fmt{
-  width:36px;height:36px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--mono);
-  margin-top:2px;
-}
-.rcard-title{font-size:13px;font-weight:700;color:var(--ink);line-height:1.4;word-break:break-word;white-space:normal;overflow-wrap:break-word}
+.rcard-fmt{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--mono);margin-top:2px}
+.rcard-info{flex:1;min-width:0}
+.rcard-title{font-size:13px;font-weight:700;color:var(--ink);line-height:1.4;word-break:break-word;white-space:normal}
 .rcard-meta{font-size:11px;color:var(--ink3);margin-top:3px}
 .rcard-tags{display:flex;gap:4px;padding:0 13px 6px;flex-wrap:wrap}
-.rtag{
-  padding:2px 8px;border-radius:20px;
-  font-size:11px;font-weight:600;
-}
-.rt-html   {background:var(--y7l);   color:var(--y7d)}
-.rt-pdf    {background:var(--redl);  color:var(--red)}
-.rt-docx   {background:var(--greenl);color:var(--green)}
-.rt-onenote{background:var(--y910l); color:var(--y910d)}
-.rt-cur    {background:var(--greenl); color:var(--green)}
-.rt-type   {background:var(--surface2);color:var(--ink3)}
-.rcard-summary{
-  font-size:12px;color:var(--ink2);
-  padding:0 13px 10px;line-height:1.6;
-}
+.rtag{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.rt-html{background:var(--y7l);color:var(--y7d)}.rt-pdf{background:var(--redl);color:var(--red)}
+.rt-docx{background:var(--greenl);color:var(--green)}.rt-onenote{background:var(--y910l);color:var(--y910d)}
+.rt-cur{background:var(--greenl);color:var(--green)}.rt-type{background:var(--surface2);color:var(--ink3)}
+.rcard-summary{font-size:12px;color:var(--ink2);padding:0 13px 10px;line-height:1.6}
 .rcard-actions{display:flex;gap:5px;padding:0 13px 11px;flex-wrap:wrap}
-
-/* Action buttons on resource cards */
-.ract{
-  display:inline-flex;align-items:center;gap:4px;
-  padding:5px 10px;border-radius:var(--radius);
-  font-size:11px;font-weight:600;cursor:pointer;
-  border:none;font-family:var(--sans);transition:opacity .13s;
-}
+.ract{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:opacity .13s}
 .ract:hover{opacity:.85}
-.ract-blue  {background:var(--y7);  color:white}
-.ract-green {background:var(--y8);  color:white}
-.ract-purple{background:var(--y910);color:white}
-.ract-teal  {background:var(--inq); color:white}
-.ract-red   {background:var(--red); color:white}
-.ract-ghost {background:var(--surface2);color:var(--ink);border:1px solid var(--border2)}
-
-/* OneNote access instructions box */
-.onenote-box{
-  margin:0 11px 9px;background:var(--y910l);
-  border-radius:var(--radius);padding:9px 11px;
-}
+.ract-blue{background:var(--y7);color:white}.ract-green{background:var(--y8);color:white}
+.ract-purple{background:var(--y910);color:white}.ract-teal{background:var(--inq);color:white}
+.ract-red{background:var(--red);color:white}.ract-ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--border2)}
+.onenote-box{margin:0 11px 9px;background:var(--y910l);border-radius:var(--radius);padding:9px 11px}
 .onenote-title{font-size:11px;font-weight:700;color:var(--y910d);margin-bottom:5px}
 .onenote-steps{font-size:11px;color:var(--y910);line-height:1.9}
-
-/* Empty and loading states */
-.list-empty{
-  text-align:center;padding:32px 16px;color:var(--ink3);
-}
+.list-empty{text-align:center;padding:32px 16px;color:var(--ink3)}
 .list-empty-icon{font-size:28px;display:block;margin-bottom:8px;opacity:.35}
 .list-empty-t{font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:3px}
 .list-empty-s{font-size:12px;line-height:1.5}
-.loading-dots{
-  display:flex;gap:5px;justify-content:center;margin-top:8px;
-}
-.loading-dots span{
-  width:6px;height:6px;border-radius:50%;
-  background:var(--ink3);animation:ldp 1.2s infinite;
-}
-.loading-dots span:nth-child(2){animation-delay:.2s}
-.loading-dots span:nth-child(3){animation-delay:.4s}
+.loading-dots{display:flex;gap:5px;justify-content:center;margin-top:8px}
+.loading-dots span{width:6px;height:6px;border-radius:50%;background:var(--ink3);animation:ldp 1.2s infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}.loading-dots span:nth-child(3){animation-delay:.4s}
 @keyframes ldp{0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
 
-/* =============================================================================
-   AI COMPANION (right panel)
-   ============================================================================= */
+/* Module banner - shows current module above resource list */
+.module-banner{margin:8px 10px 0;padding:8px 12px;border-radius:var(--radius);font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
+.mb-7{background:var(--y7l);color:var(--y7d);border:1px solid rgba(24,95,165,.2)}
+.mb-8{background:var(--y8l);color:var(--y8d);border:1px solid rgba(46,125,50,.2)}
+.mb-910{background:var(--y910l);color:var(--y910d);border:1px solid rgba(83,74,183,.2)}
+.mb-inq{background:var(--inql);color:var(--inqd);border:1px solid rgba(0,105,92,.2)}
 
-/* Mode selector pills */
-.mode-pills{
-  display:flex;gap:5px;padding:8px 10px;
-  border-bottom:1px solid var(--border);flex-wrap:wrap;
-}
-.mode-pill{
-  padding:5px 11px;border-radius:20px;
-  border:1px solid var(--border2);background:var(--surface2);
-  cursor:pointer;font-size:12px;font-weight:600;color:var(--ink3);
-  transition:all .13s;white-space:nowrap;
-}
+/* AI companion */
+.mode-pills{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.mode-pill{padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink3);transition:all .13s;white-space:nowrap}
 .mode-pill:hover{background:var(--surface);color:var(--ink)}
-.mode-pill.active-7  {background:var(--y7l);  color:var(--y7d);  border-color:var(--y7)}
-.mode-pill.active-8  {background:var(--y8l);  color:var(--y8d);  border-color:var(--y8)}
+.mode-pill.active-7{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
+.mode-pill.active-8{background:var(--y8l);color:var(--y8d);border-color:var(--y8)}
 .mode-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
-.mode-pill.active-inq{background:var(--inql); color:var(--inqd); border-color:var(--inq)}
-
-/* Chat message area */
-.chat-msgs{
-  flex:1;overflow-y:auto;
-  padding:12px;display:flex;flex-direction:column;gap:9px;
-  min-height:280px;max-height:420px;
-}
-.chat-msgs::-webkit-scrollbar{width:4px}
-.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
-
-/* Message bubbles */
-.msg{
-  max-width:88%;padding:10px 13px;border-radius:13px;
-  font-size:13px;line-height:1.6;
-  animation:msgIn .18s ease-out;
-}
+.mode-pill.active-inq{background:var(--inql);color:var(--inqd);border-color:var(--inq)}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;min-height:280px;max-height:440px}
+.chat-msgs::-webkit-scrollbar{width:4px}.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.6;animation:msgIn .18s ease-out}
 @keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.msg.ai{
-  align-self:flex-start;
-  background:var(--surface2);color:var(--ink);
-  border:1px solid var(--border);border-bottom-left-radius:3px;
-}
-.msg.user{
-  align-self:flex-end;color:white;
-  border-bottom-right-radius:3px;
-}
-.msg.u7  {background:var(--y7)}
-.msg.u8  {background:var(--y8)}
-.msg.u910{background:var(--y910)}
-.msg.uinq{background:var(--inq)}
-.msg.thinking{
-  align-self:flex-start;
-  background:var(--surface2);color:var(--ink3);
-  font-style:italic;font-size:12px;
-  border:1px solid var(--border);border-bottom-left-radius:3px;
-}
-
-/*
- * Inline resource card rendered inside a chat message.
- * When a student asks "show me the week 6 worksheet" the AI
- * detects the retrieval intent and renders this card inline
- * rather than entering sparring mode.
- */
-.inline-rcard{
-  margin-top:8px;border-radius:var(--radius);
-  border:1px solid var(--border);background:var(--surface);
-  overflow:hidden;
-}
-.inline-rcard-head{
-  padding:8px 11px;border-bottom:1px solid var(--border);
-}
+.msg.ai{align-self:flex-start;background:var(--surface2);color:var(--ink);border:1px solid var(--border);border-bottom-left-radius:3px}
+.msg.user{align-self:flex-end;color:white;border-bottom-right-radius:3px}
+.msg.u7{background:var(--y7)}.msg.u8{background:var(--y8)}.msg.u910{background:var(--y910)}.msg.uinq{background:var(--inq)}
+.msg.thinking{align-self:flex-start;background:var(--surface2);color:var(--ink3);font-style:italic;font-size:12px;border:1px solid var(--border);border-bottom-left-radius:3px}
+.ai-chunk{margin-bottom:10px;line-height:1.65;font-size:14px}
+.ai-chunk:last-child{margin-bottom:0}
+.ai-section-head{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:5px;margin-top:12px}
+.ai-section-head:first-child{margin-top:0}
+.msg.ai strong{color:var(--ink);font-weight:700}
+.inline-rcard{margin-top:8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);overflow:hidden}
+.inline-rcard-head{padding:8px 11px;border-bottom:1px solid var(--border)}
 .inline-rcard-title{font-size:12px;font-weight:700;color:var(--ink)}
 .inline-rcard-sub{font-size:10px;color:var(--ink3);margin-top:1px}
 .inline-rcard-btns{display:flex;gap:5px;padding:8px 11px;flex-wrap:wrap}
-
-/* Quick prompt strip */
-.quick-strip{
-  display:flex;gap:5px;padding:6px 10px;
-  border-top:1px solid var(--border);overflow-x:auto;flex-shrink:0;
-}
+.quick-strip{display:flex;gap:5px;padding:6px 10px;border-top:1px solid var(--border);overflow-x:auto;flex-shrink:0}
 .quick-strip::-webkit-scrollbar{display:none}
-.quick-btn{
-  padding:4px 11px;border-radius:20px;
-  border:1px solid var(--border2);background:var(--surface2);
-  cursor:pointer;font-size:11px;font-weight:600;color:var(--ink3);
-  white-space:nowrap;transition:all .13s;flex-shrink:0;
-  font-family:var(--sans);
-}
+.quick-btn{padding:4px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:11px;font-weight:600;color:var(--ink3);white-space:nowrap;transition:all .13s;flex-shrink:0;font-family:var(--sans)}
 .quick-btn:hover{background:var(--surface);color:var(--ink)}
-
-/* Chat input row */
-.chat-input{
-  display:flex;gap:7px;padding:9px 11px;
-  border-top:1px solid var(--border);flex-shrink:0;
-}
-.chat-input input{
-  flex:1;padding:9px 13px;border-radius:var(--radius);
-  border:1.5px solid var(--border);background:var(--surface2);
-  color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;
-  transition:border-color .13s;
-}
+.chat-input{display:flex;gap:7px;padding:9px 11px;border-top:1px solid var(--border);flex-shrink:0}
+.chat-input input{flex:1;padding:9px 13px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
 .chat-input input:focus{border-color:var(--border2);background:var(--surface)}
 .chat-input input::placeholder{color:var(--ink3)}
-.send-btn{
-  padding:9px 16px;border-radius:var(--radius);border:none;
-  cursor:pointer;font-size:13px;font-weight:700;
-  font-family:var(--sans);color:white;transition:opacity .13s;flex-shrink:0;
-}
-.send-btn:hover{opacity:.88}
-.send-btn:disabled{opacity:.4;cursor:not-allowed}
-.sb7  {background:var(--y7)}
-.sb8  {background:var(--y8)}
-.sb910{background:var(--y910)}
-.sbinq{background:var(--inq)}
-
-/* Chunked AI response formatting
- * Each logical section of an AI response gets its own spaced block.
- * Emoji section headers get a slightly larger, bolder treatment.
- * This prevents walls of text and makes responses scannable for
- * Gen Z/Alpha students who read in chunks not paragraphs.
- */
-.ai-chunk{
-  margin-bottom:10px;
-  line-height:1.65;
-  font-size:14px;
-}
-.ai-chunk:last-child{margin-bottom:0}
-.ai-section-head{
-  font-size:14px;
-  font-weight:700;
-  color:var(--ink);
-  margin-bottom:5px;
-  margin-top:12px;
-}
-.ai-section-head:first-child{margin-top:0}
-.msg.ai strong{
-  color:var(--ink);
-  font-weight:700;
-}
-
-/* ELI5 definition card style - used when AI returns a 📖 definition */
-.def-card{
-  background:var(--y7l);border:1px solid rgba(24,95,165,.2);
-  border-radius:var(--radius);padding:10px 13px;margin-top:6px;
-}
-.def-card .def-term{
-  font-size:15px;font-weight:800;color:var(--y7d);margin-bottom:3px;
-}
-.def-card .def-meaning{
-  font-size:13px;color:var(--ink2);line-height:1.55;
-}
-  display:flex;align-items:center;gap:7px;
-  padding:6px 11px;border-top:1px solid var(--border);
-  background:var(--surface2);flex-shrink:0;
-}
+.send-btn{padding:9px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;transition:opacity .13s;flex-shrink:0}
+.send-btn:hover{opacity:.88}.send-btn:disabled{opacity:.4;cursor:not-allowed}
+.sb7{background:var(--y7)}.sb8{background:var(--y8)}.sb910{background:var(--y910)}.sbinq{background:var(--inq)}
+.tts-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;border-top:1px solid var(--border);background:var(--surface2);flex-shrink:0}
 .tts-label{font-size:11px;color:var(--ink3);font-weight:600}
-.tts-btn{
-  padding:3px 10px;border-radius:20px;
-  border:1px solid var(--border2);background:var(--surface);
-  cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);color:var(--ink2);
-  transition:all .13s;
-}
+.tts-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);color:var(--ink2);transition:all .13s}
 .tts-btn:hover{background:var(--surface2)}
 .tts-btn.active{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
-
-/* Disclaimer banner at bottom */
-.disclaimer{
-  margin-top:14px;padding:10px 14px;
-  border-radius:var(--radius);
-  background:var(--amberl);border:1px solid rgba(133,79,11,.2);
-  font-size:12px;color:var(--amber);line-height:1.6;
-  display:flex;gap:8px;
-}
+.disclaimer{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--amberl);border:1px solid rgba(133,79,11,.2);font-size:12px;color:var(--amber);line-height:1.6;display:flex;gap:8px}
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- =========================================================
-       SITE HEADER
-       ========================================================= -->
   <div class="site-header">
     <div class="header-logo">&#128161;</div>
     <div>
       <div class="header-title">DigiTech Hub</div>
       <div class="header-sub">Emmanuel Christian School - Mr Miller</div>
     </div>
-    <div class="header-week" id="weekBadge">Loading...</div>
+    <div class="header-badges">
+      <span class="hbadge hb-week" id="weekBadge">Week --</span>
+      <span class="hbadge hb-module" id="moduleBadge">Loading...</span>
+    </div>
   </div>
 
-  <!-- =========================================================
-       CLASS SELECTOR TABS
-       ========================================================= -->
   <div class="class-tabs">
     <button class="class-tab active-7" id="tab7" onclick="setClass('7')">
       <div class="class-tab-icon">&#128187;</div>
-      <div>
-        <div class="class-tab-title">Year 7</div>
-        <div class="class-tab-sub">Digital Systems</div>
-      </div>
+      <div><div class="class-tab-title">Year 7</div><div class="class-tab-sub">Digital Systems</div></div>
     </button>
     <button class="class-tab" id="tab8" onclick="setClass('8')">
       <div class="class-tab-icon">&#128202;</div>
-      <div>
-        <div class="class-tab-title">Year 8</div>
-        <div class="class-tab-sub">Networks and Data</div>
-      </div>
+      <div><div class="class-tab-title">Year 8</div><div class="class-tab-sub">Networks and Data</div></div>
     </button>
     <button class="class-tab" id="tab910" onclick="setClass('910')">
       <div class="class-tab-icon">&#129302;</div>
-      <div>
-        <div class="class-tab-title">Year 9/10</div>
-        <div class="class-tab-sub">Automation and 3D</div>
-      </div>
+      <div><div class="class-tab-title">Year 9/10</div><div class="class-tab-sub">Automation and 3D</div></div>
     </button>
     <button class="class-tab" id="tabinq" onclick="setClass('inq')">
       <div class="class-tab-icon">&#128640;</div>
-      <div>
-        <div class="class-tab-title">Inquiry</div>
-        <div class="class-tab-sub">Free exploration</div>
-      </div>
+      <div><div class="class-tab-title">Inquiry</div><div class="class-tab-sub">Free exploration</div></div>
     </button>
   </div>
 
-  <!-- =========================================================
-       MAIN TWO-PANEL LAYOUT
-       Left: resource browser
-       Right: AI companion
-       ========================================================= -->
   <div class="main-grid">
 
-    <!-- LEFT PANEL - Resource browser -->
+    <!-- LEFT - Resource browser -->
     <div class="panel">
       <div class="panel-head">
         <span class="panel-head-icon">&#128193;</span>
         <div class="panel-head-title">Resources</div>
       </div>
-
-      <!-- Term and type filters -->
+      <div id="moduleBannerWrap"></div>
       <div class="filter-row" id="filterRow"></div>
-
-      <!-- Search -->
       <div class="search-row">
-        <input type="text" id="searchBox"
-          placeholder="Search resources, topics, definitions..."
-          oninput="renderResources()" />
+        <input type="text" id="searchBox" placeholder="Search resources, topics, definitions..." oninput="renderResources()" />
       </div>
-
-      <!-- Resource cards list -->
       <div class="res-list" id="resList">
         <div class="list-empty">
           <span class="list-empty-icon">&#128193;</span>
@@ -552,460 +242,195 @@ body{
       </div>
     </div>
 
-    <!-- RIGHT PANEL - AI companion -->
+    <!-- RIGHT - AI companion -->
     <div class="panel">
       <div class="panel-head">
         <span class="panel-head-icon">&#128172;</span>
         <div class="panel-head-title">AI companion</div>
       </div>
-
-      <!-- Mode selector -->
       <div class="mode-pills" id="modePills"></div>
-
-      <!-- TTS controls (rendered only if speech synthesis is supported) -->
       <div class="tts-bar" id="ttsBar" style="display:none">
         <span class="tts-label">&#128266; Read aloud</span>
         <button class="tts-btn" id="ttsToggle" onclick="toggleTTS()">Off</button>
         <button class="tts-btn" onclick="stopTTS()">&#9632; Stop</button>
       </div>
-
-      <!-- Chat message area -->
       <div class="chat-msgs" id="chatMsgs"></div>
-
-      <!-- Quick prompt suggestions -->
       <div class="quick-strip" id="quickStrip"></div>
-
-      <!-- Text input -->
       <div class="chat-input">
-        <input type="text" id="chatInput"
-          placeholder="Ask about your lessons..."
-          onkeydown="if(event.key==='Enter' && !event.shiftKey) sendMsg()" />
+        <input type="text" id="chatInput" placeholder="Ask about your lessons..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMsg()" />
         <button class="send-btn sb7" id="sendBtn" onclick="sendMsg()">Send</button>
       </div>
     </div>
 
-  </div><!-- /main-grid -->
-
-  <!-- Disclaimer -->
-  <div class="disclaimer">
-    <span>&#9888;</span>
-    <span>
-      This AI is your <strong>thinking partner</strong>, not your answer machine.
-      It will push back, ask questions, and make you defend your reasoning.
-      That is the point. Always check your class notes and SEQTA resources too.
-    </span>
   </div>
 
-</div><!-- /page -->
+  <div class="disclaimer">
+    <span>&#9888;</span>
+    <span>This AI is your <strong>thinking partner</strong>, not your answer machine. It will push back, ask questions, and make you defend your reasoning. Always check your class notes and SEQTA resources too.</span>
+  </div>
 
+</div>
 <script>
 /**
  * =============================================================================
- * DigiTech Hub - Student Interface Script
+ * DigiTech Hub v2 - Client Script
  * =============================================================================
- *
- * State management:
- *   currentClass  - '7' or '910'
- *   currentMode   - 'explain' | 'quiz' | 'debate' | 'help'
- *   currentTerm   - 0 (all) | 1 | 2
- *   currentType   - 'all' | resource type string
- *   allResources  - Full resource array fetched from Sheet (cached)
- *   messages      - Current conversation history for the AI
  *
  * Data flow:
- *   Page load -> loadResources() -> GET Apps Script -> cache in allResources
- *   Student message -> buildSystemPrompt() injects relevant resource chunks
- *                   -> POST to Apps Script AI proxy
- *                   -> render AI response (text + optional inline card)
+ *   Page load
+ *     -> loadSchedule()   fetch Schedule tab, find active module for class
+ *     -> loadResources()  fetch Resources tab, filter by class
+ *     -> renderResources() show filtered + module-highlighted cards
+ *     -> newChat()        show mode welcome message
+ *
+ *   Student sends message
+ *     -> buildSystemPrompt()  injects current module chunks from Sheet
+ *     -> POST to Apps Script AI proxy
+ *     -> renderAIResponse()   chunks into readable blocks
+ *
+ *   Schedule update (teacher flips active=TRUE in Sheet)
+ *     -> Next page load picks it up automatically - no code change needed
  * =============================================================================
  */
 
-
 // =============================================================================
-// CONFIGURATION
+// CONFIG - update CURRENT_WEEK each Monday
 // =============================================================================
 
-/** Apps Script endpoint - all reads and AI proxy calls go here */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdhRhNiETzLIZo3xBwr0srS6bdmnFZnHdpO9t8I4BiWa8vk2qbG4yPTn4MKfBjUbVp/exec';
-
-/**
- * Write token - required for POST requests (AI proxy).
- * Must match WRITE_TOKEN in the Apps Script.
- */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXnqsI0gWf6xVl3BMWDtgWubHqOAm2s5G4170MRoik8T7cVXbxSZgE-RDv3jGOudUR/exec';
 const WRITE_TOKEN = 'Miller-Digitech-2026-woodentigersm7k';
-
-/**
- * Current teaching week for both classes.
- * Update this each Monday - drives the "current week" highlight
- * and injects current-week resources into AI context automatically.
- */
 const CURRENT_WEEK = 6;
 
 /**
+ * Column schema - must match Sheet header row exactly.
+ * The 'module' column is the join key between Resources and Schedule tabs.
+ */
+const COLS = ['id','class','term','week','module','type','title','summary','topics',
+  'file_format','url','source','print_ready','onenote_path','definitions',
+  'success_criteria','tasks','key_concepts','current','locked'];
+
+/**
+ * Class name mapping - internal key -> Sheet value
+ */
+const CLASS_NAMES = {'7':'Year 7','8':'Year 8','910':'Year 9/10','inq':'Inquiry'};
+
+/**
  * Quick prompt suggestions per class per mode.
- * These appear as clickable chips below the chat input.
  */
 const QUICK_PROMPTS = {
-  '7': {
-    explain : ['What is RAM?', 'Explain binary', 'Hardware vs software', 'How does a file travel?'],
-    eli5    : ['RAM please', 'What is binary?', 'What is a CPU?', 'What is the internet?'],
-    quiz    : ['Quiz me on binary', 'Test me on hardware', 'File journey quiz', 'Test everything'],
-    debate  : ['Should schools track devices?', 'Who owns your data?', 'Should AI mark work?', 'Is the digital divide fair?'],
-    help    : ['Help with my system diagram', 'Stuck on the assessment', 'Check my binary', 'Help me start the file journey task']
+  '7':{
+    eli5    :['RAM please','What is binary?','What is a CPU?','What is the internet?'],
+    explain :['What is RAM?','Explain binary','Hardware vs software','How does a file travel?'],
+    quiz    :['Quiz me on binary','Test me on hardware','File journey quiz','Test everything'],
+    debate  :['Should schools track devices?','Who owns your data?','Should AI mark work?','Is the digital divide fair?'],
+    help    :['Help with my system diagram','Stuck on the assessment','Check my binary','Help me start the file journey task']
   },
-  '8': {
-    explain : ['What is a network?', 'Explain cybersecurity', 'What is a database?', 'How does the internet work?'],
-    eli5    : ['What is WiFi?', 'What is hacking?', 'What is a spreadsheet?', 'What is encryption?'],
-    quiz    : ['Quiz me on networks', 'Test me on cyber threats', 'Spreadsheet formulas quiz', 'Data and binary quiz'],
-    debate  : ['Should governments be able to monitor internet traffic?', 'Is personal data ever truly private?', 'Should schools block social media?', 'Who is responsible for cybercrime?'],
-    help    : ['Help with my spreadsheet', 'Stuck on my data project', 'Help with my digital solution', 'Check my network diagram']
+  '8':{
+    eli5    :['What is WiFi?','What is hacking?','What is a spreadsheet?','What is encryption?'],
+    explain :['What is a network?','Explain cybersecurity','What is a database?','How does the internet work?'],
+    quiz    :['Quiz me on networks','Test me on cyber threats','Spreadsheet formulas quiz','Data and binary quiz'],
+    debate  :['Should governments monitor internet traffic?','Is personal data ever truly private?','Should schools block social media?','Who is responsible for cybercrime?'],
+    help    :['Help with my spreadsheet','Stuck on my data project','Help with my digital solution','Check my network diagram']
   },
-  '910': {
-    explain : ['Explain PWM', 'What is a function?', 'Bit:Bot XL wiring', 'Tolerance in 3D printing'],
-    eli5    : ['PWM in simple words', 'What does def do?', 'Why use functions?', 'What is duty cycle?'],
-    quiz    : ['Quiz me on Python', 'Test micro:bit sensors', '3D printing quiz', 'Mix both terms'],
-    debate  : ['Robots replacing workers?', 'Who owns a 3D design?', 'AI in schools?', 'Autonomous vehicles and blame'],
-    help    : ['My Bit:Bot code is wrong', 'Help plan my portfolio', 'Stuck on a function', 'Assessment help']
+  '910':{
+    eli5    :['PWM in simple words','What does def do?','Why use functions?','What is duty cycle?'],
+    explain :['Explain PWM','What is a function?','Bit:Bot XL wiring','Tolerance in 3D printing'],
+    quiz    :['Quiz me on Python','Test micro:bit sensors','3D printing quiz','Mix both terms'],
+    debate  :['Robots replacing workers?','Who owns a 3D design?','AI in schools?','Autonomous vehicles and blame'],
+    help    :['My Bit:Bot code is wrong','Help plan my portfolio','Stuck on a function','Assessment help']
   },
-  'inq': {
-    explain : ['How does AI work?', 'What can I make with a micro:bit?', 'How does 3D printing work?', 'What is game design?'],
-    eli5    : ['What is coding?', 'What is AI?', 'How does WiFi work?', 'What is an algorithm?'],
-    quiz    : ['Quiz me on anything tech', 'Test me on AI', 'What do I know about coding?', 'Tech trivia'],
-    debate  : ['Will AI take over all jobs?', 'Should kids learn to code?', 'Is social media good or bad?', 'Should robots have rights?'],
-    help    : ['I want to build something - where do I start?', 'Help me with my project idea', 'I am stuck on my creation', 'What should I make next?']
+  'inq':{
+    eli5    :['What is coding?','What is AI?','How does WiFi work?','What is an algorithm?'],
+    explain :['How does AI work?','What can I make with a micro:bit?','How does 3D printing work?','What is game design?'],
+    quiz    :['Quiz me on anything tech','Test me on AI','What do I know about coding?','Tech trivia'],
+    debate  :['Will AI take over all jobs?','Should kids learn to code?','Is social media good or bad?','Should robots have rights?'],
+    help    :["I want to build something - where do I start?",'Help me with my project idea','I am stuck on my creation','What should I make next?']
   }
 };
 
-
 // =============================================================================
-// MODULE STATE
+// STATE
 // =============================================================================
 
-/** Currently selected class */
 let currentClass = '7';
-
-/** Currently selected AI mode */
-let currentMode = 'explain';
-
-/** Currently selected term filter (0 = all terms) */
-let currentTerm = 0;
-
-/** Currently selected resource type filter */
-let currentType = 'all';
-
-/** All resource rows fetched from the Sheet, cached for the session */
+let currentMode  = 'explain';
+let currentTerm  = 0;
+let currentType  = 'all';
 let allResources = [];
-
-/** Current AI conversation history */
-let messages = [];
-
-/** Whether an AI request is in flight */
-let aiLoading = false;
-
-/** Whether TTS read-aloud is enabled */
-let ttsEnabled = false;
-
-/** Current SpeechSynthesisUtterance instance (for stop control) */
+let schedule     = [];
+let activeModule = null;    // Current module name from Schedule tab
+let messages     = [];
+let aiLoading    = false;
+let ttsEnabled   = false;
 let currentUtterance = null;
 
-
 // =============================================================================
-// SYSTEM PROMPTS
-// One system prompt per class-mode combination.
-// Each prompt is injected with relevant Sheet content at call time.
+// SCHEDULE TAB
+// Fetches the Schedule tab and finds the active module for a given class.
 // =============================================================================
 
 /**
- * Returns the base curriculum context for a given class.
- * This is prepended to every system prompt to ground the AI
- * in the correct course content regardless of mode.
- *
- * @param {string} cls - '7' or '910'
- * @returns {string} Curriculum context block
+ * Fetches the Schedule tab from the Apps Script endpoint.
+ * Looks for action=getSchedule - falls back gracefully if not yet deployed.
+ * Once loaded, calls updateActiveModule() to highlight the current module.
  */
-function getCurriculumContext(cls) {
-  if (cls === '8') {
-    return `You are a DigiTech AI companion for Year 8 students at Emmanuel Christian School, Tasmania.
-Curriculum: Australian Curriculum v9 (ACv9) - Years 7-8 band, Cycle 2.
-
-Year 8 builds directly on Year 7 content. Students already know: hardware/software, binary numbers, binary images/sound, file journeys, networks basics, MS Office Suite.
-
-Term 1 - Hardware, Networks and Cyber Threats (AC9TDI8K01, AC9TDI8K02):
-Networks in depth: LAN/WAN, internet infrastructure, how data travels, protocols (TCP/IP, HTTP/HTTPS, DNS), IP addressing, routers and switches.
-Cyber threats: malware (viruses, ransomware, spyware), phishing, social engineering, DDoS attacks.
-Cyber defences: encryption, firewalls, two-factor authentication, password security, software updates.
-Digital footprint: what data systems collect, privacy laws, Australian Privacy Principles.
-
-Term 2 - Collaborative Data Project and Creating Digital Solutions (AC9TDI8P01-P14):
-Working with data: acquiring from surveys/sensors/repositories, cleaning data, spreadsheet formulas (VLOOKUP, IF, COUNTIF), pivot tables, charts, single-table databases.
-Design process: user stories, design criteria, prototyping, evaluating solutions.
-Digital solution: building a solution that solves a real problem - could be a program, website, spreadsheet tool, or physical device.
-Managing projects: agile approaches, collaboration tools, version control concepts.
-Privacy in data: digital footprint, depersonalising data, Australian Privacy Principles.
-
-Current week: ${CURRENT_WEEK}`;
+async function loadSchedule() {
+  try {
+    const res  = await fetch(`${SCRIPT_URL}?action=getSchedule`);
+    const data = await res.json();
+    if (data.success && data.rows) {
+      schedule = data.rows;
+    }
+  } catch (e) {
+    // Schedule tab not yet set up - hub still works, just without module context
+    schedule = [];
   }
-
-  if (cls === 'inq') {
-    return `You are a DigiTech AI companion for Inquiry students at Emmanuel Christian School, Tasmania.
-Inquiry is an open creative DigiTech space for students in Years 6-10. There are no set grades or mandatory curriculum outcomes here - students explore what interests them.
-
-You can help with any of these areas:
-- Coding and programming (Python, MakeCode, Scratch, JavaScript, web development)
-- Physical computing (micro:bit, Arduino, sensors, robots, electronics)
-- 3D design and printing (Tinkercad, CAD concepts, design thinking)
-- Game design (GDevelop, Pygame, game mechanics)
-- AI and machine learning (how AI works, ethics, building simple AI tools)
-- Digital art and media (design principles, animation, video editing)
-- Cybersecurity and networking (ethical hacking concepts, network design)
-- Data science (collecting and visualising interesting data)
-- App and web development (HTML/CSS/JS, no-code tools)
-- Anything else tech-related the student wants to explore
-
-IMPORTANT: Inquiry has no wrong answers or failure. The goal is curiosity, creativity and making things. Be encouraging, enthusiastic and open-ended. Help students discover what they are passionate about.
-
-Current week: ${CURRENT_WEEK}`;
-  }
-
-  if (cls === '7') {
-    return `You are a DigiTech AI companion for Year 7 students at Emmanuel Christian School, Tasmania.
-Curriculum: Australian Curriculum v9 (ACv9).
-
-Term 1 - Microsoft Office Suite:
-Outlook (email etiquette, CC/BCC, attachments), OneDrive (cloud vs local storage, sharing, version history), Excel (formulas: SUM AVERAGE COUNT, charts, formatting), PowerPoint (slide design, transitions, presenting), OneNote (notebooks, sections, pages, tagging), Digital Portfolio (evidence, reflection, curation).
-
-Term 2 - Digital Systems and Data Representation (AC9TDI8K01, AC9TDI8K02):
-Weeks 1-2: Hardware vs software, CPU/RAM/HDD/SSD/GPU, input/output devices, operating systems, performance factors.
-Week 3: File journeys - networks, LAN/WAN, HTTP/HTTPS, IP addresses, packets, compression (lossy/lossless).
-Weeks 4-5: Binary - why computers use binary, bits/bytes, 8-bit place values (128 64 32 16 8 4 2 1), binary-decimal conversion.
-Week 6 (CURRENT): Binary images - pixels, resolution, colour depth (1-bit/8-bit/24-bit), file size calculation.
-Week 7: Binary sound - analogue vs digital, sampling, sample rate (Hz), bit depth, file size calculation.
-Weeks 8-10: Synthesis, Assessment 2 (file journey), portfolio.
-
-Current week: ${CURRENT_WEEK}`;
-  }
-
-  return `You are a DigiTech AI companion for Year 9/10 students at Emmanuel Christian School, Tasmania.
-Curriculum: Australian Curriculum v9 (ACv9).
-
-Term 1 - Tinkercad and 3D Printing:
-Workflow (design-slice-print-post), Tinkercad interface, STL files, slicing/G-code, FDM/PLA, calipers, tolerance (0.2-0.4mm for FDM), design constraints, Codeblocks (parametric design, loops, variables), design sprint (empathise-define-ideate-prototype-test), iteration evidence.
-
-Term 2 - Python, micro:bit, Bit:Bot Automation (AC9TDI10P01):
-Week 2: Python recap - variables, data types, casting, operators, loops (for/while), decisions (if/elif/else), micro:bit display and buttons.
-Week 3: Sensors - accelerometer, temperature, light level, gestures, radio communication.
-Week 4: Bit:Bot intro - Classic pins (pin0/pin8 left, pin1/pin12 right), XL pins (pin16/pin8 left, pin14/pin12 right), write_analog(0-1023), XL buzzer fix: pin0.write_digital(0).
-Week 5: Assessment 1 - written + coding.
-Week 6 (CURRENT): PWM (Pulse Width Modulation), duty cycle, write_analog for speed control, building movement function libraries.
-Week 7: Functions (def, parameters, return, scope), Assessment 2.
-Weeks 8-10: Line following, autonomous driving, portfolio.
-
-Current week: ${CURRENT_WEEK}`;
+  updateActiveModule();
 }
 
 /**
- * Returns mode-specific instructions appended to the base curriculum context.
- * These define the AI's behaviour pattern for each interaction style.
- *
- * @param {string} cls  - '7' or '910'
- * @param {string} mode - 'explain' | 'quiz' | 'debate' | 'help'
- * @returns {string} Mode instruction block
+ * Finds the active module for the current class from the cached schedule.
+ * Updates the module badge in the header and the module banner above resources.
  */
-function getModeInstructions(cls, mode) {
-  const isY910 = cls === '910';
-  const isInq  = cls === 'inq';
+function updateActiveModule() {
+  const className = CLASS_NAMES[currentClass];
 
-  // Inquiry gets a completely different mode set - open and creative not sparring
-  if (isInq) {
-    const inqModes = {
-      eli5: `MODE: ELI5 - Keep it super simple. Short sentences. Fun analogies. No jargon without explaining it. Format with emoji headers. Max 4 sections.`,
-      explain: `MODE: EXPLAIN IT (Inquiry)
-Explain concepts in a fun, curious way. No curriculum pressure.
-- Use real-world examples and analogies
-- Connect to things they might actually build or make
-- Ask what they want to DO with the concept - not just know it
-- Keep it engaging and short`,
-      quiz: `MODE: QUIZ ME (Inquiry)
-Keep it fun and light. One question at a time. Topics can be anything tech-related.
-- Mix trivia, practical, and creative questions
-- Celebrate right answers enthusiastically
-- When wrong: give the answer AND explain why it is interesting`,
-      debate: `MODE: GIVE ME IDEAS (Inquiry - replaces debate)
-Help the student brainstorm and explore ideas.
-- Ask what they are interested in making or building
-- Suggest 2-3 concrete project ideas based on what they tell you
-- For each idea: what it is, what skills they would learn, how hard it is
-- Be enthusiastic - there are no bad ideas in Inquiry`,
-      help: `MODE: HELP ME BUILD (Inquiry - replaces help)
-The student wants to make something. Help them.
-- Ask what they are trying to build first
-- Break it into small achievable steps
-- Suggest specific tools, tutorials or resources
-- Celebrate progress - Inquiry is about making things not getting grades
-- If they are stuck: suggest a simpler version they can finish first`
-    };
-    return inqModes[mode] || inqModes.explain;
-  }
-
-  const modes = {
-    eli5: `
-MODE: ELI5 (Explain Like I'm 5)
-The student wants the simplest possible explanation. Rules:
-- Use the SHORTEST sentences possible. Max 15 words per sentence.
-- NO jargon without immediately explaining it in brackets
-- Use everyday comparisons they already know (food, sport, games, school)
-- Structure EVERY response like this - use these exact emoji headers:
-
-🎯 **What it is**
-One sentence. Dead simple.
-
-🤔 **Think of it like...**
-One real-world analogy. Make it relatable to a teenager.
-
-⚡ **The key point**
-The one thing they must remember. Bold it.
-
-❓ **Quick check**
-Ask ONE simple question to check they got it.
-
-- Maximum 4 sections. No walls of text. Ever.
-- If they ask about a definition, format it as:
-  📖 **[TERM]** = [plain english meaning in one sentence]`,
-
-    explain: `
-MODE: EXPLAIN IT
-Structure EVERY response in clear chunks - never a wall of text.
-Use these sections with emoji headers:
-
-🎯 **The simple version**
-2-3 sentences max. Plain language first.
-
-🔗 **Real world example**
-One concrete example they can picture. Keep it short.
-
-🧠 **The technical bit**
-Now use the correct terminology. Still short - 2-3 sentences.
-
-❓ **Check your understanding**
-MANDATORY: Ask "Can you explain [concept] back to me in your own words?"
-
-- Each section separated by a blank line
-- Never combine sections into a paragraph
-- One concept per response - do not pile on extra info
-${isY910 ? '- For code: show the syntax, then one minimal example, then ask them to adapt it. Never write full solutions.' : ''}`,
-
-    quiz: `
-MODE: QUIZ ME
-Rules:
-- One question at a time. Never ask two questions in the same message.
-- Wait for the student's answer before the next question.
-- If correct: affirm briefly ("Good - ") then ask a slightly harder follow-up.
-- If wrong or vague: say "Not quite - think about [small hint]" - NEVER give the answer directly.
-- Mix question types: recall, application, "what would happen if...", diagram description${isY910 ? ', code-reading ("what does this output?"), debugging ("what is wrong with this code?")' : ''}.
-- After 5-6 questions: summarise what they know well and what to review.
-- Escalate difficulty gradually.
-Start by asking which topic or term to focus on.`,
-
-    debate: `
-MODE: LET'S DEBATE
-Rules:
-- Challenge the student's position even if you agree with them - play devil's advocate.
-- "I think so" or "probably" is never a final answer. Ask: "Why? What evidence supports that?"
-- Introduce counter-arguments they have not considered.
-- Connect to real-world implications: jobs, privacy, fairness, power, environment.
-${isY910
-  ? `- Hold Year 9/10 students to a high standard. Demand reasoning AND a real-world example.
-- Push: "Who benefits? Who is harmed? Who has the power here?"
-- End with: "If you had to write one paragraph defending your position, what would the core argument be?"`
-  : `- Keep language appropriate for Year 7 but still push them to defend their reasoning.
-- At the end: summarise the strongest points on both sides.`}
-If the student has no topic, suggest one from the current unit's ethics questions.`,
-
-    help: `
-MODE: HELP ME THINK
-GOLDEN RULE: NEVER write content the student can paste directly into an assessment or task.
-Process:
-1. Ask "What have you got so far? Show me your thinking." before doing anything else.
-2. If they have nothing: ask "What does the question actually want you to show?" - get them to re-read it.
-3. Break the task into small steps. Tackle one step at a time.
-4. When they write something: respond with "Good - what else could you add about X?" not a rewrite.
-5. Suggest checking class notes, OneNote, or SEQTA for specific details.
-6. You can confirm whether their understanding is correct or needs rethinking.
-7. NEVER write paragraphs, model answers, or dot-point lists they can lift directly.
-${isY910
-  ? `For coding: ask them to share their current code first. Point to the problem area with a question ("What do you think line X is doing?"). Never paste a finished solution.`
-  : ''}`
-  };
-
-  return modes[mode] || modes.explain;
-}
-
-/**
- * Builds the full system prompt for an AI request.
- * Combines curriculum context, mode instructions, and relevant resource
- * chunks from the Sheet (definitions, success criteria, tasks for the
- * current week and class).
- *
- * Injecting chunked content means the AI can answer specific questions
- * like "what definitions did we cover in week 6" without loading the
- * full HTML file.
- *
- * @returns {string} Complete system prompt string
- */
-function buildSystemPrompt() {
-  let prompt = getCurriculumContext(currentClass);
-  prompt += '\n\n' + getModeInstructions(currentClass, currentMode);
-
-  // Inject current-week resource chunks as additional context
-  const weekResources = allResources.filter(r =>
-    r.class === (currentClass === '7' ? 'Year 7' : 'Year 9/10') &&
-    (String(r.week) === String(CURRENT_WEEK) || String(r.week).includes(String(CURRENT_WEEK)))
+  // Find the active=TRUE row for this class
+  const activeRow = schedule.find(r =>
+    r.class === className &&
+    (r.active === true || r.active === 'TRUE' || r.active === 'true')
   );
 
-  if (weekResources.length > 0) {
-    prompt += '\n\nCURRENT WEEK RESOURCE CONTENT (Week ' + CURRENT_WEEK + '):';
-    weekResources.forEach(r => {
-      if (r.definitions)      prompt += '\nDefinitions: ' + r.definitions;
-      if (r.success_criteria) prompt += '\nSuccess criteria: ' + r.success_criteria;
-      if (r.tasks)            prompt += '\nTasks: ' + r.tasks;
-      if (r.key_concepts)     prompt += '\nKey concepts: ' + r.key_concepts;
-    });
+  activeModule = activeRow ? activeRow.module : null;
+
+  // Update header badge
+  const modBadge = document.getElementById('moduleBadge');
+  modBadge.textContent = activeModule
+    ? activeModule
+    : 'No active module';
+
+  // Update module banner above resource list
+  const wrap = document.getElementById('moduleBannerWrap');
+  if (activeModule) {
+    const cls = `mb-${currentClass === '910' ? '910' : currentClass}`;
+    wrap.innerHTML = `<div class="module-banner ${cls}">
+      <span>&#127989;</span>
+      <span>Current module: <strong>${esc(activeModule)}</strong></span>
+    </div>`;
+  } else {
+    wrap.innerHTML = '';
   }
-
-  // Safety guardrails - applied to all modes
-  prompt += `
-
-CRITICAL RULES (never break these):
-- You are a thinking partner, not an answer machine. Never write content students can copy into assessments.
-- Always ask at least one follow-up question to push their thinking deeper.
-- If a student asks you to "just give me the answer" - redirect with a question instead.
-- Stay within the DigiTech curriculum above. If asked about something outside it, say "That's outside our lessons - let's focus on your DigiTech work."
-- Keep language appropriate for the age group. Be warm, encouraging, and direct.
-- Encourage students to check their class notes, OneNote, and SEQTA resources.
-
-RESOURCE RETRIEVAL:
-If a student asks to "pull up", "show me", "find" or "open" a resource, respond with:
-RESOURCE_REQUEST: [describe what they want e.g. "Week 6 worksheet" or "most recent rubric"]
-This signals the UI to render an inline resource card instead of a chat response.`;
-
-  return prompt;
 }
 
-
 // =============================================================================
-// RESOURCE LOADING
-// Fetches all unlocked rows for the current class from the Sheet.
-// Results are cached in allResources for the session.
+// RESOURCE LOADING AND RENDERING
 // =============================================================================
 
 /**
- * Fetches resource rows from the Sheet via Apps Script GET.
- * Filters to the current class and caches results.
- * Called on page load and when the class selector changes.
+ * Fetches all unlocked rows for the current class from the Sheet.
  */
 async function loadResources() {
-  const classNameMap = { '7':'Year 7', '8':'Year 8', '910':'Year 9/10', 'inq':'Inquiry' };
-  const className = classNameMap[currentClass] || 'Year 7';
+  const className = CLASS_NAMES[currentClass];
   document.getElementById('resList').innerHTML = `
     <div class="list-empty">
       <span class="list-empty-icon">&#128193;</span>
@@ -1016,19 +441,17 @@ async function loadResources() {
   try {
     const res  = await fetch(`${SCRIPT_URL}?action=getRows&class=${encodeURIComponent(className)}`);
     const data = await res.json();
-
     if (data.success && data.rows) {
       allResources = data.rows;
       renderResources();
     } else {
-      showResourceError('Could not load resources: ' + (data.message || 'unknown error'));
+      showResourceError(data.message || 'Could not load resources');
     }
   } catch (err) {
-    showResourceError('Connection error: ' + err.message);
+    showResourceError('Connection error - ' + err.message);
   }
 }
 
-/** Renders an error state in the resource list */
 function showResourceError(msg) {
   document.getElementById('resList').innerHTML = `
     <div class="list-empty">
@@ -1038,85 +461,48 @@ function showResourceError(msg) {
     </div>`;
 }
 
-
-// =============================================================================
-// RESOURCE RENDERING
-// Filters and renders resource cards based on current class/term/type/search.
-// =============================================================================
-
-/** Renders the filter pill row for the current class */
+/** Renders filter pills for current class */
 function renderFilters() {
-  const row = document.getElementById('filterRow');
-  const cls = currentClass;
-  const acMap = { '7':'active-7', '8':'active-8', '910':'active-910', 'inq':'active-inq' };
-  const ac  = acMap[cls] || 'active-7';
-
-  const termBtns = [
-    { label: 'All terms', val: 0 },
-    { label: 'Term 1',    val: 1 },
-    { label: 'Term 2',    val: 2 }
-  ];
-  const typeBtns = ['all', 'Lesson Outline', 'Worksheet', 'Assessment', 'Rubric', 'Reference', 'Explainer'];
-
-  row.innerHTML =
-    termBtns.map(b =>
-      `<button class="filter-pill ${currentTerm === b.val ? ac : ''}"
-        onclick="setTermFilter(${b.val})">${b.label}</button>`
-    ).join('') +
+  const ac = `active-${currentClass === '910' ? '910' : currentClass}`;
+  const termBtns = [{label:'All terms',val:0},{label:'Term 1',val:1},{label:'Term 2',val:2},{label:'Term 3',val:3},{label:'Term 4',val:4}];
+  const typeBtns = ['all','Lesson Outline','Worksheet','Assessment','Rubric','Reference','Explainer'];
+  document.getElementById('filterRow').innerHTML =
+    termBtns.map(b => `<button class="filter-pill ${currentTerm===b.val?ac:''}" onclick="setTermFilter(${b.val})">${b.label}</button>`).join('') +
     '<span style="width:1px;background:var(--border2);align-self:stretch;margin:2px 3px"></span>' +
-    typeBtns.map(t =>
-      `<button class="filter-pill ${currentType === t ? ac : ''}"
-        onclick="setTypeFilter('${t}')">${t === 'all' ? 'All types' : t}</button>`
-    ).join('');
+    typeBtns.map(t => `<button class="filter-pill ${currentType===t?ac:''}" onclick="setTypeFilter('${t}')">${t==='all'?'All types':t}</button>`).join('');
 }
 
 /**
- * Filters allResources and renders matching cards into the resource list.
- * Called whenever a filter changes or the search input updates.
+ * Filters and renders resource cards.
+ * Resources matching the active module get a green left border and sort first.
  */
 function renderResources() {
-  const search    = (document.getElementById('searchBox')?.value || '').toLowerCase();
-  const classNameMap = { '7':'Year 7', '8':'Year 8', '910':'Year 9/10', 'inq':'Inquiry' };
-  const className = classNameMap[currentClass] || 'Year 7';
+  const search    = (document.getElementById('searchBox')?.value||'').toLowerCase();
+  const className = CLASS_NAMES[currentClass];
 
   let filtered = allResources.filter(r => {
-    // Class filter - always applied
     if (r.class !== className) return false;
-
-    // Term filter
     if (currentTerm !== 0 && String(r.term) !== String(currentTerm)) return false;
-
-    // Type filter
     if (currentType !== 'all' && r.type !== currentType) return false;
-
-    // Search - matches title, summary, topics, definitions, or key concepts
     if (search) {
-      const haystack = [r.title, r.summary, r.topics, r.definitions, r.key_concepts]
-        .join(' ').toLowerCase();
-      if (!haystack.includes(search)) return false;
+      const hay = [r.title,r.summary,r.topics,r.definitions,r.key_concepts,r.module].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
     }
-
     return true;
   });
 
   const list = document.getElementById('resList');
-
   if (!filtered.length) {
-    list.innerHTML = `
-      <div class="list-empty">
-        <span class="list-empty-icon">&#128269;</span>
-        <div class="list-empty-t">No resources found</div>
-        <div class="list-empty-s">Try a different filter or search term</div>
-      </div>`;
+    list.innerHTML = `<div class="list-empty"><span class="list-empty-icon">&#128269;</span><div class="list-empty-t">No resources found</div><div class="list-empty-s">Try a different filter or search term</div></div>`;
     return;
   }
 
-  // Sort: current week first, then by term and week
-  filtered.sort((a, b) => {
-    const aCur = a.current === true || a.current === 'true' || a.current === 'TRUE';
-    const bCur = b.current === true || b.current === 'true' || b.current === 'TRUE';
-    if (aCur && !bCur) return -1;
-    if (!aCur && bCur) return 1;
+  // Sort: active module first, then by term and week
+  filtered.sort((a,b) => {
+    const aIsActive = activeModule && a.module === activeModule;
+    const bIsActive = activeModule && b.module === activeModule;
+    if (aIsActive && !bIsActive) return -1;
+    if (!aIsActive && bIsActive) return 1;
     if (Number(a.term) !== Number(b.term)) return Number(a.term) - Number(b.term);
     return Number(a.week) - Number(b.week);
   });
@@ -1125,151 +511,90 @@ function renderResources() {
 }
 
 /**
- * Builds the HTML string for a single resource card.
- * Action buttons vary based on file_format:
- *   html    - Open, Preview
- *   docx    - Open in Word, Print, Download
- *   pdf     - Preview, Print, Download
- *   onenote - How to find this (shows navigation instructions)
- *
- * @param {Object} r - Resource row object from the Sheet
- * @returns {string} HTML string
+ * Builds a resource card HTML string.
+ * Cards from the active module get the green left border (.current-mod).
  */
 function buildResourceCard(r) {
-  const isCurrent = r.current === true || r.current === 'true' || r.current === 'TRUE';
-  const fmt       = (r.file_format || 'html').toLowerCase();
-  const cls       = currentClass;
-  const accent    = cls === '7' ? 'ract-blue' : 'ract-purple';
+  const isActive = activeModule && r.module === activeModule;
+  const fmt      = (r.file_format||'html').toLowerCase();
+  const accMap   = {'7':'ract-blue','8':'ract-green','910':'ract-purple','inq':'ract-teal'};
+  const acc      = accMap[currentClass]||'ract-blue';
+  const fmtBg    = {html:'#E6F1FB',htm:'#E6F1FB',docx:'#EAF3DE',doc:'#EAF3DE',pdf:'#FCEBEB',onenote:'#EEEDFE',video:'#FAEEDA'};
+  const fmtCol   = {html:'#0C447C',htm:'#0C447C',docx:'#27500A',doc:'#27500A',pdf:'#791F1F',onenote:'#3C3489',video:'#633806'};
+  const tagCls   = {html:'rt-html',docx:'rt-docx',pdf:'rt-pdf',onenote:'rt-onenote'};
 
-  const fmtBg  = { html:'#E6F1FB', docx:'#EAF3DE', pdf:'#FCEBEB', onenote:'#EEEDFE', gdoc:'#EAF3DE', video:'#FAEEDA' };
-  const fmtCol = { html:'#0C447C', docx:'#27500A', pdf:'#791F1F', onenote:'#3C3489', gdoc:'#27500A', video:'#633806' };
-  const tagCls = { html:'rt-html', docx:'rt-docx', pdf:'rt-pdf', onenote:'rt-onenote' };
-
-  // Build action buttons based on file format
   let actions = '';
-  if (fmt === 'onenote') {
-    actions = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(r.id)}')">
-      &#128211; How to find this
-    </button>`;
-  } else if (fmt === 'html') {
+  if (fmt==='onenote') {
+    actions = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(r.id)}')">&#128211; How to find this</button>`;
+  } else if (fmt==='html'||fmt==='htm') {
     const openUrl = r.url ? `window.open('${esc(r.url)}','_blank')` : 'void(0)';
-    actions = `<button class="ract ${accent}" onclick="${openUrl}">&#8599; Open</button>
-      <button class="ract ract-ghost" onclick="previewResource('${esc(r.id)}')">&#128065; Preview</button>`;
-  } else if (fmt === 'docx' || fmt === 'gdoc') {
-    const wordUrl  = r.url ? r.url.replace('/view', '/edit') : '#';
-    const printUrl = r.url ? r.url.replace('/view', '/export?format=pdf') : '#';
-    actions = `<button class="ract ${accent}" onclick="window.open('${esc(wordUrl)}','_blank')">&#128196; Open in Word</button>
-      ${r.print_ready === 'true' ? `<button class="ract ract-red" onclick="window.open('${esc(printUrl)}','_blank')">&#128424; Print</button>` : ''}
-      <button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#8595; Download</button>`;
-  } else if (fmt === 'pdf') {
-    actions = `<button class="ract ract-ghost" onclick="previewResource('${esc(r.id)}')">&#128065; Preview</button>
-      ${r.print_ready === 'true' ? `<button class="ract ract-red" onclick="window.open('${esc(r.url)}','_blank')">&#128424; Open to print</button>` : ''}
-      <button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#8595; Download</button>`;
-  } else if (fmt === 'video') {
-    actions = `<button class="ract ${accent}" onclick="window.open('${esc(r.url)}','_blank')">&#9654; Watch</button>`;
+    actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button><button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#128065; Preview</button>`;
+  } else if (fmt==='docx'||fmt==='gdoc') {
+    const wordUrl  = r.url?r.url.replace('/view','/edit'):'#';
+    const printUrl = r.url?r.url.replace('/view','/export?format=pdf'):'#';
+    actions = `<button class="ract ${acc}" onclick="window.open('${esc(wordUrl)}','_blank')">&#128196; Open in Word</button>
+      ${r.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(printUrl)}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='pdf') {
+    actions = `<button class="ract ${acc}" onclick="window.open('${esc(r.url)}','_blank')">&#8599; Open</button>
+      ${r.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(r.url)}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='video') {
+    actions = `<button class="ract ${acc}" onclick="window.open('${esc(r.url)}','_blank')">&#9654; Watch</button>`;
   }
 
-  // OneNote navigation instructions box (hidden until toggled)
-  const oneNoteBox = fmt === 'onenote' && r.onenote_path
-    ? `<div id="on-${esc(r.id)}" style="display:none">
-        <div class="onenote-box">
-          <div class="onenote-title">&#128211; How to find this in OneNote</div>
-          <div class="onenote-steps">${
-            r.onenote_path.split('>').map((s, i) => `${i + 1}. ${s.trim()}`).join('<br>')
-          }</div>
-        </div>
-      </div>`
+  const oneNoteBox = fmt==='onenote'&&r.onenote_path
+    ? `<div id="on-${esc(r.id)}" style="display:none"><div class="onenote-box"><div class="onenote-title">&#128211; How to find this in OneNote</div><div class="onenote-steps">${r.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
     : '';
 
-  return `<div class="rcard ${isCurrent ? 'current-wk' : ''}" id="rc-${esc(r.id)}">
+  return `<div class="rcard ${isActive?'current-mod':''}" id="rc-${esc(r.id)}">
     <div class="rcard-head">
-      <div class="rcard-fmt" style="background:${fmtBg[fmt]||'#F1EFE8'};color:${fmtCol[fmt]||'#444441'}">
-        ${fmt.toUpperCase()}
-      </div>
-      <div style="flex:1;min-width:0">
+      <div class="rcard-fmt" style="background:${fmtBg[fmt]||'#F1EFE8'};color:${fmtCol[fmt]||'#444441'}">${fmt.toUpperCase()}</div>
+      <div class="rcard-info">
         <div class="rcard-title" title="${esc(r.title)}">${esc(r.title)}</div>
-        <div class="rcard-meta">Term ${esc(String(r.term))} - Wk ${esc(String(r.week))} - ${esc(r.type)}</div>
+        <div class="rcard-meta">${esc(r.module||'')} - T${esc(String(r.term))} Wk${esc(String(r.week))} - ${esc(r.type)}</div>
       </div>
     </div>
     <div class="rcard-tags">
-      ${isCurrent ? '<span class="rtag rt-cur">Current week</span>' : ''}
-      <span class="rtag ${tagCls[fmt] || 'rt-type'}">${fmt.toUpperCase()}</span>
+      ${isActive?'<span class="rtag rt-cur">Current module</span>':''}
+      <span class="rtag ${tagCls[fmt]||'rt-type'}">${fmt.toUpperCase()}</span>
       <span class="rtag rt-type">${esc(r.type)}</span>
     </div>
-    <div class="rcard-summary">${esc(r.summary || '')}</div>
+    <div class="rcard-summary">${esc(r.summary||'')}</div>
     <div class="rcard-actions">${actions}</div>
     ${oneNoteBox}
   </div>`;
 }
 
-/**
- * Toggles the OneNote navigation instructions box for a resource.
- *
- * @param {string} id - Resource id value
- */
 function toggleOneNote(id) {
-  const el = document.getElementById('on-' + id);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  const el=document.getElementById('on-'+id);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
 }
 
-/**
- * Opens a resource URL in a preview panel (iframe in new window).
- * Falls back to opening in a new tab if the URL is not available.
- *
- * @param {string} id - Resource id value
- */
-function previewResource(id) {
-  const r = allResources.find(x => x.id === id);
-  if (!r || !r.url) return;
-  window.open(r.url, '_blank');
-}
-
-function setTermFilter(term) {
-  currentTerm = term;
-  renderFilters();
-  renderResources();
-}
-
-function setTypeFilter(type) {
-  currentType = type;
-  renderFilters();
-  renderResources();
-}
-
+function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
+function setTypeFilter(t){currentType=t;renderFilters();renderResources()}
 
 // =============================================================================
 // CLASS AND MODE SWITCHING
 // =============================================================================
 
-/**
- * Switches the active class, reloads resources, resets filters and chat.
- *
- * @param {string} cls - '7' or '910'
- */
 function setClass(cls) {
   currentClass = cls;
-
-  // Update class tab styles
-  document.getElementById('tab7').className    = 'class-tab' + (cls === '7'   ? ' active-7'   : '');
-  document.getElementById('tab8').className    = 'class-tab' + (cls === '8'   ? ' active-8'   : '');
-  document.getElementById('tab910').className  = 'class-tab' + (cls === '910' ? ' active-910' : '');
-  document.getElementById('tabinq').className  = 'class-tab' + (cls === 'inq' ? ' active-inq' : '');
-
-  // Update send button colour to match class accent
-  const sbMap = { '7':'sb7', '8':'sb8', '910':'sb910', 'inq':'sbinq' };
-  document.getElementById('sendBtn').className = 'send-btn ' + (sbMap[cls] || 'sb7');
-
+  const tabs = {tab7:'7',tab8:'8',tab910:'910',tabinq:'inq'};
+  Object.entries(tabs).forEach(([id,c]) => {
+    document.getElementById(id).className = 'class-tab' + (c===cls?` active-${c===cls?cls:''}`:'');
+  });
+  document.getElementById('tab7').className   = 'class-tab'+(cls==='7'  ?' active-7':'');
+  document.getElementById('tab8').className   = 'class-tab'+(cls==='8'  ?' active-8':'');
+  document.getElementById('tab910').className = 'class-tab'+(cls==='910'?' active-910':'');
+  document.getElementById('tabinq').className = 'class-tab'+(cls==='inq'?' active-inq':'');
+  const sbMap={'7':'sb7','8':'sb8','910':'sb910','inq':'sbinq'};
+  document.getElementById('sendBtn').className='send-btn '+(sbMap[cls]||'sb7');
+  updateActiveModule();
   renderFilters();
   renderModePills();
   loadResources();
   newChat();
 }
 
-/**
- * Switches the AI companion mode and starts a new conversation.
- *
- * @param {string} mode - 'explain' | 'quiz' | 'debate' | 'help'
- */
 function setMode(mode) {
   currentMode = mode;
   renderModePills();
@@ -1277,392 +602,387 @@ function setMode(mode) {
   newChat();
 }
 
-/** Re-renders the mode pill row with correct active state */
 function renderModePills() {
-  const ac   = currentClass === '7' ? 'active-7' : 'active-910';
-  const modes = [
-    { key: 'eli5',    label: '&#129299; ELI5'          },
-    { key: 'explain', label: '&#128161; Explain it'     },
-    { key: 'quiz',    label: '&#10067; Quiz me'         },
-    { key: 'debate',  label: '&#128172; Let\'s debate'  },
-    { key: 'help',    label: '&#9997; Help me think'    }
+  const acMap={'7':'active-7','8':'active-8','910':'active-910','inq':'active-inq'};
+  const ac   = acMap[currentClass]||'active-7';
+  const isInq = currentClass==='inq';
+  const modes=[
+    {key:'eli5',   label:'&#129299; ELI5'},
+    {key:'explain',label:'&#128161; Explain it'},
+    {key:'quiz',   label:'&#10067; Quiz me'},
+    {key:'debate', label:isInq?'&#128640; Give me ideas':'&#128172; Let\'s debate'},
+    {key:'help',   label:isInq?'&#128736; Help me build':'&#9997; Help me think'}
   ];
   document.getElementById('modePills').innerHTML = modes
-    .map(m => `<button class="mode-pill ${currentMode === m.key ? ac : ''}"
-      onclick="setMode('${m.key}')">${m.label}</button>`)
+    .map(m=>`<button class="mode-pill ${currentMode===m.key?ac:''}" onclick="setMode('${m.key}')">${m.label}</button>`)
     .join('');
 }
 
-/** Re-renders quick prompt chips for current class/mode */
 function renderQuickBtns() {
-  const prompts = QUICK_PROMPTS[currentClass]?.[currentMode] || [];
+  const prompts = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
   document.getElementById('quickStrip').innerHTML = prompts
-    .map(p => `<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,'&#39;')}')">${p}</button>`)
+    .map(p=>`<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`)
     .join('');
 }
 
+// =============================================================================
+// SYSTEM PROMPTS
+// Curriculum context is injected per class + current module chunks from Sheet.
+// =============================================================================
 
-// =============================================================================
-// CHAT - AI COMPANION
-// =============================================================================
+function getCurriculumContext(cls) {
+  const contexts = {
+    '7': `You are a DigiTech AI companion for Year 7 students at Emmanuel Christian School, Tasmania.
+Curriculum: Australian Curriculum v9 (ACv9) - Years 7/8 band, Cycle 1.
+
+Term 1: Microsoft Office Suite - Outlook, OneDrive, Excel (SUM/AVERAGE/COUNT/charts), PowerPoint, OneNote, Digital Portfolio. AC: P11, P12.
+Term 2: Digital Systems (CPU/RAM/SSD/GPU), File Journeys (LAN/WAN/HTTP/packets), Binary Numbers (8-bit conversion), Binary Images (pixels/RGB/colour depth/file size), Binary Sound (sampling/sample rate/bit depth). AC: K01, K02, K03, K04.
+Term 3: Working with Data (spreadsheets/databases/privacy), General-purpose Programming (algorithms/Python/functions/debugging). AC: P01-P03, P05, P06, P09, P14.
+Term 4: Creating a Digital Solution (user stories/design criteria/UX/prototype/evaluate/agile). AC: P04, P07, P08, P10, P11, P12.
+Current week: ${CURRENT_WEEK}`,
+
+    '8': `You are a DigiTech AI companion for Year 8 students at Emmanuel Christian School, Tasmania.
+Curriculum: Australian Curriculum v9 (ACv9) - Years 7/8 band, Cycle 2. Completes all band codes.
+
+Students already know from Year 7: hardware/software, binary numbers/images/sound, file journeys, networks basics, Microsoft Office Suite.
+
+Term 1: Networks in depth (TCP/IP/DNS/routing), Cyber threats (malware/phishing/social engineering/DDoS), Cyber defences (encryption/firewalls/MFA), Digital footprint and privacy (Australian Privacy Principles), Working with Data (VLOOKUP/COUNTIF/IF/pivot tables/databases). AC: K02, P01, P02, P03, P13, P14.
+Term 2: General-purpose Programming (nested loops/functions/tracing/debugging in Python), Creating a Digital Solution (user stories/design criteria/UX/build/test/evaluate/agile). AC: P04, P05, P06, P07, P08, P09, P10, P11, P12.
+Term 3: AI and Machine Learning (how AI works/training data/bias/prompt engineering/building with AI/ethics). AC: P05, P09, P11, P14.
+Term 4: Extension and Enrichment - student choice of game development/web development/advanced Python. AC: P11, P12.
+Current week: ${CURRENT_WEEK}`,
+
+    '910': `You are a DigiTech AI companion for Year 9/10 students at Emmanuel Christian School, Tasmania.
+Curriculum: Australian Curriculum v9 (ACv9) - Years 9/10 band. Mixed Year 9 and Year 10 cohort.
+
+Year 9 Term 1: 3D Printing and Design - Tinkercad, STL files, FDM/PLA, tolerance (0.2-0.4mm), calipers, design sprint (empathise/define/ideate/prototype/test), iteration. AC: P04, P07, P08, P10, P12. COMPLETED.
+Year 9 Term 2: Python and micro:bit (variables/loops/decisions/sensors/radio), Bit:Bot Automation (Classic pins: pin0/pin8 left, pin1/pin12 right; XL pins: pin16/pin8 left, pin14/pin12 right; write_analog 0-1023; XL buzzer fix: pin0.write_digital(0)), PWM and speed control, Functions and line following. AC: P01, P05, P06, P09. IN PROGRESS.
+Year 9 Term 3: AI and Machine Learning (ML pipeline/neural networks/building with AI/ethics/privacy), Web Development (HTML content/CSS presentation/JS interaction - separation of concerns). AC: K02, P01, P05, P09, P11, P14.
+Year 9 Term 4: Digital Solution Project (stakeholder interviews/user stories/prototype/build/evaluate/enterprise). AC: P04, P07, P08, P10, P11, P12.
+Year 10 Term 1: Data Science with Python (pandas/cleaning/visualisation/trends/outliers), Advanced Cybersecurity (threat models/STRIDE/OWASP/hardware access control). AC: K01, P01, P02, P03, P13.
+Year 10 Term 2: Privacy and Ethics (Australian Privacy Principles), Capstone Project (all remaining codes). AC: P04-P12, P14.
+Year 10 Term 3: Data Compression (run-length encoding/Huffman), Object-oriented Programming (classes/inheritance/encapsulation). AC: K03, P09.
+Year 10 Term 4: Extension and Enrichment - student choice of game dev/full stack web/data science/AI application. AC: P11, P12.
+Current week: ${CURRENT_WEEK}`,
+
+    'inq': `You are a DigiTech AI companion for Inquiry students at Emmanuel Christian School, Tasmania.
+Inquiry is an open creative DigiTech space for students in Years 6-10. No set grades or curriculum pressure.
+
+You can help with: coding (Python/JavaScript/Scratch/web), physical computing (micro:bit/Arduino/sensors/robots), 3D design and printing, game design (GDevelop/Pygame), AI and machine learning, digital art and media, cybersecurity concepts, data science, app and web development, or anything else tech-related.
+
+IMPORTANT: Inquiry has no wrong answers. The goal is curiosity, creativity and making things. Be warm, enthusiastic and open-ended.
+Current week: ${CURRENT_WEEK}`
+  };
+  return contexts[cls]||contexts['7'];
+}
+
+function getModeInstructions(cls, mode) {
+  const isInq = cls==='inq';
+  const isY910 = cls==='910';
+
+  if (isInq) {
+    const inqModes = {
+      eli5:`MODE: ELI5 - Keep it super simple. Short sentences. Fun analogies. No jargon without explaining it. Format with emoji headers. Max 4 sections.`,
+      explain:`MODE: EXPLAIN IT (Inquiry)\nExplain concepts in a fun curious way. Use real-world examples. Connect to things they might actually build. Ask what they want to DO with the concept.`,
+      quiz:`MODE: QUIZ ME (Inquiry)\nFun and light. One question at a time. Any tech topic. Mix trivia, practical and creative questions. Celebrate right answers. When wrong - give the answer AND explain why it is interesting.`,
+      debate:`MODE: GIVE ME IDEAS (Inquiry)\nHelp the student brainstorm. Ask what they are interested in making. Suggest 2-3 concrete project ideas. For each: what it is, what skills they would learn, how hard it is. Be enthusiastic.`,
+      help:`MODE: HELP ME BUILD (Inquiry)\nAsk what they are trying to build first. Break it into small achievable steps. Suggest specific tools and tutorials. Celebrate progress. If stuck: suggest a simpler version they can finish first.`
+    };
+    return inqModes[mode]||inqModes.explain;
+  }
+
+  const modes = {
+    eli5:`MODE: ELI5 (Explain Like I am 5)\nStructure EVERY response like this - use these exact emoji headers:\n\n🎯 **What it is**\nOne sentence. Dead simple.\n\n🤔 **Think of it like...**\nOne real-world analogy. Relatable to a teenager.\n\n⚡ **The key point**\nThe one thing they must remember. Bold it.\n\n❓ **Quick check**\nAsk ONE simple question to check they got it.\n\nMax 4 sections. No walls of text. Ever.\nFor definitions: 📖 **[TERM]** = [plain english meaning in one sentence]`,
+
+    explain:`MODE: EXPLAIN IT\nStructure EVERY response in clear chunks - never a wall of text.\n\n🎯 **The simple version**\n2-3 sentences max. Plain language first.\n\n🔗 **Real world example**\nOne concrete example. Keep it short.\n\n🧠 **The technical bit**\nCorrect terminology. Still short - 2-3 sentences.\n\n❓ **Check your understanding**\nMANDATORY: Ask students to explain it back in their own words.\n\nNever combine sections into a paragraph. One concept per response.${isY910?'\nFor code: show the syntax, then one minimal example, then ask them to adapt it. Never write full solutions.':''}`,
+
+    quiz:`MODE: QUIZ ME\n- One question at a time. Never two in the same message.\n- Wait for the student answer before the next question.\n- If correct: affirm briefly then ask a slightly harder follow-up.\n- If wrong: say "Not quite - think about [small hint]" - NEVER give the answer directly.\n- Mix question types: recall, application, "what would happen if..."${isY910?', code-reading ("what does this output?"), debugging ("what is wrong with this code?")':''}.\n- After 5-6 questions: summarise what they know well and what to review.\nStart by asking which topic to focus on.`,
+
+    debate:`MODE: LET\'S DEBATE\n- Challenge the student\'s position even if you agree - play devil\'s advocate.\n- "I think so" or "probably" is never a final answer. Ask: "Why? What evidence supports that?"\n- Introduce counter-arguments they have not considered.\n- Connect to real-world implications: jobs, privacy, fairness, power, environment.${isY910?'\n- Hold Year 9/10 students to a high standard. Demand reasoning AND a real-world example.\n- Push: "Who benefits? Who is harmed? Who has the power here?"\n- End with: "If you had to write one paragraph defending your position, what would the core argument be?"':'\n- Keep language appropriate for the year level but still push them to defend their reasoning.\n- At the end: summarise the strongest points on both sides.'}\nIf the student has no topic, suggest one from the current module ethics questions.`,
+
+    help:`MODE: HELP ME THINK\nGOLDEN RULE: NEVER write content the student can paste directly into an assessment or task.\n1. Ask "What have you got so far?" before doing anything else.\n2. If they have nothing: ask "What does the question actually want you to show?"\n3. Break the task into small steps. One step at a time.\n4. When they write something: respond with "Good - what else could you add about X?" not a rewrite.\n5. Suggest checking class notes, OneNote, and SEQTA.\n6. NEVER write paragraphs, model answers, or dot-point lists they can lift directly.${isY910?'\nFor coding: ask them to share their current code first. Point to the problem area with a question. Never paste a finished solution.':''}`
+  };
+  return modes[mode]||modes.explain;
+}
 
 /**
- * Resets the conversation and shows the mode-appropriate welcome message.
- * Called when class or mode changes.
+ * Builds the complete system prompt.
+ * Injects current module content chunks from the Sheet so the AI knows
+ * exactly what the class is working on right now.
  */
+function buildSystemPrompt() {
+  let prompt = getCurriculumContext(currentClass);
+  prompt += '\n\n' + getModeInstructions(currentClass, currentMode);
+
+  // Inject current module content from Resources tab
+  if (activeModule && allResources.length > 0) {
+    const className  = CLASS_NAMES[currentClass];
+    const modResources = allResources.filter(r =>
+      r.class === className && r.module === activeModule
+    );
+
+    if (modResources.length > 0) {
+      prompt += `\n\nCURRENT MODULE: ${activeModule}`;
+      prompt += '\nThe student is currently studying this module. Use this content to answer their questions:\n';
+      modResources.forEach(r => {
+        if (r.definitions)       prompt += '\nDefinitions: '       + r.definitions;
+        if (r.success_criteria)  prompt += '\nSuccess criteria: '  + r.success_criteria;
+        if (r.tasks)             prompt += '\nTasks: '             + r.tasks;
+        if (r.key_concepts)      prompt += '\nKey concepts: '      + r.key_concepts;
+      });
+    }
+  }
+
+  // Safety guardrails
+  prompt += `\n\nCRITICAL RULES:
+- Never write content students can copy into assessments.
+- Always ask at least one follow-up question to push their thinking deeper.
+- If a student asks you to "just give me the answer" - redirect with a question.
+- Stay within the DigiTech curriculum above.
+- Keep language appropriate for the age group. Be warm, encouraging, and direct.
+- Encourage students to check class notes, OneNote, and SEQTA.
+
+RESOURCE RETRIEVAL:
+If a student asks to "pull up", "show me", "find" or "open" a resource, respond with exactly:
+RESOURCE_REQUEST: [describe what they want]`;
+
+  return prompt;
+}
+
+// =============================================================================
+// CHAT
+// =============================================================================
+
 function newChat() {
   messages = [];
   stopTTS();
   document.getElementById('chatMsgs').innerHTML = '';
-
+  const isInqNow = currentClass==='inq';
   const welcomes = {
-    eli5    : `What do you want explained in the simplest possible way? Drop a word or concept and I'll break it down like you're brand new to it.`,
-    explain : `Hey! Pick a concept from your lessons and I\'ll break it down. What do you want to understand?`,
-    quiz    : `Ready to test yourself? I\'ll go one question at a time and ramp up the difficulty. What topic are we focusing on?`,
-    debate  : `I\'m going to push back on whatever position you take - that\'s the point. What topic do you want to spar on?`,
-    help    : `Tell me what you\'re working on and what you\'ve tried so far. I won\'t do it for you but I\'ll help you think through it.`
+    eli5    :`What do you want explained in the simplest possible way? Drop a word or concept and I\'ll break it down.`,
+    explain :`Hey! Pick a concept from your lessons and I\'ll break it down. What do you want to understand?`,
+    quiz    :`Ready to test yourself? I\'ll go one question at a time and ramp up the difficulty. What topic?`,
+    debate  :isInqNow?`What do you want to make or build? Tell me your interests and I\'ll throw some project ideas at you.`:`I\'m going to push back on whatever position you take - that\'s the point. What topic?`,
+    help    :isInqNow?`What are you trying to build? Tell me where you\'re at and I\'ll help you get it working.`:`Tell me what you\'re working on and what you\'ve tried so far. I won\'t do it for you but I\'ll help you think through it.`
   };
-
-  appendAIMsg(welcomes[currentMode] || welcomes.explain);
+  appendAIMsg(welcomes[currentMode]||welcomes.explain);
   renderQuickBtns();
 }
 
-/**
- * Sends a quick prompt by pre-filling the input and calling sendMsg.
- *
- * @param {string} text - Prompt text to send
- */
 async function sendQuick(text) {
   document.getElementById('chatInput').value = text;
   await sendMsg();
 }
 
-/**
- * Reads the chat input, appends the user message, and calls the AI proxy.
- * Handles resource retrieval intent detection - if the AI response starts
- * with RESOURCE_REQUEST: it renders an inline resource card instead of
- * displaying the text as a chat bubble.
- */
 async function sendMsg() {
   if (aiLoading) return;
-
   const input = document.getElementById('chatInput');
   const text  = input.value.trim();
   if (!text) return;
-
   input.value = '';
-  appendMsg(text, 'user');
-  messages.push({ role: 'user', content: text });
-
+  appendMsg(text,'user');
+  messages.push({role:'user',content:text});
   aiLoading = true;
   document.getElementById('sendBtn').disabled = true;
-
-  const thinkEl = appendMsg('Thinking...', 'thinking');
-
+  const thinkEl = appendMsg('Thinking...','thinking');
   try {
-    const res = await fetch(SCRIPT_URL, {
-      method  : 'POST',
-      headers : { 'Content-Type': 'text/plain' },
-      body    : JSON.stringify({
-        action    : 'ai',
-        token     : WRITE_TOKEN,
-        system    : buildSystemPrompt(),
-        messages  : messages,
-        max_tokens: 800
-      })
+    const res = await fetch(SCRIPT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'ai',token:WRITE_TOKEN,system:buildSystemPrompt(),messages,max_tokens:900})
     });
-
     const data = await res.json();
-
-    if (!data.success) throw new Error(data.message || 'Proxy error');
-
-    const reply = data.content?.[0]?.text || 'Something went wrong - please try again.';
+    if (!data.success) throw new Error(data.message||'Proxy error');
+    const reply = data.content?.[0]?.text||'Something went wrong - please try again.';
     thinkEl.remove();
-
-    // Check for resource retrieval intent signal
     if (reply.startsWith('RESOURCE_REQUEST:')) {
-      const query = reply.replace('RESOURCE_REQUEST:', '').trim();
-      handleResourceRequest(query);
+      handleResourceRequest(reply.replace('RESOURCE_REQUEST:','').trim());
     } else {
       appendAIMsg(reply);
-      messages.push({ role: 'assistant', content: reply });
-
-      // Read aloud if TTS is enabled
+      messages.push({role:'assistant',content:reply});
       if (ttsEnabled) speakText(reply);
     }
-
-  } catch (err) {
+  } catch(err) {
     thinkEl.remove();
-    appendAIMsg('Connection error - please try again. (' + err.message + ')');
+    appendAIMsg('Connection error - please try again. ('+err.message+')');
   }
-
   aiLoading = false;
   document.getElementById('sendBtn').disabled = false;
 }
 
 /**
- * Handles a resource retrieval request from the AI.
- * Searches allResources for the best match and renders an inline card
- * directly in the chat stream rather than opening the resource browser.
- *
- * @param {string} query - Natural language description of the requested resource
+ * Handles a resource retrieval request.
+ * Scores resources by keyword match against the query.
+ * Boosts resources from the current module.
  */
 function handleResourceRequest(query) {
-  const q          = query.toLowerCase();
-  const className  = currentClass === '7' ? 'Year 7' : 'Year 9/10';
-
-  // Find the best matching resource using a simple keyword scoring approach
-  const matches = allResources
-    .filter(r => r.class === className)
+  const q         = query.toLowerCase();
+  const className = CLASS_NAMES[currentClass];
+  const matches   = allResources
+    .filter(r => r.class===className)
     .map(r => {
       let score = 0;
-      const haystack = [r.title, r.type, r.topics, r.summary, String(r.week)]
-        .join(' ').toLowerCase();
-
-      // Score each word in the query against the resource fields
-      q.split(' ').forEach(word => {
-        if (word.length < 3) return;
-        if (haystack.includes(word)) score++;
-      });
-
-      // Boost current week resources
-      if (r.current === true || r.current === 'true') score += 2;
-
-      return { r, score };
+      const hay = [r.title,r.type,r.topics,r.summary,String(r.week),r.module].join(' ').toLowerCase();
+      q.split(' ').forEach(word => { if(word.length>=3&&hay.includes(word)) score++; });
+      if (activeModule && r.module===activeModule) score += 2;
+      return {r,score};
     })
-    .filter(x => x.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score);
 
   const msgEl = appendMsgElement('ai');
-
   if (!matches.length) {
-    msgEl.textContent = "I couldn't find a matching resource in your Sheet. Try browsing the resource panel on the left, or check your SEQTA resources.";
-    messages.push({ role: 'assistant', content: msgEl.textContent });
+    msgEl.textContent = "I couldn't find a matching resource. Try browsing the resource panel or check SEQTA.";
+    messages.push({role:'assistant',content:msgEl.textContent});
     return;
   }
-
   const best = matches[0].r;
-  const fmt  = (best.file_format || 'html').toLowerCase();
-  const ac   = currentClass === '7' ? 'ract-blue' : 'ract-purple';
-
-  // Build inline action buttons based on format
+  const fmt  = (best.file_format||'html').toLowerCase();
+  const accMap={'7':'ract-blue','8':'ract-green','910':'ract-purple','inq':'ract-teal'};
+  const ac   = accMap[currentClass]||'ract-blue';
   let btns = '';
-  if (fmt === 'onenote') {
+  if (fmt==='onenote') {
     btns = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(best.id)}')">&#128211; How to find this</button>`;
-  } else if (fmt === 'html' || fmt === 'video') {
+  } else if (fmt==='html'||fmt==='htm') {
     btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>`;
-  } else if (fmt === 'docx' || fmt === 'gdoc') {
-    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url.replace('/view','/edit'))}','_blank')">&#128196; Open in Word</button>
-      ${best.print_ready === 'true' ? `<button class="ract ract-red" onclick="window.open('${esc(best.url.replace('/view','/export?format=pdf'))}','_blank')">&#128424; Print</button>` : ''}`;
-  } else if (fmt === 'pdf') {
-    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>
-      ${best.print_ready === 'true' ? `<button class="ract ract-red" onclick="window.open('${esc(best.url)}','_blank')">&#128424; Open to print</button>` : ''}`;
+  } else if (fmt==='docx'||fmt==='gdoc') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url.replace('/view','/edit'))}','_blank')">&#128196; Open in Word</button>${best.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(best.url.replace('/view','/export?format=pdf'))}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='pdf') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>${best.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(best.url)}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='video') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#9654; Watch</button>`;
   }
-
-  const oneNoteBox = fmt === 'onenote' && best.onenote_path
-    ? `<div id="on-${esc(best.id)}" style="display:none">
-        <div class="onenote-box" style="margin:8px 0 0">
-          <div class="onenote-title">&#128211; How to find this</div>
-          <div class="onenote-steps">${best.onenote_path.split('>').map((s,i) => `${i+1}. ${s.trim()}`).join('<br>')}</div>
-        </div>
-      </div>`
+  const oneNoteBox = fmt==='onenote'&&best.onenote_path
+    ? `<div id="on-${esc(best.id)}" style="display:none"><div class="onenote-box" style="margin:8px 0 0"><div class="onenote-title">&#128211; How to find this</div><div class="onenote-steps">${best.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
     : '';
-
-  msgEl.innerHTML = `Here's the resource I found for you:
+  msgEl.innerHTML = `Here's the resource I found:
     <div class="inline-rcard">
       <div class="inline-rcard-head">
         <div class="inline-rcard-title">${esc(best.title)}</div>
-        <div class="inline-rcard-sub">Term ${esc(String(best.term))} - Week ${esc(String(best.week))} - ${esc(best.type)}</div>
+        <div class="inline-rcard-sub">${esc(best.module||'')} - Term ${esc(String(best.term))} Wk${esc(String(best.week))} - ${esc(best.type)}</div>
       </div>
-      <div style="font-size:11px;color:var(--ink2);padding:7px 11px;line-height:1.5">${esc(best.summary || '')}</div>
+      <div style="font-size:11px;color:var(--ink2);padding:7px 11px;line-height:1.5">${esc(best.summary||'')}</div>
       <div class="inline-rcard-btns">${btns}</div>
       ${oneNoteBox}
     </div>`;
-
-  messages.push({ role: 'assistant', content: 'Here is the resource: ' + best.title });
+  messages.push({role:'assistant',content:'Here is the resource: '+best.title});
 }
 
+// =============================================================================
+// MESSAGE RENDERING
+// =============================================================================
+
 /**
- * Formats an AI response string into chunked HTML.
- * Converts markdown-style bold, emoji headers, and newlines into
- * clean spaced HTML so responses render as readable chunks rather
- * than walls of text - important for Gen Z/Alpha readability.
- *
- * @param {string} text - Raw AI response text
- * @returns {string} HTML string safe to set as innerHTML
+ * Formats AI response text into chunked HTML.
+ * Converts **bold** and emoji headers into spaced readable blocks.
  */
 function formatAIResponse(text) {
-  // Escape HTML first to prevent XSS
   let html = esc(text);
-
-  // Convert **bold** to <strong>
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-  // Convert emoji header lines (e.g. "🎯 **What it is**") into styled section headers
-  // These start with an emoji and are on their own line
-  html = html.replace(
-    /^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}&#\d;]+\s+<strong>[^<]+<\/strong>)/ugm,
-    '<div class="ai-section-head">$1</div>'
-  );
-
-  // Split on double newlines to create paragraphs/chunks
+  html = html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
   const chunks = html.split(/\n\n+/);
-  html = chunks
-    .map(chunk => {
-      const trimmed = chunk.trim();
-      if (!trimmed) return '';
-      // Single newlines within a chunk become line breaks
-      const withBreaks = trimmed.replace(/\n/g, '<br>');
-      return `<div class="ai-chunk">${withBreaks}</div>`;
-    })
-    .filter(Boolean)
-    .join('');
-
-  return html;
+  return chunks.map(chunk=>{
+    const trimmed=chunk.trim();
+    if(!trimmed) return '';
+    return `<div class="ai-chunk">${trimmed.replace(/\n/g,'<br>')}</div>`;
+  }).filter(Boolean).join('');
 }
 
-/**
- * Appends a formatted AI message bubble to the chat area.
- * Uses innerHTML with the formatted response so emoji headers,
- * bold text and chunked sections render correctly.
- *
- * @param {string} text - Raw AI response text
- * @returns {HTMLElement} The appended message element
- */
 function appendAIMsg(text) {
-  const container = document.getElementById('chatMsgs');
-  const el        = document.createElement('div');
-  el.className    = 'msg ai';
-  el.innerHTML    = formatAIResponse(text);
+  const container=document.getElementById('chatMsgs');
+  const el=document.createElement('div');
+  el.className='msg ai';
+  el.innerHTML=formatAIResponse(text);
   container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  container.scrollTop=container.scrollHeight;
   return el;
 }
 
-/**
- * Creates and appends an empty message element.
- * Used when the content will be set via innerHTML (resource cards).
- *
- * @param {string} type - 'ai' | 'user' | 'thinking'
- * @returns {HTMLElement} The empty element
- */
-/**
- * Appends a plain text message bubble (user messages and thinking indicator).
- * Uses textContent not innerHTML - no formatting applied.
- *
- * @param {string} text - Message text
- * @param {string} type - 'user' or 'thinking'
- * @returns {HTMLElement} The appended element
- */
-function appendMsg(text, type) {
-  const el = appendMsgElement(type);
-  el.textContent = text;
+function appendMsg(text,type) {
+  const el=appendMsgElement(type);
+  el.textContent=text;
   return el;
 }
 
 function appendMsgElement(type) {
-  const container = document.getElementById('chatMsgs');
-  const el        = document.createElement('div');
-  const uMap    = { '7':'u7', '8':'u8', '910':'u910', 'inq':'uinq' };
-  const userCls = type === 'user' ? ' ' + (uMap[currentClass] || 'u7') : '';
-  el.className    = 'msg ' + type + userCls;
+  const container=document.getElementById('chatMsgs');
+  const el=document.createElement('div');
+  const uMap={'7':'u7','8':'u8','910':'u910','inq':'uinq'};
+  const userCls=type==='user'?' '+(uMap[currentClass]||'u7'):'';
+  el.className='msg '+type+userCls;
   container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  container.scrollTop=container.scrollHeight;
   return el;
 }
 
-
 // =============================================================================
-// TEXT TO SPEECH
-// Uses the Web Speech API (SpeechSynthesis) if available.
-// Students can toggle read-aloud for AI responses.
+// TTS
 // =============================================================================
 
-/** Initialises TTS controls if the browser supports Speech Synthesis */
 function initTTS() {
-  if (!('speechSynthesis' in window)) return;
-  const bar = document.getElementById('ttsBar');
-  bar.style.display = 'flex';
+  if(!('speechSynthesis' in window)) return;
+  document.getElementById('ttsBar').style.display='flex';
 }
 
-/** Toggles TTS on/off */
 function toggleTTS() {
-  ttsEnabled = !ttsEnabled;
-  const btn = document.getElementById('ttsToggle');
-  btn.textContent = ttsEnabled ? 'On' : 'Off';
-  btn.classList.toggle('active', ttsEnabled);
-  if (!ttsEnabled) stopTTS();
+  ttsEnabled=!ttsEnabled;
+  const btn=document.getElementById('ttsToggle');
+  btn.textContent=ttsEnabled?'On':'Off';
+  btn.classList.toggle('active',ttsEnabled);
+  if(!ttsEnabled) stopTTS();
 }
 
-/**
- * Speaks a text string using the Web Speech API.
- * Strips markdown-style formatting before speaking.
- *
- * @param {string} text - Text to speak
- */
 function speakText(text) {
-  if (!ttsEnabled || !('speechSynthesis' in window)) return;
+  if(!ttsEnabled||!('speechSynthesis' in window)) return;
   stopTTS();
-
-  // Strip formatting characters before reading aloud
-  const clean = text
-    .replace(/\*\*/g, '')
-    .replace(/\*/g, '')
-    .replace(/#{1,6}\s/g, '')
-    .replace(/`/g, '');
-
-  currentUtterance          = new SpeechSynthesisUtterance(clean);
-  currentUtterance.rate     = 0.95;
-  currentUtterance.pitch    = 1;
-  currentUtterance.lang     = 'en-AU';
+  const clean=text.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').replace(/`/g,'');
+  currentUtterance=new SpeechSynthesisUtterance(clean);
+  currentUtterance.rate=0.95;currentUtterance.pitch=1;currentUtterance.lang='en-AU';
   window.speechSynthesis.speak(currentUtterance);
 }
 
-/** Stops any currently playing TTS utterance */
 function stopTTS() {
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-  currentUtterance = null;
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  currentUtterance=null;
 }
 
-
 // =============================================================================
-// UTILITY
+// UTILITIES
 // =============================================================================
 
-/**
- * HTML-escapes a string for safe insertion into innerHTML.
- *
- * @param {*} s - Value to escape
- * @returns {string} HTML-safe string
- */
 function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
 
 // =============================================================================
 // INITIALISATION
+// Check URL params for pre-selected class (from homepage class cards)
 // =============================================================================
 
 window.addEventListener('load', () => {
-  // Set the current week badge in the header
+  // Read ?class= param from URL for direct linking from homepage
+  const params = new URLSearchParams(window.location.search);
+  const urlClass = params.get('class');
+  if (urlClass && ['7','8','910','inq'].includes(urlClass)) {
+    currentClass = urlClass;
+  }
+
   document.getElementById('weekBadge').innerHTML = '&#128197; Week ' + CURRENT_WEEK;
 
-  // Initialise TTS if supported
   initTTS();
-
-  // Render initial UI state
   renderFilters();
   renderModePills();
   renderQuickBtns();
   newChat();
 
-  // Load resources from the Sheet
-  loadResources();
+  // Update class tab visual state
+  document.getElementById('tab7').className   = 'class-tab'+(currentClass==='7'  ?' active-7':'');
+  document.getElementById('tab8').className   = 'class-tab'+(currentClass==='8'  ?' active-8':'');
+  document.getElementById('tab910').className = 'class-tab'+(currentClass==='910'?' active-910':'');
+  document.getElementById('tabinq').className = 'class-tab'+(currentClass==='inq'?' active-inq':'');
+  document.getElementById('sendBtn').className='send-btn sb'+currentClass;
+
+  // Load schedule first, then resources
+  loadSchedule().then(() => loadResources());
 });
 </script>
 </body>
