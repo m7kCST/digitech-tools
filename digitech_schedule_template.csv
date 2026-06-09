@@ -1,0 +1,105 @@
+class,term,year,module,start_week,end_week,active,ac_codes,notes
+Year 7,1,2026,Microsoft Office Suite,1,3,FALSE,"AC9TDI8P11, AC9TDI8P12",Teaching block 1
+Year 7,1,2026,Assessment 1 - Excel Task,4,4,FALSE,"AC9TDI8P11",Assessment Week 4
+Year 7,1,2026,Microsoft Office Suite,5,6,FALSE,"AC9TDI8P11, AC9TDI8P12",Teaching block 2
+Year 7,1,2026,Assessment 2 - OneNote Guide,7,7,FALSE,"AC9TDI8P11, AC9TDI8P12",Assessment Week 7
+Year 7,1,2026,Digital Portfolio,8,9,FALSE,"AC9TDI8P11, AC9TDI8P12",Buffer and synthesis
+Year 7,1,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI8P11, AC9TDI8P12",Portfolio Week 10
+Year 7,2,2026,Digital Systems and Hardware,1,3,FALSE,"AC9TDI8K01",Teaching block 1 - COMPLETED
+Year 7,2,2026,Assessment 1 - System Diagram,4,4,FALSE,"AC9TDI8K01, AC9TDI8K02",Assessment Week 4 - COMPLETED
+Year 7,2,2026,Binary Numbers and Images,5,6,FALSE,"AC9TDI8K03, AC9TDI8K04",Teaching block 2
+Year 7,2,2026,Assessment 2 - File Journey,7,7,FALSE,"AC9TDI8K01, AC9TDI8K02, AC9TDI8K03, AC9TDI8K04",Assessment Week 7
+Year 7,2,2026,Binary Sound and Synthesis,8,9,FALSE,"AC9TDI8K03",Buffer and synthesis
+Year 7,2,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI8K01, AC9TDI8K02, AC9TDI8K03, AC9TDI8K04",Portfolio Week 10
+Year 7,3,2027,Working with Data,1,3,FALSE,"AC9TDI8P01, AC9TDI8P02, AC9TDI8P14",Teaching block 1
+Year 7,3,2027,Assessment 1 - Data Analysis,4,4,FALSE,"AC9TDI8P01, AC9TDI8P02",Assessment Week 4
+Year 7,3,2027,General-purpose Programming,5,6,FALSE,"AC9TDI8P05, AC9TDI8P06, AC9TDI8P09",Teaching block 2
+Year 7,3,2027,Assessment 2 - Algorithm and Code,7,7,FALSE,"AC9TDI8P05, AC9TDI8P06, AC9TDI8P09",Assessment Week 7
+Year 7,3,2027,Functions and Debugging,8,9,FALSE,"AC9TDI8P06, AC9TDI8P09",Buffer and extension
+Year 7,3,2027,Portfolio and Reflection,10,10,FALSE,"AC9TDI8P01, AC9TDI8P02, AC9TDI8P05, AC9TDI8P09",Portfolio Week 10
+Year 7,4,2027,Creating a Digital Solution,1,3,FALSE,"AC9TDI8P04, AC9TDI8P07, AC9TDI8P08",Teaching block 1
+Year 7,4,2027,Assessment 1 - Design Brief,4,4,FALSE,"AC9TDI8P04, AC9TDI8P07, AC9TDI8P08",Assessment Week 4
+Year 7,4,2027,Creating a Digital Solution,5,6,FALSE,"AC9TDI8P09, AC9TDI8P11, AC9TDI8P12",Teaching block 2
+Year 7,4,2027,Assessment 2 - Prototype,7,7,FALSE,"AC9TDI8P08, AC9TDI8P09, AC9TDI8P10",Assessment Week 7
+Year 7,4,2027,Test and Evaluate,8,9,FALSE,"AC9TDI8P10, AC9TDI8P12",Buffer and refinement
+Year 7,4,2027,Portfolio and Reflection,10,10,FALSE,"AC9TDI8P04, AC9TDI8P07, AC9TDI8P08, AC9TDI8P09, AC9TDI8P10, AC9TDI8P12",Portfolio Week 10
+Year 8,1,2026,Networks and Cyber Security,1,3,FALSE,"AC9TDI8K02, AC9TDI8P13, AC9TDI8P14",Teaching block 1
+Year 8,1,2026,Assessment 1 - Cyber Case Study,4,4,FALSE,"AC9TDI8K02, AC9TDI8P13",Assessment Week 4
+Year 8,1,2026,Working with Data,5,6,FALSE,"AC9TDI8P01, AC9TDI8P02, AC9TDI8P03",Teaching block 2
+Year 8,1,2026,Assessment 2 - Data Audit,7,7,FALSE,"AC9TDI8P01, AC9TDI8P14",Assessment Week 7
+Year 8,1,2026,Databases and Data Project,8,9,FALSE,"AC9TDI8P02, AC9TDI8P03",Buffer and extension
+Year 8,1,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI8K02, AC9TDI8P01, AC9TDI8P02, AC9TDI8P03, AC9TDI8P13, AC9TDI8P14",Portfolio Week 10
+Year 8,2,2026,General-purpose Programming,1,3,FALSE,"AC9TDI8P05, AC9TDI8P06, AC9TDI8P09",Teaching block 1
+Year 8,2,2026,Assessment 1 - Trace and Debug,4,4,FALSE,"AC9TDI8P05, AC9TDI8P06, AC9TDI8P09",Assessment Week 4
+Year 8,2,2026,Creating a Digital Solution,5,6,FALSE,"AC9TDI8P04, AC9TDI8P07, AC9TDI8P08, AC9TDI8P11",Teaching block 2
+Year 8,2,2026,Assessment 2 - Design and Build,7,7,FALSE,"AC9TDI8P04, AC9TDI8P07, AC9TDI8P08, AC9TDI8P09, AC9TDI8P10",Assessment Week 7
+Year 8,2,2026,Test Evaluate and Agile,8,9,FALSE,"AC9TDI8P10, AC9TDI8P12",Buffer and refinement
+Year 8,2,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI8P04, AC9TDI8P05, AC9TDI8P06, AC9TDI8P07, AC9TDI8P08, AC9TDI8P09, AC9TDI8P10, AC9TDI8P12",Portfolio Week 10 - band nearly complete
+Year 8,3,2026,AI and Machine Learning,1,3,FALSE,"AC9TDI8P05, AC9TDI8P11, AC9TDI8P14",Teaching block 1
+Year 8,3,2026,Assessment 1 - AI Explainer,4,4,FALSE,"AC9TDI8P05, AC9TDI8P11, AC9TDI8P14",Assessment Week 4
+Year 8,3,2026,Building with AI Tools,5,6,FALSE,"AC9TDI8P09, AC9TDI8P11",Teaching block 2
+Year 8,3,2026,Assessment 2 - AI Build Task,7,7,FALSE,"AC9TDI8P09, AC9TDI8P11",Assessment Week 7
+Year 8,3,2026,AI Ethics and Society,8,9,FALSE,"AC9TDI8P14",Buffer and extension
+Year 8,3,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI8P05, AC9TDI8P09, AC9TDI8P11, AC9TDI8P14",Portfolio Week 10
+Year 8,4,2026,Extension and Enrichment,1,3,FALSE,"AC9TDI8P11, AC9TDI8P12",Teaching block 1 - student stream choice
+Year 8,4,2026,Assessment 1 - Build Log,4,4,FALSE,"AC9TDI8P11, AC9TDI8P12",Assessment Week 4
+Year 8,4,2026,Extension and Enrichment,5,6,FALSE,"AC9TDI8P11, AC9TDI8P12",Teaching block 2 - continued build
+Year 8,4,2026,Assessment 2 - Peer Review,7,7,FALSE,"AC9TDI8P11, AC9TDI8P12",Assessment Week 7
+Year 8,4,2026,Final Polish and Documentation,8,9,FALSE,"AC9TDI8P11, AC9TDI8P12",Buffer and finalise
+Year 8,4,2026,Year 8 Showcase Portfolio,10,10,FALSE,"AC9TDI8P11, AC9TDI8P12",Portfolio Week 10 - ALL Y7/8 BAND CODES COVERED
+Year 9,1,2026,3D Printing and Design,1,3,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08",Teaching block 1 - COMPLETED
+Year 9,1,2026,Assessment 1 - Tinkercad Design,4,4,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08",Assessment Week 4 - COMPLETED
+Year 9,1,2026,3D Printing and Design,5,6,FALSE,"AC9TDI10P04, AC9TDI10P08, AC9TDI10P10",Teaching block 2 - COMPLETED
+Year 9,1,2026,Assessment 2 - Design Sprint,7,7,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08",Assessment Week 7 - COMPLETED
+Year 9,1,2026,Build and Evaluate,8,9,FALSE,"AC9TDI10P08, AC9TDI10P10",Buffer and iteration - COMPLETED
+Year 9,1,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08, AC9TDI10P10, AC9TDI10P12",Portfolio Week 10 - COMPLETED
+Year 9,2,2026,Python and micro:bit,1,3,FALSE,"AC9TDI10P01, AC9TDI10P05, AC9TDI10P06",Teaching block 1 - COMPLETED
+Year 9,2,2026,Assessment 1 - Sensor Project,4,4,FALSE,"AC9TDI10P01, AC9TDI10P05, AC9TDI10P06",Assessment Week 4 - COMPLETED
+Year 9,2,2026,Bit:Bot Automation,5,6,TRUE,"AC9TDI10P05, AC9TDI10P06, AC9TDI10P09",Teaching block 2 - CURRENT
+Year 9,2,2026,Assessment 2 - Bit:Bot Challenge,7,7,FALSE,"AC9TDI10P05, AC9TDI10P06, AC9TDI10P09",Assessment Week 7
+Year 9,2,2026,Line Following and Autonomous,8,9,FALSE,"AC9TDI10P05, AC9TDI10P09",Buffer and extension
+Year 9,2,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI10P01, AC9TDI10P05, AC9TDI10P06, AC9TDI10P09",Portfolio Week 10
+Year 9,3,2026,AI and Machine Learning,1,3,FALSE,"AC9TDI10P01, AC9TDI10P05, AC9TDI10P09, AC9TDI10P14",Teaching block 1
+Year 9,3,2026,Assessment 1 - AI Ethics Case Study,4,4,FALSE,"AC9TDI10P14",Assessment Week 4
+Year 9,3,2026,Web Development,5,6,FALSE,"AC9TDI10K02, AC9TDI10P11",Teaching block 2
+Year 9,3,2026,Assessment 2 - Web Page Task,7,7,FALSE,"AC9TDI10K02, AC9TDI10P11",Assessment Week 7
+Year 9,3,2026,JavaScript and Web Project,8,9,FALSE,"AC9TDI10P11",Buffer and extension
+Year 9,3,2026,Portfolio and Reflection,10,10,FALSE,"AC9TDI10K02, AC9TDI10P11, AC9TDI10P14",Portfolio Week 10
+Year 9,4,2026,Digital Solution Project,1,3,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08",Teaching block 1
+Year 9,4,2026,Assessment 1 - Design Documentation,4,4,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08",Assessment Week 4
+Year 9,4,2026,Digital Solution Project,5,6,FALSE,"AC9TDI10P09, AC9TDI10P11, AC9TDI10P12",Teaching block 2
+Year 9,4,2026,Assessment 2 - Working Prototype,7,7,FALSE,"AC9TDI10P08, AC9TDI10P09, AC9TDI10P10",Assessment Week 7
+Year 9,4,2026,Test Evaluate and Refine,8,9,FALSE,"AC9TDI10P10",Buffer and refinement
+Year 9,4,2026,Year 9 Showcase Portfolio,10,10,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08, AC9TDI10P09, AC9TDI10P10, AC9TDI10P12",Portfolio Week 10
+Year 10,1,2027,Data Science with Python,1,3,FALSE,"AC9TDI10P01, AC9TDI10P02, AC9TDI10P03",Teaching block 1
+Year 10,1,2027,Assessment 1 - Data Science Task,4,4,FALSE,"AC9TDI10P01, AC9TDI10P02",Assessment Week 4
+Year 10,1,2027,Advanced Cybersecurity,5,6,FALSE,"AC9TDI10K01, AC9TDI10P13",Teaching block 2
+Year 10,1,2027,Assessment 2 - Database Task,7,7,FALSE,"AC9TDI10P03",Assessment Week 7
+Year 10,1,2027,Threat Modelling and Pen Testing,8,9,FALSE,"AC9TDI10K01, AC9TDI10P13",Buffer and extension
+Year 10,1,2027,Portfolio and Reflection,10,10,FALSE,"AC9TDI10K01, AC9TDI10P01, AC9TDI10P02, AC9TDI10P03, AC9TDI10P13",Portfolio Week 10
+Year 10,2,2027,Privacy and Ethics,1,3,FALSE,"AC9TDI10P14",Teaching block 1
+Year 10,2,2027,Assessment 1 - Privacy Audit,4,4,FALSE,"AC9TDI10P14",Assessment Week 4
+Year 10,2,2027,Capstone Project,5,6,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08, AC9TDI10P09, AC9TDI10P11",Teaching block 2
+Year 10,2,2027,Assessment 2 - Capstone Checkpoint,7,7,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08, AC9TDI10P10",Assessment Week 7
+Year 10,2,2027,Capstone Build and Evaluate,8,9,FALSE,"AC9TDI10P09, AC9TDI10P10, AC9TDI10P12",Buffer and finalise
+Year 10,2,2027,Year 10 Final Portfolio and Showcase,10,10,FALSE,"AC9TDI10P04, AC9TDI10P07, AC9TDI10P08, AC9TDI10P09, AC9TDI10P10, AC9TDI10P11, AC9TDI10P12, AC9TDI10P14",Portfolio Week 10 - ALL Y9/10 BAND CODES COVERED
+Year 10,3,2027,Data Compression,1,3,FALSE,"AC9TDI10K03",Teaching block 1
+Year 10,3,2027,Assessment 1 - Compression Task,4,4,FALSE,"AC9TDI10K03, AC9TDI10P09",Assessment Week 4
+Year 10,3,2027,Object-oriented Programming,5,6,FALSE,"AC9TDI10P09",Teaching block 2
+Year 10,3,2027,Assessment 2 - OOP Design,7,7,FALSE,"AC9TDI10P09",Assessment Week 7
+Year 10,3,2027,OOP Project Build,8,9,FALSE,"AC9TDI10P09",Buffer and build
+Year 10,3,2027,Portfolio and Reflection,10,10,FALSE,"AC9TDI10K03, AC9TDI10P09",Portfolio Week 10
+Year 10,4,2027,Extension and Enrichment,1,3,FALSE,"AC9TDI10P11, AC9TDI10P12",Teaching block 1 - student stream choice
+Year 10,4,2027,Assessment 1 - Build Log,4,4,FALSE,"AC9TDI10P11, AC9TDI10P12",Assessment Week 4
+Year 10,4,2027,Extension and Enrichment,5,6,FALSE,"AC9TDI10P11, AC9TDI10P12",Teaching block 2 - continued build
+Year 10,4,2027,Assessment 2 - Peer Showcase,7,7,FALSE,"AC9TDI10P11, AC9TDI10P12",Assessment Week 7
+Year 10,4,2027,Final Polish and Documentation,8,9,FALSE,"AC9TDI10P11, AC9TDI10P12",Buffer and finalise
+Year 10,4,2027,Year 10 Celebration Showcase,10,10,FALSE,"AC9TDI10P11, AC9TDI10P12",Portfolio Week 10 - COMPLETE
+Inquiry,1,2026,Open Exploration,1,7,FALSE,"AC9TDI8P11, AC9TDI10P11",Free project time - no assessments in Inquiry
+Inquiry,1,2026,Showcase and Reflection,8,10,FALSE,"AC9TDI8P11, AC9TDI10P11",Share what you made
+Inquiry,2,2026,Open Exploration,1,7,FALSE,"AC9TDI8P11, AC9TDI10P11",Free project time
+Inquiry,2,2026,Showcase and Reflection,8,10,FALSE,"AC9TDI8P11, AC9TDI10P11",Share what you made
+Inquiry,3,2026,Open Exploration,1,7,FALSE,"AC9TDI8P11, AC9TDI10P11",Free project time
+Inquiry,3,2026,Showcase and Reflection,8,10,FALSE,"AC9TDI8P11, AC9TDI10P11",Share what you made
+Inquiry,4,2026,Open Exploration,1,7,FALSE,"AC9TDI8P11, AC9TDI10P11",Free project time
+Inquiry,4,2026,Showcase and Reflection,8,10,FALSE,"AC9TDI8P11, AC9TDI10P11",Share what you made
