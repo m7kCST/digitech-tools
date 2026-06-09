@@ -66,6 +66,14 @@
   --y910l:#EEEDFE;
   --y910d:#3C3489;
   --y910m:#7F77DD;
+  --y8:#2E7D32;
+  --y8l:#E8F5E9;
+  --y8d:#1B5E20;
+  --y8m:#43A047;
+  --inq:#00695C;
+  --inql:#E0F2F1;
+  --inqd:#004D40;
+  --inqm:#26A69A;
   --green:#3B6D11;
   --greenl:#EAF3DE;
   --amber:#854F0B;
@@ -116,7 +124,8 @@ body{
 }
 
 /* Class selector tabs */
-.class-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.class-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+@media(max-width:700px){.class-tabs{grid-template-columns:1fr 1fr}}
 .class-tab{
   padding:13px 16px;border-radius:var(--radiuslg);
   border:1.5px solid var(--border);background:var(--surface);
@@ -136,9 +145,15 @@ body{
 .class-tab.active-7{border-color:var(--y7);background:var(--y7l)}
 .class-tab.active-7 .class-tab-icon{background:var(--y7);color:white}
 .class-tab.active-7 .class-tab-title{color:var(--y7d)}
+.class-tab.active-8{border-color:var(--y8);background:var(--y8l)}
+.class-tab.active-8 .class-tab-icon{background:var(--y8);color:white}
+.class-tab.active-8 .class-tab-title{color:var(--y8d)}
 .class-tab.active-910{border-color:var(--y910);background:var(--y910l)}
 .class-tab.active-910 .class-tab-icon{background:var(--y910);color:white}
 .class-tab.active-910 .class-tab-title{color:var(--y910d)}
+.class-tab.active-inq{border-color:var(--inq);background:var(--inql)}
+.class-tab.active-inq .class-tab-icon{background:var(--inq);color:white}
+.class-tab.active-inq .class-tab-title{color:var(--inqd)}
 
 /* Two-panel main layout */
 .main-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0}
@@ -178,7 +193,9 @@ body{
 }
 .filter-pill:hover{background:var(--surface);color:var(--ink)}
 .filter-pill.active-7  {background:var(--y7l);  color:var(--y7d);  border-color:var(--y7)}
+.filter-pill.active-8  {background:var(--y8l);  color:var(--y8d);  border-color:var(--y8)}
 .filter-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
+.filter-pill.active-inq{background:var(--inql); color:var(--inqd); border-color:var(--inq)}
 
 /* Search input */
 .search-row{padding:8px 10px;border-bottom:1px solid var(--border)}
@@ -245,7 +262,9 @@ body{
 }
 .ract:hover{opacity:.85}
 .ract-blue  {background:var(--y7);  color:white}
+.ract-green {background:var(--y8);  color:white}
 .ract-purple{background:var(--y910);color:white}
+.ract-teal  {background:var(--inq); color:white}
 .ract-red   {background:var(--red); color:white}
 .ract-ghost {background:var(--surface2);color:var(--ink);border:1px solid var(--border2)}
 
@@ -292,7 +311,9 @@ body{
 }
 .mode-pill:hover{background:var(--surface);color:var(--ink)}
 .mode-pill.active-7  {background:var(--y7l);  color:var(--y7d);  border-color:var(--y7)}
+.mode-pill.active-8  {background:var(--y8l);  color:var(--y8d);  border-color:var(--y8)}
 .mode-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
+.mode-pill.active-inq{background:var(--inql); color:var(--inqd); border-color:var(--inq)}
 
 /* Chat message area */
 .chat-msgs{
@@ -320,7 +341,9 @@ body{
   border-bottom-right-radius:3px;
 }
 .msg.u7  {background:var(--y7)}
+.msg.u8  {background:var(--y8)}
 .msg.u910{background:var(--y910)}
+.msg.uinq{background:var(--inq)}
 .msg.thinking{
   align-self:flex-start;
   background:var(--surface2);color:var(--ink3);
@@ -382,7 +405,9 @@ body{
 .send-btn:hover{opacity:.88}
 .send-btn:disabled{opacity:.4;cursor:not-allowed}
 .sb7  {background:var(--y7)}
+.sb8  {background:var(--y8)}
 .sb910{background:var(--y910)}
+.sbinq{background:var(--inq)}
 
 /* Chunked AI response formatting
  * Each logical section of an AI response gets its own spaced block.
@@ -467,14 +492,28 @@ body{
       <div class="class-tab-icon">&#128187;</div>
       <div>
         <div class="class-tab-title">Year 7</div>
-        <div class="class-tab-sub">Digital Systems and Data</div>
+        <div class="class-tab-sub">Digital Systems</div>
+      </div>
+    </button>
+    <button class="class-tab" id="tab8" onclick="setClass('8')">
+      <div class="class-tab-icon">&#128202;</div>
+      <div>
+        <div class="class-tab-title">Year 8</div>
+        <div class="class-tab-sub">Networks and Data</div>
       </div>
     </button>
     <button class="class-tab" id="tab910" onclick="setClass('910')">
       <div class="class-tab-icon">&#129302;</div>
       <div>
         <div class="class-tab-title">Year 9/10</div>
-        <div class="class-tab-sub">Automation and 3D Design</div>
+        <div class="class-tab-sub">Automation and 3D</div>
+      </div>
+    </button>
+    <button class="class-tab" id="tabinq" onclick="setClass('inq')">
+      <div class="class-tab-icon">&#128640;</div>
+      <div>
+        <div class="class-tab-title">Inquiry</div>
+        <div class="class-tab-sub">Free exploration</div>
       </div>
     </button>
   </div>
@@ -614,12 +653,26 @@ const QUICK_PROMPTS = {
     debate  : ['Should schools track devices?', 'Who owns your data?', 'Should AI mark work?', 'Is the digital divide fair?'],
     help    : ['Help with my system diagram', 'Stuck on the assessment', 'Check my binary', 'Help me start the file journey task']
   },
+  '8': {
+    explain : ['What is a network?', 'Explain cybersecurity', 'What is a database?', 'How does the internet work?'],
+    eli5    : ['What is WiFi?', 'What is hacking?', 'What is a spreadsheet?', 'What is encryption?'],
+    quiz    : ['Quiz me on networks', 'Test me on cyber threats', 'Spreadsheet formulas quiz', 'Data and binary quiz'],
+    debate  : ['Should governments be able to monitor internet traffic?', 'Is personal data ever truly private?', 'Should schools block social media?', 'Who is responsible for cybercrime?'],
+    help    : ['Help with my spreadsheet', 'Stuck on my data project', 'Help with my digital solution', 'Check my network diagram']
+  },
   '910': {
     explain : ['Explain PWM', 'What is a function?', 'Bit:Bot XL wiring', 'Tolerance in 3D printing'],
     eli5    : ['PWM in simple words', 'What does def do?', 'Why use functions?', 'What is duty cycle?'],
     quiz    : ['Quiz me on Python', 'Test micro:bit sensors', '3D printing quiz', 'Mix both terms'],
     debate  : ['Robots replacing workers?', 'Who owns a 3D design?', 'AI in schools?', 'Autonomous vehicles and blame'],
     help    : ['My Bit:Bot code is wrong', 'Help plan my portfolio', 'Stuck on a function', 'Assessment help']
+  },
+  'inq': {
+    explain : ['How does AI work?', 'What can I make with a micro:bit?', 'How does 3D printing work?', 'What is game design?'],
+    eli5    : ['What is coding?', 'What is AI?', 'How does WiFi work?', 'What is an algorithm?'],
+    quiz    : ['Quiz me on anything tech', 'Test me on AI', 'What do I know about coding?', 'Tech trivia'],
+    debate  : ['Will AI take over all jobs?', 'Should kids learn to code?', 'Is social media good or bad?', 'Should robots have rights?'],
+    help    : ['I want to build something - where do I start?', 'Help me with my project idea', 'I am stuck on my creation', 'What should I make next?']
   }
 };
 
@@ -671,6 +724,49 @@ let currentUtterance = null;
  * @returns {string} Curriculum context block
  */
 function getCurriculumContext(cls) {
+  if (cls === '8') {
+    return `You are a DigiTech AI companion for Year 8 students at Emmanuel Christian School, Tasmania.
+Curriculum: Australian Curriculum v9 (ACv9) - Years 7-8 band, Cycle 2.
+
+Year 8 builds directly on Year 7 content. Students already know: hardware/software, binary numbers, binary images/sound, file journeys, networks basics, MS Office Suite.
+
+Term 1 - Hardware, Networks and Cyber Threats (AC9TDI8K01, AC9TDI8K02):
+Networks in depth: LAN/WAN, internet infrastructure, how data travels, protocols (TCP/IP, HTTP/HTTPS, DNS), IP addressing, routers and switches.
+Cyber threats: malware (viruses, ransomware, spyware), phishing, social engineering, DDoS attacks.
+Cyber defences: encryption, firewalls, two-factor authentication, password security, software updates.
+Digital footprint: what data systems collect, privacy laws, Australian Privacy Principles.
+
+Term 2 - Collaborative Data Project and Creating Digital Solutions (AC9TDI8P01-P14):
+Working with data: acquiring from surveys/sensors/repositories, cleaning data, spreadsheet formulas (VLOOKUP, IF, COUNTIF), pivot tables, charts, single-table databases.
+Design process: user stories, design criteria, prototyping, evaluating solutions.
+Digital solution: building a solution that solves a real problem - could be a program, website, spreadsheet tool, or physical device.
+Managing projects: agile approaches, collaboration tools, version control concepts.
+Privacy in data: digital footprint, depersonalising data, Australian Privacy Principles.
+
+Current week: ${CURRENT_WEEK}`;
+  }
+
+  if (cls === 'inq') {
+    return `You are a DigiTech AI companion for Inquiry students at Emmanuel Christian School, Tasmania.
+Inquiry is an open creative DigiTech space for students in Years 6-10. There are no set grades or mandatory curriculum outcomes here - students explore what interests them.
+
+You can help with any of these areas:
+- Coding and programming (Python, MakeCode, Scratch, JavaScript, web development)
+- Physical computing (micro:bit, Arduino, sensors, robots, electronics)
+- 3D design and printing (Tinkercad, CAD concepts, design thinking)
+- Game design (GDevelop, Pygame, game mechanics)
+- AI and machine learning (how AI works, ethics, building simple AI tools)
+- Digital art and media (design principles, animation, video editing)
+- Cybersecurity and networking (ethical hacking concepts, network design)
+- Data science (collecting and visualising interesting data)
+- App and web development (HTML/CSS/JS, no-code tools)
+- Anything else tech-related the student wants to explore
+
+IMPORTANT: Inquiry has no wrong answers or failure. The goal is curiosity, creativity and making things. Be encouraging, enthusiastic and open-ended. Help students discover what they are passionate about.
+
+Current week: ${CURRENT_WEEK}`;
+  }
+
   if (cls === '7') {
     return `You are a DigiTech AI companion for Year 7 students at Emmanuel Christian School, Tasmania.
 Curriculum: Australian Curriculum v9 (ACv9).
@@ -717,6 +813,39 @@ Current week: ${CURRENT_WEEK}`;
  */
 function getModeInstructions(cls, mode) {
   const isY910 = cls === '910';
+  const isInq  = cls === 'inq';
+
+  // Inquiry gets a completely different mode set - open and creative not sparring
+  if (isInq) {
+    const inqModes = {
+      eli5: `MODE: ELI5 - Keep it super simple. Short sentences. Fun analogies. No jargon without explaining it. Format with emoji headers. Max 4 sections.`,
+      explain: `MODE: EXPLAIN IT (Inquiry)
+Explain concepts in a fun, curious way. No curriculum pressure.
+- Use real-world examples and analogies
+- Connect to things they might actually build or make
+- Ask what they want to DO with the concept - not just know it
+- Keep it engaging and short`,
+      quiz: `MODE: QUIZ ME (Inquiry)
+Keep it fun and light. One question at a time. Topics can be anything tech-related.
+- Mix trivia, practical, and creative questions
+- Celebrate right answers enthusiastically
+- When wrong: give the answer AND explain why it is interesting`,
+      debate: `MODE: GIVE ME IDEAS (Inquiry - replaces debate)
+Help the student brainstorm and explore ideas.
+- Ask what they are interested in making or building
+- Suggest 2-3 concrete project ideas based on what they tell you
+- For each idea: what it is, what skills they would learn, how hard it is
+- Be enthusiastic - there are no bad ideas in Inquiry`,
+      help: `MODE: HELP ME BUILD (Inquiry - replaces help)
+The student wants to make something. Help them.
+- Ask what they are trying to build first
+- Break it into small achievable steps
+- Suggest specific tools, tutorials or resources
+- Celebrate progress - Inquiry is about making things not getting grades
+- If they are stuck: suggest a simpler version they can finish first`
+    };
+    return inqModes[mode] || inqModes.explain;
+  }
 
   const modes = {
     eli5: `
@@ -875,7 +1004,8 @@ This signals the UI to render an inline resource card instead of a chat response
  * Called on page load and when the class selector changes.
  */
 async function loadResources() {
-  const className = currentClass === '7' ? 'Year 7' : 'Year 9/10';
+  const classNameMap = { '7':'Year 7', '8':'Year 8', '910':'Year 9/10', 'inq':'Inquiry' };
+  const className = classNameMap[currentClass] || 'Year 7';
   document.getElementById('resList').innerHTML = `
     <div class="list-empty">
       <span class="list-empty-icon">&#128193;</span>
@@ -918,7 +1048,8 @@ function showResourceError(msg) {
 function renderFilters() {
   const row = document.getElementById('filterRow');
   const cls = currentClass;
-  const ac  = cls === '7' ? 'active-7' : 'active-910';
+  const acMap = { '7':'active-7', '8':'active-8', '910':'active-910', 'inq':'active-inq' };
+  const ac  = acMap[cls] || 'active-7';
 
   const termBtns = [
     { label: 'All terms', val: 0 },
@@ -945,7 +1076,8 @@ function renderFilters() {
  */
 function renderResources() {
   const search    = (document.getElementById('searchBox')?.value || '').toLowerCase();
-  const className = currentClass === '7' ? 'Year 7' : 'Year 9/10';
+  const classNameMap = { '7':'Year 7', '8':'Year 8', '910':'Year 9/10', 'inq':'Inquiry' };
+  const className = classNameMap[currentClass] || 'Year 7';
 
   let filtered = allResources.filter(r => {
     // Class filter - always applied
@@ -1118,11 +1250,14 @@ function setClass(cls) {
   currentClass = cls;
 
   // Update class tab styles
-  document.getElementById('tab7').className   = 'class-tab' + (cls === '7'   ? ' active-7'   : '');
-  document.getElementById('tab910').className = 'class-tab' + (cls === '910' ? ' active-910' : '');
+  document.getElementById('tab7').className    = 'class-tab' + (cls === '7'   ? ' active-7'   : '');
+  document.getElementById('tab8').className    = 'class-tab' + (cls === '8'   ? ' active-8'   : '');
+  document.getElementById('tab910').className  = 'class-tab' + (cls === '910' ? ' active-910' : '');
+  document.getElementById('tabinq').className  = 'class-tab' + (cls === 'inq' ? ' active-inq' : '');
 
   // Update send button colour to match class accent
-  document.getElementById('sendBtn').className = 'send-btn ' + (cls === '7' ? 'sb7' : 'sb910');
+  const sbMap = { '7':'sb7', '8':'sb8', '910':'sb910', 'inq':'sbinq' };
+  document.getElementById('sendBtn').className = 'send-btn ' + (sbMap[cls] || 'sb7');
 
   renderFilters();
   renderModePills();
@@ -1428,7 +1563,8 @@ function appendMsg(text, type) {
 function appendMsgElement(type) {
   const container = document.getElementById('chatMsgs');
   const el        = document.createElement('div');
-  const userCls   = type === 'user' ? ' u' + currentClass : '';
+  const uMap    = { '7':'u7', '8':'u8', '910':'u910', 'inq':'uinq' };
+  const userCls = type === 'user' ? ' ' + (uMap[currentClass] || 'u7') : '';
   el.className    = 'msg ' + type + userCls;
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
@@ -1514,7 +1650,7 @@ function esc(s) {
 
 window.addEventListener('load', () => {
   // Set the current week badge in the header
-  document.getElementById('weekBadge').textContent = 'Week ' + CURRENT_WEEK;
+  document.getElementById('weekBadge').innerHTML = '&#128197; Week ' + CURRENT_WEEK;
 
   // Initialise TTS if supported
   initTTS();
