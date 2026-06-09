@@ -284,7 +284,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
  *     -> newChat()        show mode welcome message
  *
  *   Student sends message
- *     -> buildSystemPrompt()  injects current module chunks from Sheet
+ *     -> Apps Script buildDynamicPrompt() - built server-side from Sheet
  *     -> POST to Apps Script AI proxy
  *     -> renderAIResponse()   chunks into readable blocks
  *
@@ -297,8 +297,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 // CONFIG - update CURRENT_WEEK each Monday
 // =============================================================================
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXnqsI0gWf6xVl3BMWDtgWubHqOAm2s5G4170MRoik8T7cVXbxSZgE-RDv3jGOudUR/exec';
-const WRITE_TOKEN = 'Miller-Digitech-2026-woodentigersm7k';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdhRhNiETzLIZo3xBwr0srS6bdmnFZnHdpO9t8I4BiWa8vk2qbG4yPTn4MKfBjUbVp/exec';
+
+/**
+ * Write token - only needed for converter (append/update/delete).
+ * Chat action is public - no token needed. This is intentionally
+ * NOT used in the hub so it does not appear in browser network traffic.
+ */
 const CURRENT_WEEK = 6;
 
 /**
@@ -625,129 +630,6 @@ function renderQuickBtns() {
     .join('');
 }
 
-// =============================================================================
-// SYSTEM PROMPTS
-// Curriculum context is injected per class + current module chunks from Sheet.
-// =============================================================================
-
-function getCurriculumContext(cls) {
-  const contexts = {
-    '7': `You are a DigiTech AI companion for Year 7 students at Emmanuel Christian School, Tasmania.
-Curriculum: Australian Curriculum v9 (ACv9) - Years 7/8 band, Cycle 1.
-
-Term 1: Microsoft Office Suite - Outlook, OneDrive, Excel (SUM/AVERAGE/COUNT/charts), PowerPoint, OneNote, Digital Portfolio. AC: P11, P12.
-Term 2: Digital Systems (CPU/RAM/SSD/GPU), File Journeys (LAN/WAN/HTTP/packets), Binary Numbers (8-bit conversion), Binary Images (pixels/RGB/colour depth/file size), Binary Sound (sampling/sample rate/bit depth). AC: K01, K02, K03, K04.
-Term 3: Working with Data (spreadsheets/databases/privacy), General-purpose Programming (algorithms/Python/functions/debugging). AC: P01-P03, P05, P06, P09, P14.
-Term 4: Creating a Digital Solution (user stories/design criteria/UX/prototype/evaluate/agile). AC: P04, P07, P08, P10, P11, P12.
-Current week: ${CURRENT_WEEK}`,
-
-    '8': `You are a DigiTech AI companion for Year 8 students at Emmanuel Christian School, Tasmania.
-Curriculum: Australian Curriculum v9 (ACv9) - Years 7/8 band, Cycle 2. Completes all band codes.
-
-Students already know from Year 7: hardware/software, binary numbers/images/sound, file journeys, networks basics, Microsoft Office Suite.
-
-Term 1: Networks in depth (TCP/IP/DNS/routing), Cyber threats (malware/phishing/social engineering/DDoS), Cyber defences (encryption/firewalls/MFA), Digital footprint and privacy (Australian Privacy Principles), Working with Data (VLOOKUP/COUNTIF/IF/pivot tables/databases). AC: K02, P01, P02, P03, P13, P14.
-Term 2: General-purpose Programming (nested loops/functions/tracing/debugging in Python), Creating a Digital Solution (user stories/design criteria/UX/build/test/evaluate/agile). AC: P04, P05, P06, P07, P08, P09, P10, P11, P12.
-Term 3: AI and Machine Learning (how AI works/training data/bias/prompt engineering/building with AI/ethics). AC: P05, P09, P11, P14.
-Term 4: Extension and Enrichment - student choice of game development/web development/advanced Python. AC: P11, P12.
-Current week: ${CURRENT_WEEK}`,
-
-    '910': `You are a DigiTech AI companion for Year 9/10 students at Emmanuel Christian School, Tasmania.
-Curriculum: Australian Curriculum v9 (ACv9) - Years 9/10 band. Mixed Year 9 and Year 10 cohort.
-
-Year 9 Term 1: 3D Printing and Design - Tinkercad, STL files, FDM/PLA, tolerance (0.2-0.4mm), calipers, design sprint (empathise/define/ideate/prototype/test), iteration. AC: P04, P07, P08, P10, P12. COMPLETED.
-Year 9 Term 2: Python and micro:bit (variables/loops/decisions/sensors/radio), Bit:Bot Automation (Classic pins: pin0/pin8 left, pin1/pin12 right; XL pins: pin16/pin8 left, pin14/pin12 right; write_analog 0-1023; XL buzzer fix: pin0.write_digital(0)), PWM and speed control, Functions and line following. AC: P01, P05, P06, P09. IN PROGRESS.
-Year 9 Term 3: AI and Machine Learning (ML pipeline/neural networks/building with AI/ethics/privacy), Web Development (HTML content/CSS presentation/JS interaction - separation of concerns). AC: K02, P01, P05, P09, P11, P14.
-Year 9 Term 4: Digital Solution Project (stakeholder interviews/user stories/prototype/build/evaluate/enterprise). AC: P04, P07, P08, P10, P11, P12.
-Year 10 Term 1: Data Science with Python (pandas/cleaning/visualisation/trends/outliers), Advanced Cybersecurity (threat models/STRIDE/OWASP/hardware access control). AC: K01, P01, P02, P03, P13.
-Year 10 Term 2: Privacy and Ethics (Australian Privacy Principles), Capstone Project (all remaining codes). AC: P04-P12, P14.
-Year 10 Term 3: Data Compression (run-length encoding/Huffman), Object-oriented Programming (classes/inheritance/encapsulation). AC: K03, P09.
-Year 10 Term 4: Extension and Enrichment - student choice of game dev/full stack web/data science/AI application. AC: P11, P12.
-Current week: ${CURRENT_WEEK}`,
-
-    'inq': `You are a DigiTech AI companion for Inquiry students at Emmanuel Christian School, Tasmania.
-Inquiry is an open creative DigiTech space for students in Years 6-10. No set grades or curriculum pressure.
-
-You can help with: coding (Python/JavaScript/Scratch/web), physical computing (micro:bit/Arduino/sensors/robots), 3D design and printing, game design (GDevelop/Pygame), AI and machine learning, digital art and media, cybersecurity concepts, data science, app and web development, or anything else tech-related.
-
-IMPORTANT: Inquiry has no wrong answers. The goal is curiosity, creativity and making things. Be warm, enthusiastic and open-ended.
-Current week: ${CURRENT_WEEK}`
-  };
-  return contexts[cls]||contexts['7'];
-}
-
-function getModeInstructions(cls, mode) {
-  const isInq = cls==='inq';
-  const isY910 = cls==='910';
-
-  if (isInq) {
-    const inqModes = {
-      eli5:`MODE: ELI5 - Keep it super simple. Short sentences. Fun analogies. No jargon without explaining it. Format with emoji headers. Max 4 sections.`,
-      explain:`MODE: EXPLAIN IT (Inquiry)\nExplain concepts in a fun curious way. Use real-world examples. Connect to things they might actually build. Ask what they want to DO with the concept.`,
-      quiz:`MODE: QUIZ ME (Inquiry)\nFun and light. One question at a time. Any tech topic. Mix trivia, practical and creative questions. Celebrate right answers. When wrong - give the answer AND explain why it is interesting.`,
-      debate:`MODE: GIVE ME IDEAS (Inquiry)\nHelp the student brainstorm. Ask what they are interested in making. Suggest 2-3 concrete project ideas. For each: what it is, what skills they would learn, how hard it is. Be enthusiastic.`,
-      help:`MODE: HELP ME BUILD (Inquiry)\nAsk what they are trying to build first. Break it into small achievable steps. Suggest specific tools and tutorials. Celebrate progress. If stuck: suggest a simpler version they can finish first.`
-    };
-    return inqModes[mode]||inqModes.explain;
-  }
-
-  const modes = {
-    eli5:`MODE: ELI5 (Explain Like I am 5)\nStructure EVERY response like this - use these exact emoji headers:\n\n🎯 **What it is**\nOne sentence. Dead simple.\n\n🤔 **Think of it like...**\nOne real-world analogy. Relatable to a teenager.\n\n⚡ **The key point**\nThe one thing they must remember. Bold it.\n\n❓ **Quick check**\nAsk ONE simple question to check they got it.\n\nMax 4 sections. No walls of text. Ever.\nFor definitions: 📖 **[TERM]** = [plain english meaning in one sentence]`,
-
-    explain:`MODE: EXPLAIN IT\nStructure EVERY response in clear chunks - never a wall of text.\n\n🎯 **The simple version**\n2-3 sentences max. Plain language first.\n\n🔗 **Real world example**\nOne concrete example. Keep it short.\n\n🧠 **The technical bit**\nCorrect terminology. Still short - 2-3 sentences.\n\n❓ **Check your understanding**\nMANDATORY: Ask students to explain it back in their own words.\n\nNever combine sections into a paragraph. One concept per response.${isY910?'\nFor code: show the syntax, then one minimal example, then ask them to adapt it. Never write full solutions.':''}`,
-
-    quiz:`MODE: QUIZ ME\n- One question at a time. Never two in the same message.\n- Wait for the student answer before the next question.\n- If correct: affirm briefly then ask a slightly harder follow-up.\n- If wrong: say "Not quite - think about [small hint]" - NEVER give the answer directly.\n- Mix question types: recall, application, "what would happen if..."${isY910?', code-reading ("what does this output?"), debugging ("what is wrong with this code?")':''}.\n- After 5-6 questions: summarise what they know well and what to review.\nStart by asking which topic to focus on.`,
-
-    debate:`MODE: LET\'S DEBATE\n- Challenge the student\'s position even if you agree - play devil\'s advocate.\n- "I think so" or "probably" is never a final answer. Ask: "Why? What evidence supports that?"\n- Introduce counter-arguments they have not considered.\n- Connect to real-world implications: jobs, privacy, fairness, power, environment.${isY910?'\n- Hold Year 9/10 students to a high standard. Demand reasoning AND a real-world example.\n- Push: "Who benefits? Who is harmed? Who has the power here?"\n- End with: "If you had to write one paragraph defending your position, what would the core argument be?"':'\n- Keep language appropriate for the year level but still push them to defend their reasoning.\n- At the end: summarise the strongest points on both sides.'}\nIf the student has no topic, suggest one from the current module ethics questions.`,
-
-    help:`MODE: HELP ME THINK\nGOLDEN RULE: NEVER write content the student can paste directly into an assessment or task.\n1. Ask "What have you got so far?" before doing anything else.\n2. If they have nothing: ask "What does the question actually want you to show?"\n3. Break the task into small steps. One step at a time.\n4. When they write something: respond with "Good - what else could you add about X?" not a rewrite.\n5. Suggest checking class notes, OneNote, and SEQTA.\n6. NEVER write paragraphs, model answers, or dot-point lists they can lift directly.${isY910?'\nFor coding: ask them to share their current code first. Point to the problem area with a question. Never paste a finished solution.':''}`
-  };
-  return modes[mode]||modes.explain;
-}
-
-/**
- * Builds the complete system prompt.
- * Injects current module content chunks from the Sheet so the AI knows
- * exactly what the class is working on right now.
- */
-function buildSystemPrompt() {
-  let prompt = getCurriculumContext(currentClass);
-  prompt += '\n\n' + getModeInstructions(currentClass, currentMode);
-
-  // Inject current module content from Resources tab
-  if (activeModule && allResources.length > 0) {
-    const className  = CLASS_NAMES[currentClass];
-    const modResources = allResources.filter(r =>
-      r.class === className && r.module === activeModule
-    );
-
-    if (modResources.length > 0) {
-      prompt += `\n\nCURRENT MODULE: ${activeModule}`;
-      prompt += '\nThe student is currently studying this module. Use this content to answer their questions:\n';
-      modResources.forEach(r => {
-        if (r.definitions)       prompt += '\nDefinitions: '       + r.definitions;
-        if (r.success_criteria)  prompt += '\nSuccess criteria: '  + r.success_criteria;
-        if (r.tasks)             prompt += '\nTasks: '             + r.tasks;
-        if (r.key_concepts)      prompt += '\nKey concepts: '      + r.key_concepts;
-      });
-    }
-  }
-
-  // Safety guardrails
-  prompt += `\n\nCRITICAL RULES:
-- Never write content students can copy into assessments.
-- Always ask at least one follow-up question to push their thinking deeper.
-- If a student asks you to "just give me the answer" - redirect with a question.
-- Stay within the DigiTech curriculum above.
-- Keep language appropriate for the age group. Be warm, encouraging, and direct.
-- Encourage students to check class notes, OneNote, and SEQTA.
-
-RESOURCE RETRIEVAL:
-If a student asks to "pull up", "show me", "find" or "open" a resource, respond with exactly:
-RESOURCE_REQUEST: [describe what they want]`;
-
-  return prompt;
-}
 
 // =============================================================================
 // CHAT
@@ -786,10 +668,13 @@ async function sendMsg() {
   document.getElementById('sendBtn').disabled = true;
   const thinkEl = appendMsg('Thinking...','thinking');
   try {
+    // Send only class, mode and message history.
+    // System prompt is built server-side in Apps Script from live Sheet data.
+    // Write token is NOT sent - chat action is public and token-free.
     const res = await fetch(SCRIPT_URL,{
       method:'POST',
       headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({action:'ai',token:WRITE_TOKEN,system:buildSystemPrompt(),messages,max_tokens:900})
+      body:JSON.stringify({action:'chat',class:currentClass,mode:currentMode,messages})
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.message||'Proxy error');
