@@ -164,14 +164,14 @@ body{
 
 /* Term and type filter pills */
 .filter-row{
-  display:flex;gap:5px;padding:8px 10px;
+  display:flex;gap:6px;padding:10px 12px;
   border-bottom:1px solid var(--border);
   flex-wrap:wrap;background:var(--surface);
 }
 .filter-pill{
-  padding:3px 10px;border-radius:20px;
+  padding:6px 14px;border-radius:20px;
   border:1px solid var(--border2);background:var(--surface2);
-  cursor:pointer;font-size:11px;font-weight:600;color:var(--ink3);
+  cursor:pointer;font-size:13px;font-weight:600;color:var(--ink3);
   transition:all .13s;white-space:nowrap;
 }
 .filter-pill:hover{background:var(--surface);color:var(--ink)}
@@ -203,22 +203,23 @@ body{
 .rcard{
   border-radius:var(--radius);border:1px solid var(--border);
   background:var(--surface);overflow:hidden;transition:border-color .13s;
+  margin-bottom:2px;
 }
 .rcard:hover{border-color:var(--border2)}
 .rcard.current-wk{border-left:3px solid var(--green)}
-
-.rcard-head{display:flex;align-items:center;gap:8px;padding:9px 11px}
+.rcard-head{display:flex;align-items:flex-start;gap:10px;padding:11px 13px 6px}
 .rcard-fmt{
-  width:28px;height:28px;border-radius:7px;
+  width:36px;height:36px;border-radius:8px;
   display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;flex-shrink:0;font-family:var(--mono);
+  font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--mono);
+  margin-top:2px;
 }
-.rcard-title{font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rcard-meta{font-size:10px;color:var(--ink3);margin-top:1px}
-.rcard-tags{display:flex;gap:4px;padding:0 11px 6px;flex-wrap:wrap}
+.rcard-title{font-size:13px;font-weight:700;color:var(--ink);line-height:1.4;word-break:break-word}
+.rcard-meta{font-size:11px;color:var(--ink3);margin-top:3px}
+.rcard-tags{display:flex;gap:4px;padding:0 13px 6px;flex-wrap:wrap}
 .rtag{
-  padding:1px 7px;border-radius:20px;
-  font-size:10px;font-weight:600;
+  padding:2px 8px;border-radius:20px;
+  font-size:11px;font-weight:600;
 }
 .rt-html   {background:var(--y7l);   color:var(--y7d)}
 .rt-pdf    {background:var(--redl);  color:var(--red)}
@@ -227,10 +228,10 @@ body{
 .rt-cur    {background:var(--greenl); color:var(--green)}
 .rt-type   {background:var(--surface2);color:var(--ink3)}
 .rcard-summary{
-  font-size:11px;color:var(--ink2);
-  padding:0 11px 8px;line-height:1.5;
+  font-size:12px;color:var(--ink2);
+  padding:0 13px 10px;line-height:1.6;
 }
-.rcard-actions{display:flex;gap:5px;padding:0 11px 9px;flex-wrap:wrap}
+.rcard-actions{display:flex;gap:5px;padding:0 13px 11px;flex-wrap:wrap}
 
 /* Action buttons on resource cards */
 .ract{
@@ -380,8 +381,42 @@ body{
 .sb7  {background:var(--y7)}
 .sb910{background:var(--y910)}
 
-/* TTS controls - shown when speech synthesis is available */
-.tts-bar{
+/* Chunked AI response formatting
+ * Each logical section of an AI response gets its own spaced block.
+ * Emoji section headers get a slightly larger, bolder treatment.
+ * This prevents walls of text and makes responses scannable for
+ * Gen Z/Alpha students who read in chunks not paragraphs.
+ */
+.ai-chunk{
+  margin-bottom:10px;
+  line-height:1.65;
+  font-size:14px;
+}
+.ai-chunk:last-child{margin-bottom:0}
+.ai-section-head{
+  font-size:14px;
+  font-weight:700;
+  color:var(--ink);
+  margin-bottom:5px;
+  margin-top:12px;
+}
+.ai-section-head:first-child{margin-top:0}
+.msg.ai strong{
+  color:var(--ink);
+  font-weight:700;
+}
+
+/* ELI5 definition card style - used when AI returns a 📖 definition */
+.def-card{
+  background:var(--y7l);border:1px solid rgba(24,95,165,.2);
+  border-radius:var(--radius);padding:10px 13px;margin-top:6px;
+}
+.def-card .def-term{
+  font-size:15px;font-weight:800;color:var(--y7d);margin-bottom:3px;
+}
+.def-card .def-meaning{
+  font-size:13px;color:var(--ink2);line-height:1.55;
+}
   display:flex;align-items:center;gap:7px;
   padding:6px 11px;border-top:1px solid var(--border);
   background:var(--surface2);flex-shrink:0;
@@ -549,7 +584,7 @@ body{
 // =============================================================================
 
 /** Apps Script endpoint - all reads and AI proxy calls go here */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYzl2X9c6rnNQMYzux-6P5RBw0_9wLKF9Wj_OGFvqdRGHD4zg2sHaySc77xg29FHgy/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzdhRhNiETzLIZo3xBwr0srS6bdmnFZnHdpO9t8I4BiWa8vk2qbG4yPTn4MKfBjUbVp/exec';
 
 /**
  * Write token - required for POST requests (AI proxy).
@@ -571,12 +606,14 @@ const CURRENT_WEEK = 6;
 const QUICK_PROMPTS = {
   '7': {
     explain : ['What is RAM?', 'Explain binary', 'Hardware vs software', 'How does a file travel?'],
+    eli5    : ['RAM please', 'What is binary?', 'What is a CPU?', 'What is the internet?'],
     quiz    : ['Quiz me on binary', 'Test me on hardware', 'File journey quiz', 'Test everything'],
     debate  : ['Should schools track devices?', 'Who owns your data?', 'Should AI mark work?', 'Is the digital divide fair?'],
     help    : ['Help with my system diagram', 'Stuck on the assessment', 'Check my binary', 'Help me start the file journey task']
   },
   '910': {
     explain : ['Explain PWM', 'What is a function?', 'Bit:Bot XL wiring', 'Tolerance in 3D printing'],
+    eli5    : ['PWM in simple words', 'What does def do?', 'Why use functions?', 'What is duty cycle?'],
     quiz    : ['Quiz me on Python', 'Test micro:bit sensors', '3D printing quiz', 'Mix both terms'],
     debate  : ['Robots replacing workers?', 'Who owns a 3D design?', 'AI in schools?', 'Autonomous vehicles and blame'],
     help    : ['My Bit:Bot code is wrong', 'Help plan my portfolio', 'Stuck on a function', 'Assessment help']
@@ -679,15 +716,51 @@ function getModeInstructions(cls, mode) {
   const isY910 = cls === '910';
 
   const modes = {
+    eli5: `
+MODE: ELI5 (Explain Like I'm 5)
+The student wants the simplest possible explanation. Rules:
+- Use the SHORTEST sentences possible. Max 15 words per sentence.
+- NO jargon without immediately explaining it in brackets
+- Use everyday comparisons they already know (food, sport, games, school)
+- Structure EVERY response like this - use these exact emoji headers:
+
+🎯 **What it is**
+One sentence. Dead simple.
+
+🤔 **Think of it like...**
+One real-world analogy. Make it relatable to a teenager.
+
+⚡ **The key point**
+The one thing they must remember. Bold it.
+
+❓ **Quick check**
+Ask ONE simple question to check they got it.
+
+- Maximum 4 sections. No walls of text. Ever.
+- If they ask about a definition, format it as:
+  📖 **[TERM]** = [plain english meaning in one sentence]`,
+
     explain: `
 MODE: EXPLAIN IT
-When a student asks about a concept:
-1. Open with a relatable analogy - real life, school, gaming, sport - whatever fits
-2. Give a clear 2-3 sentence explanation using correct terminology
-3. Give one concrete example they can picture
-4. MANDATORY: end by asking "Does that make sense? Can you explain it back to me in your own words?"
-Never dump a wall of text. One concept at a time. Check understanding after every explanation.
-${isY910 ? 'For code concepts: show the syntax pattern first, then a minimal working example, then explain WHY it works that way - not just what it does. Point students to python.microbit.org/v/3 to test ideas.' : ''}`,
+Structure EVERY response in clear chunks - never a wall of text.
+Use these sections with emoji headers:
+
+🎯 **The simple version**
+2-3 sentences max. Plain language first.
+
+🔗 **Real world example**
+One concrete example they can picture. Keep it short.
+
+🧠 **The technical bit**
+Now use the correct terminology. Still short - 2-3 sentences.
+
+❓ **Check your understanding**
+MANDATORY: Ask "Can you explain [concept] back to me in your own words?"
+
+- Each section separated by a blank line
+- Never combine sections into a paragraph
+- One concept per response - do not pile on extra info
+${isY910 ? '- For code: show the syntax, then one minimal example, then ask them to adapt it. Never write full solutions.' : ''}`,
 
     quiz: `
 MODE: QUIZ ME
@@ -1070,10 +1143,11 @@ function setMode(mode) {
 function renderModePills() {
   const ac   = currentClass === '7' ? 'active-7' : 'active-910';
   const modes = [
-    { key: 'explain', label: '&#128161; Explain it'  },
-    { key: 'quiz',    label: '&#10067; Quiz me'       },
-    { key: 'debate',  label: '&#128172; Let\'s debate' },
-    { key: 'help',    label: '&#9997; Help me think'  }
+    { key: 'eli5',    label: '&#129299; ELI5'          },
+    { key: 'explain', label: '&#128161; Explain it'     },
+    { key: 'quiz',    label: '&#10067; Quiz me'         },
+    { key: 'debate',  label: '&#128172; Let\'s debate'  },
+    { key: 'help',    label: '&#9997; Help me think'    }
   ];
   document.getElementById('modePills').innerHTML = modes
     .map(m => `<button class="mode-pill ${currentMode === m.key ? ac : ''}"
@@ -1104,13 +1178,14 @@ function newChat() {
   document.getElementById('chatMsgs').innerHTML = '';
 
   const welcomes = {
+    eli5    : `What do you want explained in the simplest possible way? Drop a word or concept and I'll break it down like you're brand new to it.`,
     explain : `Hey! Pick a concept from your lessons and I\'ll break it down. What do you want to understand?`,
     quiz    : `Ready to test yourself? I\'ll go one question at a time and ramp up the difficulty. What topic are we focusing on?`,
     debate  : `I\'m going to push back on whatever position you take - that\'s the point. What topic do you want to spar on?`,
     help    : `Tell me what you\'re working on and what you\'ve tried so far. I won\'t do it for you but I\'ll help you think through it.`
   };
 
-  appendMsg(welcomes[currentMode] || welcomes.explain, 'ai');
+  appendAIMsg(welcomes[currentMode] || welcomes.explain);
   renderQuickBtns();
 }
 
@@ -1171,7 +1246,7 @@ async function sendMsg() {
       const query = reply.replace('RESOURCE_REQUEST:', '').trim();
       handleResourceRequest(query);
     } else {
-      appendMsg(reply, 'ai');
+      appendAIMsg(reply);
       messages.push({ role: 'assistant', content: reply });
 
       // Read aloud if TTS is enabled
@@ -1180,7 +1255,7 @@ async function sendMsg() {
 
   } catch (err) {
     thinkEl.remove();
-    appendMsg('Connection error - please try again. (' + err.message + ')', 'ai');
+    appendAIMsg('Connection error - please try again. (' + err.message + ')');
   }
 
   aiLoading = false;
@@ -1270,16 +1345,59 @@ function handleResourceRequest(query) {
 }
 
 /**
- * Appends a message bubble to the chat area.
- * Returns the DOM element so callers can modify it (e.g. the thinking bubble).
+ * Formats an AI response string into chunked HTML.
+ * Converts markdown-style bold, emoji headers, and newlines into
+ * clean spaced HTML so responses render as readable chunks rather
+ * than walls of text - important for Gen Z/Alpha readability.
  *
- * @param {string} text - Message text content
- * @param {string} type - 'ai' | 'user' | 'thinking'
+ * @param {string} text - Raw AI response text
+ * @returns {string} HTML string safe to set as innerHTML
+ */
+function formatAIResponse(text) {
+  // Escape HTML first to prevent XSS
+  let html = esc(text);
+
+  // Convert **bold** to <strong>
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // Convert emoji header lines (e.g. "🎯 **What it is**") into styled section headers
+  // These start with an emoji and are on their own line
+  html = html.replace(
+    /^([\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}&#\d;]+\s+<strong>[^<]+<\/strong>)/ugm,
+    '<div class="ai-section-head">$1</div>'
+  );
+
+  // Split on double newlines to create paragraphs/chunks
+  const chunks = html.split(/\n\n+/);
+  html = chunks
+    .map(chunk => {
+      const trimmed = chunk.trim();
+      if (!trimmed) return '';
+      // Single newlines within a chunk become line breaks
+      const withBreaks = trimmed.replace(/\n/g, '<br>');
+      return `<div class="ai-chunk">${withBreaks}</div>`;
+    })
+    .filter(Boolean)
+    .join('');
+
+  return html;
+}
+
+/**
+ * Appends a formatted AI message bubble to the chat area.
+ * Uses innerHTML with the formatted response so emoji headers,
+ * bold text and chunked sections render correctly.
+ *
+ * @param {string} text - Raw AI response text
  * @returns {HTMLElement} The appended message element
  */
-function appendMsg(text, type) {
-  const el = appendMsgElement(type);
-  el.textContent = text;
+function appendAIMsg(text) {
+  const container = document.getElementById('chatMsgs');
+  const el        = document.createElement('div');
+  el.className    = 'msg ai';
+  el.innerHTML    = formatAIResponse(text);
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
   return el;
 }
 
@@ -1290,6 +1408,20 @@ function appendMsg(text, type) {
  * @param {string} type - 'ai' | 'user' | 'thinking'
  * @returns {HTMLElement} The empty element
  */
+/**
+ * Appends a plain text message bubble (user messages and thinking indicator).
+ * Uses textContent not innerHTML - no formatting applied.
+ *
+ * @param {string} text - Message text
+ * @param {string} type - 'user' or 'thinking'
+ * @returns {HTMLElement} The appended element
+ */
+function appendMsg(text, type) {
+  const el = appendMsgElement(type);
+  el.textContent = text;
+  return el;
+}
+
 function appendMsgElement(type) {
   const container = document.getElementById('chatMsgs');
   const el        = document.createElement('div');
