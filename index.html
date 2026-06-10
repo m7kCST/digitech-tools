@@ -782,12 +782,13 @@ async function processNext() {
     }
 
   } catch (readErr) {
-    // File read failed - still allow manual entry
-    results[f.name].data     = guessFromFilename(f.name, 'unknown');
-    results[f.name].status   = 'manual';
-    results[f.name].mode     = 'manual';
-    results[f.name].apiError = 'File read error: ' + readErr.message;
-  }
+  // File read failed - still allow manual entry
+  results[f.name].data = guessFromFilename(f.name, 'unknown');
+  results[f.name].status = 'manual';
+  results[f.name].mode = 'manual';
+  results[f.name].apiError =
+    'File read error: ' + (readErr?.message || String(readErr));
+}
 
   processing = false;
   renderQueue();
