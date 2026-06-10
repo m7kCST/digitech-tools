@@ -1030,13 +1030,20 @@ function extractDriveURL(html) {
  * @param {string} url - Raw Drive URL
  * @returns {string} Corrected preview URL
  */
-function fixDriveURL(url) {
+function fixDriveURL(url, fmt) {
   if (!url || !url.includes('drive.google')) return url;
-  // Already a preview link - return as-is
-  if (url.includes('/preview')) return url.split('?')[0] + '?usp=sharing';
-  // Replace /view with /preview, strip query string
-  return url.replace(/\/view(\?.*)?$/, '/preview?usp=sharing')
-            .replace(/\/edit(\?.*)?$/, '/preview?usp=sharing');
+
+  // Extract the file ID from any Drive URL format
+  const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (!idMatch) return url;
+  const fileId = idMatch[1];
+
+  // HTML files: use /uc?export=view which renders the actual HTML
+  // PDF/DOCX: use /preview which shows the Google viewer
+  if (fmt === 'html' || fmt === 'htm' || (!fmt && !url.includes('.pdf'))) {
+    return 'https://drive.google.com/uc?export=view&id=' + fileId;
+  }
+  return 'https://drive.google.com/file/d/' + fileId + '/preview?usp=sharing';
 }
 
 /**
