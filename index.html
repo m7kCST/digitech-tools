@@ -773,7 +773,7 @@ async function processNext() {
         results[f.name].status = 'pushed';
       }
 
-    } catch (aiErr) {
+      } catch (aiErr) {
       // AI failed - fall back to manual mode with filename-guessed defaults
       results[f.name].data     = guessFromFilename(f.name, fmt);
       results[f.name].status   = 'manual';
