@@ -983,18 +983,44 @@ function smartExtractHTML(html) {
  * @returns {string} Drive URL or empty string
  */
 function extractDriveURL(html) {
-  const footerMatch = html.match(/id="drive-meta"[^>]*>[\s\S]*?DRIVE-URL:\s*(\S+)/i);
-  if (footerMatch && footerMatch[1] && footerMatch[1].includes('drive.google')) {
-    return footerMatch[1];
+  // Format 1: data-url attribute (current format)
+  // <div id="drive-meta" data-url="https://..."></div>
+  const dataAttr = html.match(/id="drive-meta"[^>]*data-url="([^"]+)"/i);
+  if (dataAttr && dataAttr[1]) return fixDriveURL(dataAttr[1]);
+
+  // Format 2: text content DRIVE-URL: (legacy format)
+  // <div id="drive-meta">DRIVE-URL: https://...</div>
+  const textContent = html.match(/id="drive-meta"[^>]*>[\s\S]*?DRIVE-URL:\s*(\S+)/i);
+  if (textContent && textContent[1] && textContent[1].includes('drive.google')) {
+    return fixDriveURL(textContent[1]);
   }
 
-  const metaMatch = html.match(/<meta[^>]*name="drive-url"[^>]*content="([^"]+)"/i);
-  if (metaMatch) return metaMatch[1];
+  // Format 3: meta tag in head
+  const metaTag = html.match(/<meta[^>]*name="drive-url"[^>]*content="([^"]+)"/i);
+  if (metaTag) return fixDriveURL(metaTag[1]);
 
-  const anyMatch = html.match(/DRIVE-URL:\s*(https:\/\/\S+)/i);
-  if (anyMatch) return anyMatch[1];
+  // Format 4: bare DRIVE-URL: anywhere in document
+  const bare = html.match(/DRIVE-URL:\s*(https:\/\/\S+)/i);
+  if (bare) return fixDriveURL(bare[1]);
 
   return '';
+}
+
+/**
+ * Ensures Drive file links use /preview so HTML renders in Chrome
+ * rather than showing the Drive wrapper page.
+ * Handles /view, /view?usp=sharing, and bare file IDs.
+ *
+ * @param {string} url - Raw Drive URL
+ * @returns {string} Corrected preview URL
+ */
+function fixDriveURL(url) {
+  if (!url || !url.includes('drive.google')) return url;
+  // Already a preview link - return as-is
+  if (url.includes('/preview')) return url.split('?')[0] + '?usp=sharing';
+  // Replace /view with /preview, strip query string
+  return url.replace(/\/view(\?.*)?$/, '/preview?usp=sharing')
+            .replace(/\/edit(\?.*)?$/, '/preview?usp=sharing');
 }
 
 /**
