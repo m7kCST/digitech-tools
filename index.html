@@ -444,7 +444,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 // =============================================================================
 
 /** Apps Script web app URL - all API and proxy calls go here */
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzYOv_9BuCraGhRoEZFMvyjqTUBvbp0iRDRhS937cSBLL4Ar9fYCoEThu6fTBPiBIT8/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyXnqsI0gWf6xVl3BMWDtgWubHqOAm2s5G4170MRoik8T7cVXbxSZgE-RDv3jGOudUR/exec';
 
 /**
  * Shared write token.
@@ -755,40 +755,34 @@ async function processNext() {
       const pushed = await pushRowToSheet(pageMeta);
       if (pushed) { results[f.name].pushed = true; results[f.name].status = 'pushed'; }
     } else {
-    try {
-      // No page-meta - use AI extraction proxy
-      const data = await extractWithAI(f.name, text, fmt);
-      results[f.name].data   = data;
-      results[f.name].status = 'done';
-      results[f.name].mode   = 'ai';
-
-      // Pre-build outputs so the download bar can appear immediately
-      buildCSV(f.name, data);
-      buildMeta(f.name, data, rawHTML);
-
-      // Auto-push on successful extraction
-      const pushed = await pushRowToSheet(data);
-      if (pushed) {
-        results[f.name].pushed = true;
-        results[f.name].status = 'pushed';
-      }
-
+      try {
+        // No page-meta - use AI extraction proxy
+        const data = await extractWithAI(f.name, text, fmt);
+        results[f.name].data   = data;
+        results[f.name].status = 'done';
+        results[f.name].mode   = 'ai';
+        buildCSV(f.name, data);
+        buildMeta(f.name, data, rawHTML);
+        const pushed = await pushRowToSheet(data);
+        if (pushed) {
+          results[f.name].pushed = true;
+          results[f.name].status = 'pushed';
+        }
       } catch (aiErr) {
-      // AI failed - fall back to manual mode with filename-guessed defaults
-      results[f.name].data     = guessFromFilename(f.name, fmt);
-      results[f.name].status   = 'manual';
-      results[f.name].mode     = 'manual';
-      results[f.name].apiError = aiErr.message;
-    }
+        results[f.name].data     = guessFromFilename(f.name, fmt);
+        results[f.name].status   = 'manual';
+        results[f.name].mode     = 'manual';
+        results[f.name].apiError = aiErr.message;
+      }
+    } // end else - no page-meta
 
   } catch (readErr) {
-  // File read failed - still allow manual entry
-  results[f.name].data = guessFromFilename(f.name, 'unknown');
-  results[f.name].status = 'manual';
-  results[f.name].mode = 'manual';
-  results[f.name].apiError =
-    'File read error: ' + (readErr?.message || String(readErr));
-}
+    // File read failed - still allow manual entry
+    results[f.name].data     = guessFromFilename(f.name, 'unknown');
+    results[f.name].status   = 'manual';
+    results[f.name].mode     = 'manual';
+    results[f.name].apiError = 'File read error: ' + readErr.message;
+  }
 
   processing = false;
   renderQueue();
