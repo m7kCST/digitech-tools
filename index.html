@@ -758,6 +758,8 @@ async function processNext() {
       try {
         // No page-meta - use AI extraction proxy
         const data = await extractWithAI(f.name, text, fmt);
+        // Inject Drive URL into data before pushing
+        if (results[f.name].driveURL && !data.url) data.url = results[f.name].driveURL;
         results[f.name].data   = data;
         results[f.name].status = 'done';
         results[f.name].mode   = 'ai';
@@ -980,7 +982,7 @@ function smartExtractHTML(html) {
 function extractDriveURL(html) {
   // Format 1: data-url attribute (current format)
   // <div id="drive-meta" data-url="https://..."></div>
-  const dataAttr = html.match(/id="drive-meta"[^>]*data-url="([^"]+)"/i);
+  const dataAttr = html.match(/id="drive-meta"[\s\S]*?data-url="([^"]+)"/i);
   if (dataAttr && dataAttr[1]) return fixDriveURL(dataAttr[1]);
 
   // Format 2: text content DRIVE-URL: (legacy format)
