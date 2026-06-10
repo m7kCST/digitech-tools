@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<!--
+  =============================================================================
+  DigiTech Hub - Student Interface v2
+  =============================================================================
+
+  Student-facing AI companion and resource browser.
+  Reads live from two Google Sheet tabs:
+    - Resources  : all files, links, definitions, success criteria
+    - Schedule   : which module is active for each class right now
+
+  The Schedule tab drives everything:
+    1. Hub fetches Schedule - finds active=TRUE row for student's class
+    2. Gets current module name from that row
+    3. Filters Resources to matching module rows
+    4. Injects definitions + criteria + tasks into AI system prompt
+    5. AI answers with full context of what the class is actually doing
+
+  Updating the current module: flip active=TRUE/FALSE in the Schedule tab.
+  Public holiday: change start_week or end_week in the Schedule tab.
+  No code changes needed for either.
+
+  Classes: Year 7 (blue), Year 8 (green), Year 9/10 (purple), Inquiry (teal)
+  AI modes: ELI5, Explain it, Quiz me, Let's debate, Help me think
+  Inquiry modes: ELI5, Explain it, Quiz me, Give me ideas, Help me build
+
+  Author  : M. Miller - Emmanuel Christian School, Tasmania
+  Version : 2.0 - Schedule tab integration + 4 classes
+  =============================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DigiTech Hub - Emmanuel Christian School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1d23;--ink2:#4a5060;--ink3:#8a8f9e;
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f5;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --y7:#185FA5;--y7l:#E6F1FB;--y7d:#0C447C;--y7m:#378ADD;
+  --y8:#2E7D32;--y8l:#E8F5E9;--y8d:#1B5E20;--y8m:#43A047;
+  --y910:#534AB7;--y910l:#EEEDFE;--y910d:#3C3489;--y910m:#7F77DD;
+  --inq:#00695C;--inql:#E0F2F1;--inqd:#004D40;--inqm:#26A69A;
+  --green:#3B6D11;--greenl:#EAF3DE;
+  --amber:#854F0B;--amberl:#FAEEDA;
+  --red:#A32D2D;--redl:#FCEBEB;
+  --radius:10px;--radiuslg:14px;
+  --shadow:0 1px 3px rgba(0,0,0,0.07),0 4px 12px rgba(0,0,0,0.05);
+  --mono:'DM Mono',monospace;--sans:'Nunito',sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6}
+.page{max-width:1100px;margin:0 auto;padding:16px 14px 60px}
+
+/* Header */
+.site-header{display:flex;align-items:center;gap:12px;padding:14px 18px;margin-bottom:14px;background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);box-shadow:var(--shadow)}
+.header-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--y7),var(--y910));display:flex;align-items:center;justify-content:center;color:white;font-size:17px;flex-shrink:0}
+.header-title{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.header-sub{font-size:11px;color:var(--ink3);margin-top:1px}
+.header-badges{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.hb-week{background:var(--greenl);color:var(--green);border:1px solid rgba(59,109,17,.2)}
+.hb-module{background:var(--amberl);color:var(--amber);border:1px solid rgba(133,79,11,.2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Class tabs - 4 cols */
+.class-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:680px){.class-tabs{grid-template-columns:1fr 1fr}}
+.class-tab{padding:11px 12px;border-radius:var(--radiuslg);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .18s;box-shadow:var(--shadow)}
+.class-tab:hover{border-color:var(--border2)}
+.class-tab-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--surface2);color:var(--ink3);transition:all .18s}
+.class-tab-title{font-size:13px;font-weight:700}
+.class-tab-sub{font-size:10px;color:var(--ink3);margin-top:1px}
+.class-tab.active-7{border-color:var(--y7);background:var(--y7l)}.class-tab.active-7 .class-tab-icon{background:var(--y7);color:white}.class-tab.active-7 .class-tab-title{color:var(--y7d)}
+.class-tab.active-8{border-color:var(--y8);background:var(--y8l)}.class-tab.active-8 .class-tab-icon{background:var(--y8);color:white}.class-tab.active-8 .class-tab-title{color:var(--y8d)}
+.class-tab.active-910{border-color:var(--y910);background:var(--y910l)}.class-tab.active-910 .class-tab-icon{background:var(--y910);color:white}.class-tab.active-910 .class-tab-title{color:var(--y910d)}
+.class-tab.active-inq{border-color:var(--inq);background:var(--inql)}.class-tab.active-inq .class-tab-icon{background:var(--inq);color:white}.class-tab.active-inq .class-tab-title{color:var(--inqd)}
+
+/* Two panel layout */
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:680px){.main-grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);overflow:visible;box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0}
+.panel-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;border-radius:var(--radiuslg) var(--radiuslg) 0 0}
+.panel-head-title{font-size:13px;font-weight:700}
+.panel-head-icon{font-size:15px;color:var(--ink3)}
+
+/* Resource browser */
+.filter-row{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface)}
+.filter-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink3);transition:all .13s;white-space:nowrap}
+.filter-pill:hover{background:var(--surface);color:var(--ink)}
+.filter-pill.active-7{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
+.filter-pill.active-8{background:var(--y8l);color:var(--y8d);border-color:var(--y8)}
+.filter-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
+.filter-pill.active-inq{background:var(--inql);color:var(--inqd);border-color:var(--inq)}
+.search-row{padding:8px 10px;border-bottom:1px solid var(--border)}
+.search-row input{width:100%;padding:7px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
+.search-row input:focus{border-color:var(--border2);background:var(--surface)}
+.search-row input::placeholder{color:var(--ink3)}
+.res-list{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:300px;max-height:520px;width:100%}
+.res-list::-webkit-scrollbar{width:4px}.res-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* Resource cards */
+.rcard{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);transition:border-color .13s;width:100%}
+.rcard:hover{border-color:var(--border2)}
+.rcard.current-mod{border-left:3px solid var(--green)}
+.rcard-head{display:flex;align-items:flex-start;gap:10px;padding:11px 13px 6px}
+.rcard-fmt{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--mono);margin-top:2px}
+.rcard-info{flex:1;min-width:0}
+.rcard-title{font-size:13px;font-weight:700;color:var(--ink);line-height:1.4;word-break:break-word;white-space:normal}
+.rcard-meta{font-size:11px;color:var(--ink3);margin-top:3px}
+.rcard-tags{display:flex;gap:4px;padding:0 13px 6px;flex-wrap:wrap}
+.rtag{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.rt-html{background:var(--y7l);color:var(--y7d)}.rt-pdf{background:var(--redl);color:var(--red)}
+.rt-docx{background:var(--greenl);color:var(--green)}.rt-onenote{background:var(--y910l);color:var(--y910d)}
+.rt-cur{background:var(--greenl);color:var(--green)}.rt-type{background:var(--surface2);color:var(--ink3)}
+.rcard-summary{font-size:12px;color:var(--ink2);padding:0 13px 10px;line-height:1.6}
+.rcard-actions{display:flex;gap:5px;padding:0 13px 11px;flex-wrap:wrap}
+.ract{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:opacity .13s}
+.ract:hover{opacity:.85}
+.ract-blue{background:var(--y7);color:white}.ract-green{background:var(--y8);color:white}
+.ract-purple{background:var(--y910);color:white}.ract-teal{background:var(--inq);color:white}
+.ract-red{background:var(--red);color:white}.ract-ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--border2)}
+.onenote-box{margin:0 11px 9px;background:var(--y910l);border-radius:var(--radius);padding:9px 11px}
+.onenote-title{font-size:11px;font-weight:700;color:var(--y910d);margin-bottom:5px}
+.onenote-steps{font-size:11px;color:var(--y910);line-height:1.9}
+.list-empty{text-align:center;padding:32px 16px;color:var(--ink3)}
+.list-empty-icon{font-size:28px;display:block;margin-bottom:8px;opacity:.35}
+.list-empty-t{font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:3px}
+.list-empty-s{font-size:12px;line-height:1.5}
+.loading-dots{display:flex;gap:5px;justify-content:center;margin-top:8px}
+.loading-dots span{width:6px;height:6px;border-radius:50%;background:var(--ink3);animation:ldp 1.2s infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes ldp{0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+
+/* Module banner - shows current module above resource list */
+.module-banner{margin:8px 10px 0;padding:8px 12px;border-radius:var(--radius);font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
+.mb-7{background:var(--y7l);color:var(--y7d);border:1px solid rgba(24,95,165,.2)}
+.mb-8{background:var(--y8l);color:var(--y8d);border:1px solid rgba(46,125,50,.2)}
+.mb-910{background:var(--y910l);color:var(--y910d);border:1px solid rgba(83,74,183,.2)}
+.mb-inq{background:var(--inql);color:var(--inqd);border:1px solid rgba(0,105,92,.2)}
+
+/* AI companion */
+.mode-pills{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.mode-pill{padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink3);transition:all .13s;white-space:nowrap}
+.mode-pill:hover{background:var(--surface);color:var(--ink)}
+.mode-pill.active-7{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
+.mode-pill.active-8{background:var(--y8l);color:var(--y8d);border-color:var(--y8)}
+.mode-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
+.mode-pill.active-inq{background:var(--inql);color:var(--inqd);border-color:var(--inq)}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;min-height:280px;max-height:440px}
+.chat-msgs::-webkit-scrollbar{width:4px}.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.6;animation:msgIn .18s ease-out}
+@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.msg.ai{align-self:flex-start;background:var(--surface2);color:var(--ink);border:1px solid var(--border);border-bottom-left-radius:3px}
+.msg.user{align-self:flex-end;color:white;border-bottom-right-radius:3px}
+.msg.u7{background:var(--y7)}.msg.u8{background:var(--y8)}.msg.u910{background:var(--y910)}.msg.uinq{background:var(--inq)}
+.msg.thinking{align-self:flex-start;background:var(--surface2);color:var(--ink3);font-style:italic;font-size:12px;border:1px solid var(--border);border-bottom-left-radius:3px}
+.ai-chunk{margin-bottom:10px;line-height:1.65;font-size:14px}
+.ai-chunk:last-child{margin-bottom:0}
+.ai-section-head{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:5px;margin-top:12px}
+.ai-section-head:first-child{margin-top:0}
+.msg.ai strong{color:var(--ink);font-weight:700}
+.inline-rcard{margin-top:8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);overflow:hidden}
+.inline-rcard-head{padding:8px 11px;border-bottom:1px solid var(--border)}
+.inline-rcard-title{font-size:12px;font-weight:700;color:var(--ink)}
+.inline-rcard-sub{font-size:10px;color:var(--ink3);margin-top:1px}
+.inline-rcard-btns{display:flex;gap:5px;padding:8px 11px;flex-wrap:wrap}
+.quick-strip{display:flex;gap:5px;padding:6px 10px;border-top:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+.quick-strip::-webkit-scrollbar{display:none}
+.quick-btn{padding:4px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:11px;font-weight:600;color:var(--ink3);white-space:nowrap;transition:all .13s;flex-shrink:0;font-family:var(--sans)}
+.quick-btn:hover{background:var(--surface);color:var(--ink)}
+.chat-input{display:flex;gap:7px;padding:9px 11px;border-top:1px solid var(--border);flex-shrink:0}
+.chat-input input{flex:1;padding:9px 13px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
+.chat-input input:focus{border-color:var(--border2);background:var(--surface)}
+.chat-input input::placeholder{color:var(--ink3)}
+.send-btn{padding:9px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;transition:opacity .13s;flex-shrink:0}
+.send-btn:hover{opacity:.88}.send-btn:disabled{opacity:.4;cursor:not-allowed}
+.sb7{background:var(--y7)}.sb8{background:var(--y8)}.sb910{background:var(--y910)}.sbinq{background:var(--inq)}
+.tts-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;border-top:1px solid var(--border);background:var(--surface2);flex-shrink:0}
+.tts-label{font-size:11px;color:var(--ink3);font-weight:600}
+.tts-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);color:var(--ink2);transition:all .13s}
+.tts-btn:hover{background:var(--surface2)}
+.tts-btn.active{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
+.disclaimer{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--amberl);border:1px solid rgba(133,79,11,.2);font-size:12px;color:var(--amber);line-height:1.6;display:flex;gap:8px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="site-header">
+    <div class="header-logo">&#128161;</div>
+    <div>
+      <div class="header-title">DigiTech Hub</div>
+      <div class="header-sub">Emmanuel Christian School - Mr Miller</div>
+    </div>
+    <div class="header-badges">
+      <span class="hbadge hb-week" id="weekBadge">Week --</span>
+      <span class="hbadge hb-module" id="moduleBadge">Loading...</span>
+    </div>
+  </div>
+
+  <div class="class-tabs">
+    <button class="class-tab active-7" id="tab7" onclick="setClass('7')">
+      <div class="class-tab-icon">&#128187;</div>
+      <div><div class="class-tab-title">Year 7</div><div class="class-tab-sub">Digital Systems</div></div>
+    </button>
+    <button class="class-tab" id="tab8" onclick="setClass('8')">
+      <div class="class-tab-icon">&#128202;</div>
+      <div><div class="class-tab-title">Year 8</div><div class="class-tab-sub">Networks and Data</div></div>
+    </button>
+    <button class="class-tab" id="tab910" onclick="setClass('910')">
+      <div class="class-tab-icon">&#129302;</div>
+      <div><div class="class-tab-title">Year 9/10</div><div class="class-tab-sub">Automation and 3D</div></div>
+    </button>
+    <button class="class-tab" id="tabinq" onclick="setClass('inq')">
+      <div class="class-tab-icon">&#128640;</div>
+      <div><div class="class-tab-title">Inquiry</div><div class="class-tab-sub">Free exploration</div></div>
+    </button>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- LEFT - Resource browser -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-head-icon">&#128193;</span>
+        <div class="panel-head-title">Resources</div>
+      </div>
+      <div id="moduleBannerWrap"></div>
+      <div class="filter-row" id="filterRow"></div>
+      <div class="search-row">
+        <input type="text" id="searchBox" placeholder="Search resources, topics, definitions..." oninput="renderResources()" />
+      </div>
+      <div class="res-list" id="resList">
+        <div class="list-empty">
+          <span class="list-empty-icon">&#128193;</span>
+          <div class="list-empty-t">Loading resources...</div>
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT - AI companion -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-head-icon">&#128172;</span>
+        <div class="panel-head-title">AI companion</div>
+      </div>
+      <div class="mode-pills" id="modePills"></div>
+      <div class="tts-bar" id="ttsBar" style="display:none">
+        <span class="tts-label">&#128266; Read aloud</span>
+        <button class="tts-btn" id="ttsToggle" onclick="toggleTTS()">Off</button>
+        <button class="tts-btn" onclick="stopTTS()">&#9632; Stop</button>
+      </div>
+      <div class="chat-msgs" id="chatMsgs"></div>
+      <div class="quick-strip" id="quickStrip"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Ask about your lessons..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMsg()" />
+        <button class="send-btn sb7" id="sendBtn" onclick="sendMsg()">Send</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="disclaimer">
+    <span>&#9888;</span>
+    <span>This AI is your <strong>thinking partner</strong>, not your answer machine. It will push back, ask questions, and make you defend your reasoning. Always check your class notes and SEQTA resources too.</span>
+  </div>
+
+</div>
+<script>
+/**
+ * =============================================================================
+ * DigiTech Hub v2 - Client Script
+ * =============================================================================
+ *
+ * Data flow:
+ *   Page load
+ *     -> loadSchedule()   fetch Schedule tab, find active module for class
+ *     -> loadResources()  fetch Resources tab, filter by class
+ *     -> renderResources() show filtered + module-highlighted cards
+ *     -> newChat()        show mode welcome message
+ *
+ *   Student sends message
+ *     -> Apps Script buildDynamicPrompt() - built server-side from Sheet
+ *     -> POST to Apps Script AI proxy
+ *     -> renderAIResponse()   chunks into readable blocks
+ *
+ *   Schedule update (teacher flips active=TRUE in Sheet)
+ *     -> Next page load picks it up automatically - no code change needed
+ * =============================================================================
+ */
+
+// =============================================================================
+// CONFIG - update CURRENT_WEEK each Monday
+// =============================================================================
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXnqsI0gWf6xVl3BMWDtgWubHqOAm2s5G4170MRoik8T7cVXbxSZgE-RDv3jGOudUR/exec';
+
+/**
+ * Write token - only needed for converter (append/update/delete).
+ * Chat action is public - no token needed. This is intentionally
+ * NOT used in the hub so it does not appear in browser network traffic.
+ */
+const CURRENT_WEEK = 6;
+
+/**
+ * Column schema - must match Sheet header row exactly.
+ * The 'module' column is the join key between Resources and Schedule tabs.
+ */
+const COLS = ['id','class','term','week','module','type','title','summary','topics',
+  'file_format','url','source','print_ready','onenote_path','definitions',
+  'success_criteria','tasks','key_concepts','current','locked'];
+
+/**
+ * Class name mapping - internal key -> Sheet value
+ */
+const CLASS_NAMES = {'7':'Year 7','8':'Year 8','910':'Year 9/10','inq':'Inquiry'};
+
+/**
+ * Quick prompt suggestions per class per mode.
+ */
+const QUICK_PROMPTS = {
+  '7':{
+    eli5    :['RAM please','What is binary?','What is a CPU?','What is the internet?'],
+    explain :['What is RAM?','Explain binary','Hardware vs software','How does a file travel?'],
+    quiz    :['Quiz me on binary','Test me on hardware','File journey quiz','Test everything'],
+    debate  :['Should schools track devices?','Who owns your data?','Should AI mark work?','Is the digital divide fair?'],
+    help    :['Help with my system diagram','Stuck on the assessment','Check my binary','Help me start the file journey task']
+  },
+  '8':{
+    eli5    :['What is WiFi?','What is hacking?','What is a spreadsheet?','What is encryption?'],
+    explain :['What is a network?','Explain cybersecurity','What is a database?','How does the internet work?'],
+    quiz    :['Quiz me on networks','Test me on cyber threats','Spreadsheet formulas quiz','Data and binary quiz'],
+    debate  :['Should governments monitor internet traffic?','Is personal data ever truly private?','Should schools block social media?','Who is responsible for cybercrime?'],
+    help    :['Help with my spreadsheet','Stuck on my data project','Help with my digital solution','Check my network diagram']
+  },
+  '910':{
+    eli5    :['PWM in simple words','What does def do?','Why use functions?','What is duty cycle?'],
+    explain :['Explain PWM','What is a function?','Bit:Bot XL wiring','Tolerance in 3D printing'],
+    quiz    :['Quiz me on Python','Test micro:bit sensors','3D printing quiz','Mix both terms'],
+    debate  :['Robots replacing workers?','Who owns a 3D design?','AI in schools?','Autonomous vehicles and blame'],
+    help    :['My Bit:Bot code is wrong','Help plan my portfolio','Stuck on a function','Assessment help']
+  },
+  'inq':{
+    eli5    :['What is coding?','What is AI?','How does WiFi work?','What is an algorithm?'],
+    explain :['How does AI work?','What can I make with a micro:bit?','How does 3D printing work?','What is game design?'],
+    quiz    :['Quiz me on anything tech','Test me on AI','What do I know about coding?','Tech trivia'],
+    debate  :['Will AI take over all jobs?','Should kids learn to code?','Is social media good or bad?','Should robots have rights?'],
+    help    :["I want to build something - where do I start?",'Help me with my project idea','I am stuck on my creation','What should I make next?']
+  }
+};
+
+// =============================================================================
+// STATE
+// =============================================================================
+
+let currentClass = '7';
+let currentMode  = 'explain';
+let currentTerm  = 0;
+let currentType  = 'all';
+let allResources = [];
+let schedule     = [];
+let activeModule = null;    // Current module name from Schedule tab
+let messages     = [];
+let aiLoading    = false;
+let ttsEnabled   = false;
+let currentUtterance = null;
+
+// =============================================================================
+// SCHEDULE TAB
+// Fetches the Schedule tab and finds the active module for a given class.
+// =============================================================================
+
+/**
+ * Fetches the Schedule tab from the Apps Script endpoint.
+ * Looks for action=getSchedule - falls back gracefully if not yet deployed.
+ * Once loaded, calls updateActiveModule() to highlight the current module.
+ */
+async function loadSchedule() {
+  try {
+    const res  = await fetch(`${SCRIPT_URL}?action=getSchedule`);
+    const data = await res.json();
+    if (data.success && data.rows) {
+      schedule = data.rows;
+    }
+  } catch (e) {
+    // Schedule tab not yet set up - hub still works, just without module context
+    schedule = [];
+  }
+  updateActiveModule();
+}
+
+/**
+ * Finds the active module for the current class from the cached schedule.
+ * Updates the module badge in the header and the module banner above resources.
+ */
+function updateActiveModule() {
+  const className = CLASS_NAMES[currentClass];
+
+  // Find the active=TRUE row for this class
+  const activeRow = schedule.find(r =>
+    r.class === className &&
+    (r.active === true || r.active === 'TRUE' || r.active === 'true')
+  );
+
+  activeModule = activeRow ? activeRow.module : null;
+
+  // Update header badge
+  const modBadge = document.getElementById('moduleBadge');
+  modBadge.textContent = activeModule
+    ? activeModule
+    : 'No active module';
+
+  // Update module banner above resource list
+  const wrap = document.getElementById('moduleBannerWrap');
+  if (activeModule) {
+    const cls = `mb-${currentClass === '910' ? '910' : currentClass}`;
+    wrap.innerHTML = `<div class="module-banner ${cls}">
+      <span>&#127989;</span>
+      <span>Current module: <strong>${esc(activeModule)}</strong></span>
+    </div>`;
+  } else {
+    wrap.innerHTML = '';
+  }
+}
+
+// =============================================================================
+// RESOURCE LOADING AND RENDERING
+// =============================================================================
+
+/**
+ * Fetches all unlocked rows for the current class from the Sheet.
+ */
+async function loadResources() {
+  const className = CLASS_NAMES[currentClass];
+  document.getElementById('resList').innerHTML = `
+    <div class="list-empty">
+      <span class="list-empty-icon">&#128193;</span>
+      <div class="list-empty-t">Loading resources...</div>
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>`;
+
+  try {
+    const res  = await fetch(`${SCRIPT_URL}?action=getRows&class=${encodeURIComponent(className)}`);
+    const data = await res.json();
+    if (data.success && data.rows) {
+      allResources = data.rows;
+      renderResources();
+    } else {
+      showResourceError(data.message || 'Could not load resources');
+    }
+  } catch (err) {
+    showResourceError('Connection error - ' + err.message);
+  }
+}
+
+function showResourceError(msg) {
+  document.getElementById('resList').innerHTML = `
+    <div class="list-empty">
+      <span class="list-empty-icon">&#9888;</span>
+      <div class="list-empty-t">Could not load resources</div>
+      <div class="list-empty-s">${esc(msg)}</div>
+    </div>`;
+}
+
+/** Renders filter pills for current class */
+function renderFilters() {
+  const ac = `active-${currentClass === '910' ? '910' : currentClass}`;
+  const termBtns = [{label:'All terms',val:0},{label:'Term 1',val:1},{label:'Term 2',val:2},{label:'Term 3',val:3},{label:'Term 4',val:4}];
+  const typeBtns = ['all','Lesson Outline','Worksheet','Assessment','Rubric','Reference','Explainer'];
+  document.getElementById('filterRow').innerHTML =
+    termBtns.map(b => `<button class="filter-pill ${currentTerm===b.val?ac:''}" onclick="setTermFilter(${b.val})">${b.label}</button>`).join('') +
+    '<span style="width:1px;background:var(--border2);align-self:stretch;margin:2px 3px"></span>' +
+    typeBtns.map(t => `<button class="filter-pill ${currentType===t?ac:''}" onclick="setTypeFilter('${t}')">${t==='all'?'All types':t}</button>`).join('');
+}
+
+/**
+ * Filters and renders resource cards.
+ * Resources matching the active module get a green left border and sort first.
+ */
+function renderResources() {
+  const search    = (document.getElementById('searchBox')?.value||'').toLowerCase();
+  const className = CLASS_NAMES[currentClass];
+
+  let filtered = allResources.filter(r => {
+    if (r.class !== className) return false;
+    if (currentTerm !== 0 && String(r.term) !== String(currentTerm)) return false;
+    if (currentType !== 'all' && r.type !== currentType) return false;
+    if (search) {
+      const hay = [r.title,r.summary,r.topics,r.definitions,r.key_concepts,r.module].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const list = document.getElementById('resList');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="list-empty"><span class="list-empty-icon">&#128269;</span><div class="list-empty-t">No resources found</div><div class="list-empty-s">Try a different filter or search term</div></div>`;
+    return;
+  }
+
+  // Sort: active module first, then by term and week
+  filtered.sort((a,b) => {
+    const aIsActive = activeModule && a.module === activeModule;
+    const bIsActive = activeModule && b.module === activeModule;
+    if (aIsActive && !bIsActive) return -1;
+    if (!aIsActive && bIsActive) return 1;
+    if (Number(a.term) !== Number(b.term)) return Number(a.term) - Number(b.term);
+    return Number(a.week) - Number(b.week);
+  });
+
+  list.innerHTML = filtered.map(r => buildResourceCard(r)).join('');
+}
+
+/**
+ * Builds a resource card HTML string.
+ * Cards from the active module get the green left border (.current-mod).
+ */
+function buildResourceCard(r) {
+  const isActive = activeModule && r.module === activeModule;
+  const fmt      = (r.file_format||'html').toLowerCase();
+  const accMap   = {'7':'ract-blue','8':'ract-green','910':'ract-purple','inq':'ract-teal'};
+  const acc      = accMap[currentClass]||'ract-blue';
+  const fmtBg    = {html:'#E6F1FB',htm:'#E6F1FB',docx:'#EAF3DE',doc:'#EAF3DE',pdf:'#FCEBEB',onenote:'#EEEDFE',video:'#FAEEDA'};
+  const fmtCol   = {html:'#0C447C',htm:'#0C447C',docx:'#27500A',doc:'#27500A',pdf:'#791F1F',onenote:'#3C3489',video:'#633806'};
+  const tagCls   = {html:'rt-html',docx:'rt-docx',pdf:'rt-pdf',onenote:'rt-onenote'};
+
+  let actions = '';
+  if (fmt==='onenote') {
+    actions = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(r.id)}')">&#128211; How to find this</button>`;
+  } else if (fmt==='html'||fmt==='htm') {
+    const openUrl = r.url ? `window.open('${esc(r.url)}','_blank')` : 'void(0)';
+    actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button><button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#128065; Preview</button>`;
+  } else if (fmt==='docx'||fmt==='gdoc') {
+    const wordUrl  = r.url?r.url.replace('/view','/edit'):'#';
+    const printUrl = r.url?r.url.replace('/view','/export?format=pdf'):'#';
+    actions = `<button class="ract ${acc}" onclick="window.open('${esc(wordUrl)}','_blank')">&#128196; Open in Word</button>
+      ${r.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(printUrl)}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='pdf') {
+    actions = `<button class="ract ${acc}" onclick="window.open('${esc(r.url)}','_blank')">&#8599; Open</button>
+      ${r.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(r.url)}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='video') {
+    actions = `<button class="ract ${acc}" onclick="window.open('${esc(r.url)}','_blank')">&#9654; Watch</button>`;
+  }
+
+  const oneNoteBox = fmt==='onenote'&&r.onenote_path
+    ? `<div id="on-${esc(r.id)}" style="display:none"><div class="onenote-box"><div class="onenote-title">&#128211; How to find this in OneNote</div><div class="onenote-steps">${r.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
+    : '';
+
+  return `<div class="rcard ${isActive?'current-mod':''}" id="rc-${esc(r.id)}">
+    <div class="rcard-head">
+      <div class="rcard-fmt" style="background:${fmtBg[fmt]||'#F1EFE8'};color:${fmtCol[fmt]||'#444441'}">${fmt.toUpperCase()}</div>
+      <div class="rcard-info">
+        <div class="rcard-title" title="${esc(r.title)}">${esc(r.title)}</div>
+        <div class="rcard-meta">${esc(r.module||'')} - T${esc(String(r.term))} Wk${esc(String(r.week))} - ${esc(r.type)}</div>
+      </div>
+    </div>
+    <div class="rcard-tags">
+      ${isActive?'<span class="rtag rt-cur">Current module</span>':''}
+      <span class="rtag ${tagCls[fmt]||'rt-type'}">${fmt.toUpperCase()}</span>
+      <span class="rtag rt-type">${esc(r.type)}</span>
+    </div>
+    <div class="rcard-summary">${esc(r.summary||'')}</div>
+    <div class="rcard-actions">${actions}</div>
+    ${oneNoteBox}
+  </div>`;
+}
+
+function toggleOneNote(id) {
+  const el=document.getElementById('on-'+id);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
+function setTypeFilter(t){currentType=t;renderFilters();renderResources()}
+
+// =============================================================================
+// CLASS AND MODE SWITCHING
+// =============================================================================
+
+function setClass(cls) {
+  currentClass = cls;
+  const tabs = {tab7:'7',tab8:'8',tab910:'910',tabinq:'inq'};
+  Object.entries(tabs).forEach(([id,c]) => {
+    document.getElementById(id).className = 'class-tab' + (c===cls?` active-${c===cls?cls:''}`:'');
+  });
+  document.getElementById('tab7').className   = 'class-tab'+(cls==='7'  ?' active-7':'');
+  document.getElementById('tab8').className   = 'class-tab'+(cls==='8'  ?' active-8':'');
+  document.getElementById('tab910').className = 'class-tab'+(cls==='910'?' active-910':'');
+  document.getElementById('tabinq').className = 'class-tab'+(cls==='inq'?' active-inq':'');
+  const sbMap={'7':'sb7','8':'sb8','910':'sb910','inq':'sbinq'};
+  document.getElementById('sendBtn').className='send-btn '+(sbMap[cls]||'sb7');
+  updateActiveModule();
+  renderFilters();
+  renderModePills();
+  loadResources();
+  newChat();
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  renderModePills();
+  renderQuickBtns();
+  newChat();
+}
+
+function renderModePills() {
+  const acMap={'7':'active-7','8':'active-8','910':'active-910','inq':'active-inq'};
+  const ac   = acMap[currentClass]||'active-7';
+  const isInq = currentClass==='inq';
+  const modes=[
+    {key:'eli5',   label:'&#129299; ELI5'},
+    {key:'explain',label:'&#128161; Explain it'},
+    {key:'quiz',   label:'&#10067; Quiz me'},
+    {key:'debate', label:isInq?'&#128640; Give me ideas':'&#128172; Let\'s debate'},
+    {key:'help',   label:isInq?'&#128736; Help me build':'&#9997; Help me think'}
+  ];
+  document.getElementById('modePills').innerHTML = modes
+    .map(m=>`<button class="mode-pill ${currentMode===m.key?ac:''}" onclick="setMode('${m.key}')">${m.label}</button>`)
+    .join('');
+}
+
+function renderQuickBtns() {
+  const prompts = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
+  document.getElementById('quickStrip').innerHTML = prompts
+    .map(p=>`<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`)
+    .join('');
+}
+
+
+// =============================================================================
+// CHAT
+// =============================================================================
+
+function newChat() {
+  messages = [];
+  stopTTS();
+  document.getElementById('chatMsgs').innerHTML = '';
+  const isInqNow = currentClass==='inq';
+  const welcomes = {
+    eli5    :`What do you want explained in the simplest possible way? Drop a word or concept and I\'ll break it down.`,
+    explain :`Hey! Pick a concept from your lessons and I\'ll break it down. What do you want to understand?`,
+    quiz    :`Ready to test yourself? I\'ll go one question at a time and ramp up the difficulty. What topic?`,
+    debate  :isInqNow?`What do you want to make or build? Tell me your interests and I\'ll throw some project ideas at you.`:`I\'m going to push back on whatever position you take - that\'s the point. What topic?`,
+    help    :isInqNow?`What are you trying to build? Tell me where you\'re at and I\'ll help you get it working.`:`Tell me what you\'re working on and what you\'ve tried so far. I won\'t do it for you but I\'ll help you think through it.`
+  };
+  appendAIMsg(welcomes[currentMode]||welcomes.explain);
+  renderQuickBtns();
+}
+
+async function sendQuick(text) {
+  document.getElementById('chatInput').value = text;
+  await sendMsg();
+}
+
+async function sendMsg() {
+  if (aiLoading) return;
+  const input = document.getElementById('chatInput');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  appendMsg(text,'user');
+  messages.push({role:'user',content:text});
+  aiLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+  const thinkEl = appendMsg('Thinking...','thinking');
+  try {
+    // Send only class, mode and message history.
+    // System prompt is built server-side in Apps Script from live Sheet data.
+    // Write token is NOT sent - chat action is public and token-free.
+    const res = await fetch(SCRIPT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'chat',class:currentClass,mode:currentMode,messages})
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message||'Proxy error');
+    const reply = data.content?.[0]?.text||'Something went wrong - please try again.';
+    thinkEl.remove();
+    if (reply.startsWith('RESOURCE_REQUEST:')) {
+      handleResourceRequest(reply.replace('RESOURCE_REQUEST:','').trim());
+    } else {
+      appendAIMsg(reply);
+      messages.push({role:'assistant',content:reply});
+      if (ttsEnabled) speakText(reply);
+    }
+  } catch(err) {
+    thinkEl.remove();
+    appendAIMsg('Connection error - please try again. ('+err.message+')');
+  }
+  aiLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+/**
+ * Handles a resource retrieval request.
+ * Scores resources by keyword match against the query.
+ * Boosts resources from the current module.
+ */
+function handleResourceRequest(query) {
+  const q         = query.toLowerCase();
+  const className = CLASS_NAMES[currentClass];
+  const matches   = allResources
+    .filter(r => r.class===className)
+    .map(r => {
+      let score = 0;
+      const hay = [r.title,r.type,r.topics,r.summary,String(r.week),r.module].join(' ').toLowerCase();
+      q.split(' ').forEach(word => { if(word.length>=3&&hay.includes(word)) score++; });
+      if (activeModule && r.module===activeModule) score += 2;
+      return {r,score};
+    })
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score);
+
+  const msgEl = appendMsgElement('ai');
+  if (!matches.length) {
+    msgEl.textContent = "I couldn't find a matching resource. Try browsing the resource panel or check SEQTA.";
+    messages.push({role:'assistant',content:msgEl.textContent});
+    return;
+  }
+  const best = matches[0].r;
+  const fmt  = (best.file_format||'html').toLowerCase();
+  const accMap={'7':'ract-blue','8':'ract-green','910':'ract-purple','inq':'ract-teal'};
+  const ac   = accMap[currentClass]||'ract-blue';
+  let btns = '';
+  if (fmt==='onenote') {
+    btns = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(best.id)}')">&#128211; How to find this</button>`;
+  } else if (fmt==='html'||fmt==='htm') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>`;
+  } else if (fmt==='docx'||fmt==='gdoc') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url.replace('/view','/edit'))}','_blank')">&#128196; Open in Word</button>${best.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(best.url.replace('/view','/export?format=pdf'))}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='pdf') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>${best.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(best.url)}','_blank')">&#128424; Print</button>`:''}`;
+  } else if (fmt==='video') {
+    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#9654; Watch</button>`;
+  }
+  const oneNoteBox = fmt==='onenote'&&best.onenote_path
+    ? `<div id="on-${esc(best.id)}" style="display:none"><div class="onenote-box" style="margin:8px 0 0"><div class="onenote-title">&#128211; How to find this</div><div class="onenote-steps">${best.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
+    : '';
+  msgEl.innerHTML = `Here's the resource I found:
+    <div class="inline-rcard">
+      <div class="inline-rcard-head">
+        <div class="inline-rcard-title">${esc(best.title)}</div>
+        <div class="inline-rcard-sub">${esc(best.module||'')} - Term ${esc(String(best.term))} Wk${esc(String(best.week))} - ${esc(best.type)}</div>
+      </div>
+      <div style="font-size:11px;color:var(--ink2);padding:7px 11px;line-height:1.5">${esc(best.summary||'')}</div>
+      <div class="inline-rcard-btns">${btns}</div>
+      ${oneNoteBox}
+    </div>`;
+  messages.push({role:'assistant',content:'Here is the resource: '+best.title});
+}
+
+// =============================================================================
+// MESSAGE RENDERING
+// =============================================================================
+
+/**
+ * Formats AI response text into chunked HTML.
+ * Converts **bold** and emoji headers into spaced readable blocks.
+ */
+function formatAIResponse(text) {
+  let html = esc(text);
+  html = html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  const chunks = html.split(/\n\n+/);
+  return chunks.map(chunk=>{
+    const trimmed=chunk.trim();
+    if(!trimmed) return '';
+    return `<div class="ai-chunk">${trimmed.replace(/\n/g,'<br>')}</div>`;
+  }).filter(Boolean).join('');
+}
+
+function appendAIMsg(text) {
+  const container=document.getElementById('chatMsgs');
+  const el=document.createElement('div');
+  el.className='msg ai';
+  el.innerHTML=formatAIResponse(text);
+  container.appendChild(el);
+  container.scrollTop=container.scrollHeight;
+  return el;
+}
+
+function appendMsg(text,type) {
+  const el=appendMsgElement(type);
+  el.textContent=text;
+  return el;
+}
+
+function appendMsgElement(type) {
+  const container=document.getElementById('chatMsgs');
+  const el=document.createElement('div');
+  const uMap={'7':'u7','8':'u8','910':'u910','inq':'uinq'};
+  const userCls=type==='user'?' '+(uMap[currentClass]||'u7'):'';
+  el.className='msg '+type+userCls;
+  container.appendChild(el);
+  container.scrollTop=container.scrollHeight;
+  return el;
+}
+
+// =============================================================================
+// TTS
+// =============================================================================
+
+function initTTS() {
+  if(!('speechSynthesis' in window)) return;
+  document.getElementById('ttsBar').style.display='flex';
+}
+
+function toggleTTS() {
+  ttsEnabled=!ttsEnabled;
+  const btn=document.getElementById('ttsToggle');
+  btn.textContent=ttsEnabled?'On':'Off';
+  btn.classList.toggle('active',ttsEnabled);
+  if(!ttsEnabled) stopTTS();
+}
+
+function speakText(text) {
+  if(!ttsEnabled||!('speechSynthesis' in window)) return;
+  stopTTS();
+  const clean=text.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').replace(/`/g,'');
+  currentUtterance=new SpeechSynthesisUtterance(clean);
+  currentUtterance.rate=0.95;currentUtterance.pitch=1;currentUtterance.lang='en-AU';
+  window.speechSynthesis.speak(currentUtterance);
+}
+
+function stopTTS() {
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  currentUtterance=null;
+}
+
+// =============================================================================
+// UTILITIES
+// =============================================================================
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// =============================================================================
+// INITIALISATION
+// Check URL params for pre-selected class (from homepage class cards)
+// =============================================================================
+
+window.addEventListener('load', () => {
+  // Read ?class= param from URL for direct linking from homepage
+  const params = new URLSearchParams(window.location.search);
+  const urlClass = params.get('class');
+  if (urlClass && ['7','8','910','inq'].includes(urlClass)) {
+    currentClass = urlClass;
+  }
+
+  document.getElementById('weekBadge').innerHTML = '&#128197; Week ' + CURRENT_WEEK;
+
+  initTTS();
+  renderFilters();
+  renderModePills();
+  renderQuickBtns();
+  newChat();
+
+  // Update class tab visual state
+  document.getElementById('tab7').className   = 'class-tab'+(currentClass==='7'  ?' active-7':'');
+  document.getElementById('tab8').className   = 'class-tab'+(currentClass==='8'  ?' active-8':'');
+  document.getElementById('tab910').className = 'class-tab'+(currentClass==='910'?' active-910':'');
+  document.getElementById('tabinq').className = 'class-tab'+(currentClass==='inq'?' active-inq':'');
+  document.getElementById('sendBtn').className='send-btn sb'+currentClass;
+
+  // Load schedule first, then resources
+  loadSchedule().then(() => loadResources());
+});
+</script>
+</body>
+</html>
