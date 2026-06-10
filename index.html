@@ -979,6 +979,25 @@ function smartExtractHTML(html) {
  * @param {string} html - Raw HTML string
  * @returns {string} Drive URL or empty string
  */
+/**
+ * Reads the page-meta JSON block from the file head if present.
+ * When found the converter skips AI extraction and uses this data
+ * directly - faster, cheaper, and exactly correct since the metadata
+ * was authored alongside the content in the LESSON config block.
+ *
+ * @param {string} html - Raw HTML string
+ * @returns {Object|null} Parsed metadata object or null if not found
+ */
+function extractPageMeta(html) {
+  const match = html.match(/<script[^>]+id="page-meta"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1].trim());
+  } catch (e) {
+    return null;
+  }
+}
+
 function extractDriveURL(html) {
   // Format 1: data-url attribute (current format)
   // <div id="drive-meta" data-url="https://..."></div>
