@@ -444,14 +444,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 // =============================================================================
 
 /** Apps Script web app URL - all API and proxy calls go here */
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyXnqsI0gWf6xVl3BMWDtgWubHqOAm2s5G4170MRoik8T7cVXbxSZgE-RDv3jGOudUR/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyTuAV_TQXkV0Ob75PkdLUqkEC1B6gfuiIuF0xOpZmL4kxZCKYtiXwClwgflWTw5_kh/exec';
 
 /**
  * Shared write token.
  * Included in every POST request that modifies the Sheet or uses the AI proxy.
  * Must match WRITE_TOKEN in digitech_sheet_script.js.
  */
-const WRITE_TOKEN = 'Miller-Digitech-2026-woodentigersm7k';
+const WRITE_TOKEN = 'YOUR_WRITE_TOKEN_HERE';
 
 /**
  * Column schema - must match the Google Sheet header row exactly.
@@ -741,8 +741,22 @@ async function processNext() {
     if (rawHTML)    results[f.name].driveURL = extractDriveURL(rawHTML) || null;
     if (driveURL)   results[f.name].driveURL = driveURL;
 
+    // Check for embedded page-meta block - if found skip AI entirely
+    const pageMeta = rawHTML ? extractPageMeta(rawHTML) : null;
+
+    if (pageMeta) {
+      // page-meta found - authored metadata, no AI needed
+      if (results[f.name].driveURL) pageMeta.url = results[f.name].driveURL;
+      results[f.name].data   = pageMeta;
+      results[f.name].status = 'done';
+      results[f.name].mode   = 'meta';
+      buildCSV(f.name, pageMeta);
+      buildMeta(f.name, pageMeta, rawHTML);
+      const pushed = await pushRowToSheet(pageMeta);
+      if (pushed) { results[f.name].pushed = true; results[f.name].status = 'pushed'; }
+    } else {
     try {
-      // Attempt AI extraction through the proxy
+      // No page-meta - use AI extraction proxy
       const data = await extractWithAI(f.name, text, fmt);
       results[f.name].data   = data;
       results[f.name].status = 'done';
