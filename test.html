@@ -120,6 +120,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXnqsI0gWf6xVl3BMWDtgWubHqOAm2s5G4170MRoik8T7cVXbxSZgE-RDv3jGOudUR/exec';
 const TEST_ROW_ID = 'test-row-delete-me-001';
+const WRITE_TOKEN  = 'Miller-Digitech-2026-woodentigersm7k';
 
 let logEl, running = false;
 
@@ -218,7 +219,7 @@ async function runAll(){
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify({action:'append', row:testRow})
+      body: JSON.stringify({action:'append', token:WRITE_TOKEN, row:testRow})
     });
     const ms = Date.now()-t0;
     const data = await res.json();
@@ -229,7 +230,7 @@ async function runAll(){
       const del = await fetch(SCRIPT_URL, {
         method:'POST',
         headers:{'Content-Type':'text/plain'},
-        body: JSON.stringify({action:'delete', id:TEST_ROW_ID})
+        body: JSON.stringify({action:'delete', token:WRITE_TOKEN, id:TEST_ROW_ID})
       });
       const delData = await del.json();
       if(delData.success){
@@ -260,7 +261,7 @@ async function runAll(){
       method:'POST',
       headers:{'Content-Type':'text/plain'},
       body: JSON.stringify({
-        action:'ai',
+        action:'ai', token:WRITE_TOKEN,
         system:'You are a test assistant. Reply with exactly 5 words.',
         messages:[{role:'user', content:'Say hello to Mr Miller'}],
         max_tokens:20
