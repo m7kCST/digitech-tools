@@ -1,0 +1,486 @@
+<!--
+  =============================================================================
+  SEQTA LESSON PAGE - Year 7 - Microsoft Office Suite - Part 3
+  =============================================================================
+  Paste the entire contents of this file into the SEQTA HTML editor.
+  SEQTA wraps this in its own page - no <html>, <head>, or <body> needed.
+
+  TO UPDATE THIS FILE:
+  Edit ONLY the LESSON CONFIG block below. Everything else is automatic.
+  To add your Drive link: scroll to the very bottom, find data-url="" and paste.
+  =============================================================================
+-->
+
+<script>
+// =============================================================================
+// TEACHER CONFIG - edit this block only
+// =============================================================================
+const LESSON = {
+  topic     : 'Digital Hygiene Bootcamp - Part 2',
+  part      : 3,
+  module    : 'Microsoft Office Suite',
+  year      : 'Year 7',
+  duration  : '90 minutes',
+  notebook  : 'Digitech7a',
+  acCodes   : ['AC9TDI8P11', 'AC9TDI8P12'],
+  auditNote : '',
+
+  successCriteria : [
+    'Access the correct SharePoint or OneDrive folder quickly using a shortcut, pin, or bookmark',
+    'Upload a correctly named file into the right subject and term folder',
+    'Share a file using a link with the correct permissions',
+    'Submit work using the method the teacher sets',
+    'Write three personal digital workspace rules covering saving, naming, and sharing'
+  ],
+
+  focus : 'We are turning SharePoint into a working daily routine - practising fast access, correct file saving, correct sharing using links, and submitting work the right way.',
+
+  timing : [
+    { time: '0 - 5 min',   active: false, label: 'Entry ticket',  desc: 'What is the biggest reason people lose school files?' },
+    { time: '5 - 20 min',  active: false, label: 'I Do',          desc: 'Teacher shows fast access setup, search, correct saving, and link sharing' },
+    { time: '20 - 45 min', active: true,  label: 'We Do',         desc: 'Quick access setup together and workflow practice file - download, rename, upload' },
+    { time: '45 - 80 min', active: true,  label: 'You Do',        desc: 'Find-it-fast challenge, submission practice, and digital workspace pledge' },
+    { time: '80 - 90 min', active: false, label: 'Exit ticket',   desc: 'Reflect on one sign of wrong file sharing and one weekly habit to stay organised' }
+  ],
+
+  onenotePage : 'Part 3 - Digital Hygiene 2',
+
+  tasks : [
+    { num: 1, tier: 'f', desc: 'Set up fast access to SharePoint - add a shortcut, pin the site, or bookmark it in the browser' },
+    { num: 2, tier: 'f', desc: 'Download the practice template, rename it using the class naming rule, and upload it to the correct folder' },
+    { num: 3, tier: 'f', desc: 'Find three things using search: your uploaded file, a class resource, and a file by keyword' },
+    { num: 4, tier: 's', desc: 'Submit work using the method the teacher sets and record a screenshot as proof of submission' },
+    { num: 5, tier: 's', desc: 'Write a three-rule Digital Workspace Pledge covering saving location, file naming, and link sharing' },
+    { num: 6, tier: 'e', desc: 'Check version history on a file and write a sentence explaining what version history is used for' },
+    { num: 7, tier: 'e', desc: 'Create a weekly routine checklist for keeping folders tidy - at least 4 steps written as instructions' }
+  ],
+
+  tierDesc : {
+    f: 'Quick access setup, file upload, and search practice. Builds reliable daily workflow with support.',
+    s: 'Includes submission practice and a personal pledge. Demonstrates consistent independent workflow.',
+    e: 'Includes version history and a written weekly routine. Requires planning and higher-order reflection.'
+  },
+
+  assessment : [
+    { evidence: 'Entry ticket',       lookFor: 'Student can identify the most common reason school files get lost' },
+    { evidence: 'Quick access setup', lookFor: 'Student has a shortcut, pin, or bookmark that opens the correct SharePoint location' },
+    { evidence: 'Workflow file',      lookFor: 'File is correctly named and uploaded into Year 7 - DigiTech - Term 1' },
+    { evidence: 'Submission proof',   lookFor: 'Student submits using the assigned method and has screenshot evidence' },
+    { evidence: 'Pledge',            lookFor: 'Three rules are specific, personal, and cover saving, naming, and sharing' },
+    { evidence: 'Exit ticket',        lookFor: 'Student can identify a wrong sharing sign and a concrete weekly organisational habit' }
+  ]
+}
+// =============================================================================
+// END TEACHER CONFIG
+// =============================================================================
+</script>
+
+<style>
+  .dt{font-family:'Segoe UI',Arial,sans-serif;max-width:720px;margin:0 auto;padding:12px 8px 32px;color:#1a1d23;font-size:15px;line-height:1.6}
+
+  /* Header */
+  .dt-hdr{background:#185FA5;border-radius:10px;padding:18px 20px 16px;margin-bottom:12px;color:white}
+  .dt-hdr-eye{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;opacity:.75;margin-bottom:5px}
+  .dt-hdr-topic{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:2px}
+  .dt-hdr-module{font-size:13px;opacity:.8;margin-bottom:10px}
+  .dt-hdr-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .dt-hdr-pill{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600}
+
+  /* Section label */
+  .dt-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#8a8f9e;margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+  .dt-lbl::after{content:'';flex:1;height:1px;background:#e2e2dc}
+
+  /* Cards */
+  .dt-card{background:#fff;border:1px solid #e2e2dc;border-radius:10px;padding:14px 16px;margin-bottom:10px}
+  .dt-card-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#8a8f9e;margin-bottom:8px}
+  .dt-card-body{font-size:14px;color:#4a5060;line-height:1.7}
+
+  /* Criteria */
+  .dt-crit{list-style:none;padding:0;margin:0}
+  .dt-crit li{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid #f0f2f5;font-size:14px;color:#1a1d23;line-height:1.5}
+  .dt-crit li:last-child{border-bottom:none;padding-bottom:0}
+  .dt-crit-n{width:22px;height:22px;border-radius:50%;border:2px solid #185FA5;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#185FA5}
+
+  /* Timing */
+  .dt-timing{display:flex;flex-direction:column}
+  .dt-trow{display:flex;align-items:stretch;min-height:38px}
+  .dt-ttime{font-size:11px;font-family:'Courier New',monospace;color:#8a8f9e;width:80px;flex-shrink:0;padding:8px 8px 8px 0;display:flex;align-items:center}
+  .dt-ttrack{width:3px;background:#f0f2f5;flex-shrink:0;border-radius:3px;margin:2px 12px 2px 0}
+  .dt-ttrack.on{background:#185FA5}
+  .dt-ttext{font-size:13px;color:#4a5060;padding:8px 0;display:flex;align-items:center;flex:1;border-bottom:1px solid #f0f2f5}
+  .dt-trow:last-child .dt-ttext{border-bottom:none}
+  .dt-ttext strong{color:#1a1d23;margin-right:5px}
+
+  /* OneNote box */
+  .dt-on{background:#E6F1FB;border:1px solid rgba(24,95,165,.2);border-left:4px solid #185FA5;border-radius:8px;padding:14px 16px;margin-bottom:10px}
+  .dt-on-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#0C447C;margin-bottom:8px}
+  .dt-on-path{font-size:14px;color:#0C447C;font-weight:600;line-height:2.2}
+  .dt-on-path .stp{display:inline-block;background:white;border:1px solid rgba(24,95,165,.25);border-radius:5px;padding:2px 10px;font-family:'Courier New',monospace;font-size:13px;margin:1px 2px}
+  .dt-on-path .arr{color:#185FA5;font-weight:700;margin:0 3px}
+  .dt-on-note{font-size:12px;color:#378ADD;margin-top:8px;line-height:1.6}
+
+  /* Parent divider */
+  .dt-pdiv{margin:28px 0 20px;text-align:center;position:relative}
+  .dt-pdiv::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:#e2e2dc}
+  .dt-pdiv span{position:relative;background:#f4f6f9;padding:0 14px;font-size:12px;font-weight:700;color:#8a8f9e;text-transform:uppercase;letter-spacing:.7px}
+
+  /* Parent header */
+  .dt-phdr{background:#f0f2f5;border-radius:10px;padding:14px 16px;margin-bottom:12px;border:1px solid #e2e2dc}
+  .dt-phdr-t{font-size:16px;font-weight:800;color:#1a1d23;margin-bottom:4px}
+  .dt-phdr-s{font-size:13px;color:#4a5060;line-height:1.6}
+
+  /* Info rows */
+  .dt-info{display:grid;grid-template-columns:160px 1fr;gap:6px 14px;margin-bottom:5px;font-size:13px}
+  .dt-info-l{font-weight:700;color:#4a5060}
+  .dt-info-v{color:#4a5060}
+
+  /* Audit note */
+  .dt-audit{background:#FAEEDA;border:1px solid rgba(133,79,11,.2);border-left:3px solid #854F0B;border-radius:6px;padding:9px 12px;font-size:12px;color:#6b3d00;margin-bottom:10px;line-height:1.6}
+  .dt-audit strong{color:#6b3d00}
+
+  /* Diff grid */
+  .dt-diff{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+  @media(max-width:540px){.dt-diff{grid-template-columns:1fr}}
+  .dt-dc{border-radius:8px;padding:12px 13px;border:1px solid #e2e2dc}
+  .dt-dc.f{background:#FFF8E1;border-color:#FFD54F}
+  .dt-dc.s{background:#E6F1FB;border-color:rgba(24,95,165,.25)}
+  .dt-dc.e{background:#E8F5E9;border-color:rgba(46,125,50,.25)}
+  .dt-dc-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .dt-dc.f .dt-dc-t{color:#6D4C00}
+  .dt-dc.s .dt-dc-t{color:#0C447C}
+  .dt-dc.e .dt-dc-t{color:#1B5E20}
+  .dt-dc-tasks{font-size:14px;font-weight:700;margin-bottom:3px}
+  .dt-dc.f .dt-dc-tasks{color:#6D4C00}
+  .dt-dc.s .dt-dc-tasks{color:#0C447C}
+  .dt-dc.e .dt-dc-tasks{color:#1B5E20}
+  .dt-dc-desc{font-size:12px;color:#4a5060;line-height:1.5}
+
+  /* Tables */
+  .dt-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+  .dt-tbl th{background:#f0f2f5;padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#4a5060;border-bottom:2px solid #e2e2dc}
+  .dt-tbl td{padding:8px 10px;border-bottom:1px solid #f0f2f5;vertical-align:top;color:#4a5060}
+  .dt-tbl tr:last-child td{border-bottom:none}
+  .dt-tn{font-weight:700;color:#1a1d23;font-family:'Courier New',monospace}
+  .dt-tier{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+  .dt-tier.f{background:#FFF8E1;color:#6D4C00}
+  .dt-tier.s{background:#E6F1FB;color:#0C447C}
+  .dt-tier.e{background:#E8F5E9;color:#1B5E20}
+
+  /* AC codes */
+  .dt-ac{display:inline-block;background:#f0f2f5;border:1px solid #c8c8c0;border-radius:6px;padding:3px 10px;font-family:'Courier New',monospace;font-size:12px;color:#4a5060;margin:2px}
+
+  /* Contact */
+  .dt-contact{background:#f0f2f5;border-radius:8px;padding:12px 14px;font-size:13px;color:#4a5060;line-height:1.8}
+  .dt-contact strong{color:#1a1d23}
+
+  /* Footer */
+  .dt-foot{text-align:center;margin-top:24px;padding-top:14px;border-top:1px solid #e2e2dc;font-size:11px;color:#8a8f9e}
+</style>
+
+<div class="dt" id="dt-root">
+  <!-- Content rendered by script below -->
+</div>
+
+<script>
+(function() {
+  const L = LESSON;
+  const root = document.getElementById('dt-root');
+
+  const tierLabel = { f:'Foundation', s:'Standard', e:'Extension' };
+
+  const acDesc = {
+    'AC9TDI8K01':'How hardware specifications affect performance of digital systems',
+    'AC9TDI8K02':'Data transmission and security in wired and wireless networks',
+    'AC9TDI8K03':'How digital systems represent text, image and audio data using integers',
+    'AC9TDI8K04':'How and why digital systems represent integers in binary',
+    'AC9TDI8P01':'Acquire, store and validate data from multiple sources',
+    'AC9TDI8P02':'Analyse and visualise data to draw conclusions and identify trends',
+    'AC9TDI8P03':'Model and query attributes of objects using structured data',
+    'AC9TDI8P04':'Define and decompose problems using design criteria and user stories',
+    'AC9TDI8P05':'Design algorithms using nested control structures',
+    'AC9TDI8P06':'Trace algorithms to predict output and identify errors',
+    'AC9TDI8P07':'Design the user experience of a digital system',
+    'AC9TDI8P08':'Generate, modify and evaluate alternative designs',
+    'AC9TDI8P09':'Implement and debug programs with control structures and functions',
+    'AC9TDI8P10':'Evaluate solutions against design criteria and user stories',
+    'AC9TDI8P11':'Select and use digital tools efficiently to create and share content',
+    'AC9TDI8P12':'Use digital tools responsibly to manage collaborative projects',
+    'AC9TDI8P13':'Multi-factor authentication, phishing and cyber security threats',
+    'AC9TDI8P14':'Manage digital footprint and assess data collection practices',
+    'AC9TDI10P01':'Acquire and validate data from multiple sources using software',
+    'AC9TDI10P05':'Design algorithms using logical operators as flowcharts and pseudocode',
+    'AC9TDI10P06':'Validate algorithms and programs against a set of test cases',
+    'AC9TDI10P09':'Implement and debug modular programs in a general-purpose language'
+  };
+
+  const fTasks = L.tasks.filter(t => t.tier === 'f');
+  const sTasks = L.tasks.filter(t => t.tier === 's');
+  const eTasks = L.tasks.filter(t => t.tier === 'e');
+  const maxF   = fTasks.length ? Math.max(...fTasks.map(t=>t.num)) : 0;
+  const maxS   = sTasks.length ? Math.max(...sTasks.map(t=>t.num)) : maxF;
+  const maxE   = eTasks.length ? Math.max(...eTasks.map(t=>t.num)) : maxS;
+
+  const tierRangeActual = {
+    f: `Tasks 1\u2013${maxF}`,
+    s: `Tasks 1\u2013${maxS}`,
+    e: `Tasks 1\u2013${maxE}`
+  };
+
+  const tierDesc = L.tierDesc || {
+    f: 'Core tasks - vocabulary, decoding, and short explanations. Builds foundational understanding with support.',
+    s: 'Includes independent application tasks. Demonstrates working knowledge of key concepts.',
+    e: 'Includes analysis, comparison, and higher-order tasks. Requires deeper reasoning and written responses.'
+  };
+
+  root.innerHTML = `
+
+    <div class="dt-hdr">
+      <div class="dt-hdr-eye">${L.year} - Digital Technologies</div>
+      <div class="dt-hdr-topic">${L.topic}</div>
+      <div class="dt-hdr-module">Part ${L.part} &nbsp;&#8212;&nbsp; ${L.module}</div>
+      <div class="dt-hdr-pills">
+        <span class="dt-hdr-pill">${L.year}</span>
+        <span class="dt-hdr-pill">${L.duration}</span>
+        ${L.acCodes.map(c=>`<span class="dt-hdr-pill">${c}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="dt-lbl">For students</div>
+
+    <div class="dt-card">
+      <div class="dt-card-lbl">&#127919; What we are doing today</div>
+      <div class="dt-card-body">${L.focus}</div>
+    </div>
+
+    <div class="dt-card">
+      <div class="dt-card-lbl">&#10003; By the end of this lesson you should be able to</div>
+      <ul class="dt-crit">
+        ${L.successCriteria.map((c,i)=>`
+          <li>
+            <div class="dt-crit-n">${i+1}</div>
+            ${c}
+          </li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="dt-card">
+      <div class="dt-card-lbl">&#128337; How we will use our time</div>
+      <div class="dt-timing">
+        ${L.timing.map(t=>`
+          <div class="dt-trow">
+            <div class="dt-ttime">${t.time}</div>
+            <div class="dt-ttrack ${t.active?'on':''}"></div>
+            <div class="dt-ttext"><strong>${t.label}</strong>&nbsp; ${t.desc}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="dt-on">
+      <div class="dt-on-lbl">&#128210; Your worksheet is in OneNote</div>
+      <div class="dt-on-path">
+        Open OneNote
+        <span class="arr">&#8594;</span>
+        <span class="stp">${L.notebook}</span>
+        <span class="arr">&#8594;</span>
+        <span class="stp">Classwork</span>
+        <span class="arr">&#8594;</span>
+        <span class="stp">${L.onenotePage}</span>
+      </div>
+      <div class="dt-on-note">
+        &#9432; The page is already set up and waiting for you.
+        Open it and start at Task 1. Work through in order and go as far as you can.
+      </div>
+    </div>
+
+    <div class="dt-pdiv"><span>For parents and carers</span></div>
+
+    <div class="dt-phdr">
+      <div class="dt-phdr-t">Lesson information</div>
+      <div class="dt-phdr-s">
+        This section explains what your child is learning, how the lesson runs,
+        how work is differentiated, and how learning is assessed.
+        Contact Mr Miller through SEQTA messages or the school office with any questions.
+      </div>
+    </div>
+
+    <div class="dt-lbl">Lesson overview</div>
+    <div class="dt-card">
+      <div class="dt-info"><span class="dt-info-l">Subject</span><span class="dt-info-v">Digital Technologies</span></div>
+      <div class="dt-info"><span class="dt-info-l">Year level</span><span class="dt-info-v">${L.year}</span></div>
+      <div class="dt-info"><span class="dt-info-l">Module</span><span class="dt-info-v">${L.module}</span></div>
+      <div class="dt-info"><span class="dt-info-l">Lesson</span><span class="dt-info-v">Part ${L.part} - ${L.topic}</span></div>
+      <div class="dt-info"><span class="dt-info-l">Duration</span><span class="dt-info-v">${L.duration}</span></div>
+      <div class="dt-info"><span class="dt-info-l">Lesson type</span><span class="dt-info-v">Assessed classwork</span></div>
+      <div class="dt-info"><span class="dt-info-l">Curriculum codes</span><span class="dt-info-v">${L.acCodes.join(', ')}</span></div>
+      ${L.auditNote ? `<div style="margin-top:10px"><div class="dt-audit"><strong>Scheduling note:</strong> ${L.auditNote}</div></div>` : ''}
+    </div>
+
+    <div class="dt-lbl">How the lesson runs</div>
+    <div class="dt-card">
+      <div class="dt-card-body" style="margin-bottom:12px">
+        This lesson follows an I Do - We Do - You Do structure.
+        Mr Miller opens with a short entry ticket to check prior knowledge,
+        delivers a brief direct teaching segment, then the class works through
+        an example together before students work independently in OneNote.
+        The lesson closes with an exit ticket and a short class review.
+      </div>
+      ${L.timing.map(t=>`
+        <div class="dt-info">
+          <span class="dt-info-l">${t.time}</span>
+          <span class="dt-info-v"><strong>${t.label}</strong> - ${t.desc}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="dt-lbl">Differentiation</div>
+    <div class="dt-card">
+      <div class="dt-card-body" style="margin-bottom:14px">
+        All students work through the same numbered task sequence.
+        Tasks are designed so that earlier tasks build foundational understanding
+        and later tasks require deeper application and analysis.
+        Mr Miller guides students verbally toward an appropriate depth of work.
+        No student is identified by tier in their classwork.
+      </div>
+      <div class="dt-diff">
+        <div class="dt-dc f">
+          <div class="dt-dc-t">Foundation</div>
+          <div class="dt-dc-tasks">${tierRangeActual.f}</div>
+          <div class="dt-dc-desc">${tierDesc.f}</div>
+        </div>
+        <div class="dt-dc s">
+          <div class="dt-dc-t">Standard</div>
+          <div class="dt-dc-tasks">${tierRangeActual.s}</div>
+          <div class="dt-dc-desc">${tierDesc.s}</div>
+        </div>
+        <div class="dt-dc e">
+          <div class="dt-dc-t">Extension</div>
+          <div class="dt-dc-tasks">${tierRangeActual.e}</div>
+          <div class="dt-dc-desc">${tierDesc.e}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dt-lbl">Task breakdown</div>
+    <div class="dt-card" style="padding:0;overflow:hidden">
+      <table class="dt-tbl">
+        <thead>
+          <tr>
+            <th style="width:50px">Task</th>
+            <th>Description</th>
+            <th style="width:100px">Tier</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${L.tasks.map(t=>`
+            <tr>
+              <td class="dt-tn">${t.num}</td>
+              <td>${t.desc}</td>
+              <td><span class="dt-tier ${t.tier}">${tierLabel[t.tier]}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="dt-lbl">Curriculum links</div>
+    <div class="dt-card">
+      <div class="dt-card-body" style="margin-bottom:10px">
+        This lesson addresses the following Australian Curriculum v9 (ACv9)
+        Digital Technologies content descriptions for the ${L.year.includes('9')||L.year.includes('10') ? 'Years 9-10' : 'Years 7-8'} band:
+      </div>
+      ${L.acCodes.map(code=>`
+        <div style="margin-bottom:10px">
+          <span class="dt-ac">${code}</span>
+          <div style="font-size:13px;color:#4a5060;margin-top:4px;padding-left:4px">
+            ${acDesc[code] || code}
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <div class="dt-lbl">Assessment and evidence</div>
+    <div class="dt-card" style="padding:0;overflow:hidden">
+      <table class="dt-tbl">
+        <thead>
+          <tr>
+            <th>Evidence collected</th>
+            <th>What Mr Miller looks for</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${L.assessment.map(a=>`
+            <tr>
+              <td style="font-weight:600;color:#1a1d23;width:160px">${a.evidence}</td>
+              <td>${a.lookFor}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="dt-lbl">Contact</div>
+    <div class="dt-contact">
+      <strong>Mr Miller</strong> - Digital Technologies<br>
+      Emmanuel Christian School, Tasmania<br>
+      Contact via SEQTA messages or the school office.<br>
+      All classwork is stored in your child's OneNote Class Notebook
+      under the Classwork section, accessible through the school's parent portal.
+    </div>
+
+    <div class="dt-foot">
+      ${L.year} Digital Technologies &nbsp;&#183;&nbsp; ${L.topic} Part ${L.part} &nbsp;&#183;&nbsp; Emmanuel Christian School &nbsp;&#183;&nbsp; Mr Miller
+    </div>
+
+  `;
+
+  // =============================================================================
+  // PAGE-META BLOCK
+  // Auto-generated from LESSON config so the converter can push to Sheet
+  // without needing AI extraction. Converter reads this block directly.
+  // =============================================================================
+  const meta = {
+    id              : L.year.toLowerCase().replace('/','').replace(' ','')+'-'+L.module.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+/g,'-').substring(0,20)+'-p'+L.part,
+    class           : L.year,
+    term            : '',
+    week            : '',
+    module          : L.module,
+    type            : 'Lesson Outline',
+    title           : 'Part ' + L.part + ' - ' + L.topic,
+    summary         : L.focus,
+    topics          : L.acCodes.join(', '),
+    file_format     : 'html',
+    url             : document.getElementById('drive-meta') ? document.getElementById('drive-meta').dataset.url || '' : '',
+    source          : 'Drive',
+    print_ready     : 'false',
+    onenote_path    : L.notebook + ' > Classwork > ' + L.onenotePage,
+    definitions     : '',
+    success_criteria: L.successCriteria.map(c => 'I can ' + c.replace(/^I can /i,'')).join(' | '),
+    tasks           : L.tasks.map(t => t.desc).join(' | '),
+    key_concepts    : L.acCodes.join(', '),
+    current         : 'false',
+    locked          : 'false'
+  };
+
+  const existing = document.getElementById('page-meta');
+  if (existing) {
+    existing.textContent = JSON.stringify(meta, null, 2);
+  } else {
+    const s = document.createElement('script');
+    s.type = 'application/json';
+    s.id   = 'page-meta';
+    s.textContent = JSON.stringify(meta, null, 2);
+    document.head.appendChild(s);
+  }
+
+})();
+</script>
+
+<!--
+  =============================================================================
+  DRIVE URL
+  After uploading this file to Google Drive:
+  1. Get the shareable link
+  2. Paste it as the data-url value below  <-- THE ONLY LINE YOU EDIT
+  3. Re-upload to Drive replacing this file
+  4. Drop into the converter - row pushes to Sheet automatically
+  =============================================================================
+-->
+<div id="drive-meta" style="display:none"
+  data-url="https://drive.google.com/file/d/1DxmZxtHFC9Vms2GpqUWV-BmYxLwYHcZC/preview?usp=sharing"
+></div>
