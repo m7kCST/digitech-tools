@@ -39,6 +39,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- PDF.js - used to extract text from .pdf files page by page -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 /*
  * Design tokens
@@ -815,7 +816,7 @@ async function readFile(file) {
 
   if (ext === 'docx' || ext === 'doc') {
     const buf      = await file.arrayBuffer();
-    const text     = extractDocxText(buf);
+    const text     = await extractDocxText(buf);
     // Check for DRIVE-URL in the extracted docx text (added to document footer)
     const urlMatch = text.match(/DRIVE-URL:\s*(https:\/\/\S+)/i);
     return { text, fmt: 'docx', rawHTML: null, driveURL: urlMatch ? urlMatch[1] : null };
@@ -860,13 +861,25 @@ async function extractPDFText(file) {
  * @param {ArrayBuffer} buf - File contents as ArrayBuffer
  * @returns {string} Plain text content (up to 8000 chars)
  */
-function extractDocxText(buf) {
+/**
+ * Extracts text from a DOCX file by reading its inner XML.
+ * DOCX files are ZIP archives - we unzip them with JSZip and pull the
+ * <w:t> (word text) elements out of word/document.xml.
+ *
+ * Structure-preserving: splits on paragraph (</w:p>) and table cell
+ * (</w:tc>) boundaries so term/definition pairs and numbered tasks
+ * stay on separate lines instead of being joined into one run-on string.
+ *
+ * @param {ArrayBuffer} buf - File contents as ArrayBuffer
+ * @returns {Promise<string>} Plain text content (up to 8000 chars)
+ */
+async function extractDocxText(buf) {
   try {
-    const u8 = new Uint8Array(buf);
-    if (u8[0] !== 0x50 || u8[1] !== 0x4B) return '[Not a valid DOCX file]';
+    const zip = await JSZip.loadAsync(buf);
+    const docFile = zip.file('word/document.xml');
+    if (!docFile) return '[No word/document.xml found in docx]';
 
-    const dec = new TextDecoder('utf-8', { fatal: false });
-    const xml = dec.decode(u8);
+    const xml = await docFile.async('string');
 
     // Split into paragraphs, and within each paragraph split into table
     // cells, so structure (line breaks, term/definition pairs) survives
@@ -886,7 +899,6 @@ function extractDocxText(buf) {
     return '[DOCX extraction error: ' + err.message + ']';
   }
 }
-
 /**
  * Extracts meaningful text from an HTML file without sending raw markup
  * or JavaScript to the AI. Targets known class names used in DigiTech
