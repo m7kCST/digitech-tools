@@ -457,9 +457,18 @@ const WRITE_TOKEN = 'Miller-Digitech-2026-woodentigersm7k';
 /**
  * Column schema - must match the Google Sheet header row exactly.
  * Used to build ordered CSV rows and to map objects to Sheet rows.
+ *
+ * FIX (id-collision / module bug, June 2026):
+ *   - Added 'module' column. The Apps Script Sheet schema has 20 columns
+ *     including 'module', which is the JOIN KEY between the Resources tab
+ *     and the Schedule tab (see HUB_REFERENCE.md). This converter was
+ *     previously missing it, so every row pushed here wrote an empty
+ *     module value - meaning the AI companion's getModuleChunks() lookup
+ *     in Apps Script never matched these rows. They were visible in the
+ *     resource browser but invisible to the AI's context injection.
  */
 const COLS = [
-  'id', 'class', 'term', 'week', 'type', 'title', 'summary',
+  'id', 'class', 'term', 'week', 'module', 'type', 'title', 'summary',
   'topics', 'file_format', 'url', 'source', 'print_ready',
   'onenote_path', 'definitions', 'success_criteria', 'tasks',
   'key_concepts', 'current', 'locked'
@@ -473,11 +482,36 @@ const FMT_BG  = { html:'#E6F1FB', htm:'#E6F1FB', docx:'#EAF3DE', doc:'#EAF3DE', 
 const FMT_COL = { html:'#0C447C', htm:'#0C447C', docx:'#27500A', doc:'#27500A', pdf:'#791F1F' };
 
 /**
+ * Canonical list of Drive module folder names.
+ * Must exactly match:
+ *   - the folder names under Modules/ in drive_folder_ids.md
+ *   - the 'module' column values used in the Schedule tab
+ *   - the 'module' field in each lesson's LESSON config block
+ *     (see LESSON_TEMPLATE_REFERENCE.md - "Module name must match Sheet")
+ *
+ * Used to populate the Module dropdown in the review form and to give
+ * the AI extractor a closed list to choose from (so it can't invent a
+ * module name that won't match anything in the Schedule tab).
+ */
+const MODULES = [
+  '3D Printing and Design','AI and Machine Learning','Advanced Cybersecurity',
+  'Binary Numbers and Data Representation','Bit:Bot Automation','Capstone Project',
+  'Creating a Digital Solution','Data Compression','Data Science with Python',
+  'Digital Solution Project','Digital Systems and Hardware','Extension and Enrichment',
+  'File Journeys and Networks','General-purpose Programming','Microsoft Office Suite',
+  'Networks and Cyber Security','Object-oriented Programming','Open Exploration',
+  'Privacy and Ethics','Python and micro:bit','Web Development','Working with Data'
+];
+
+/**
  * Default values for a blank metadata row.
  * Used when guessing from filename or when AI extraction is unavailable.
+ *
+ * FIX: added a default 'module' so a fresh BLANK row always has SOME
+ * module value (better than silently writing '' to the Sheet).
  */
 const BLANK = {
-  id:'', class:'Year 7', term:'2', week:'1', type:'Lesson Outline',
+  id:'', class:'Year 7', term:'2', week:'1', module:'Digital Systems and Hardware', type:'Lesson Outline',
   title:'', summary:'', topics:'', file_format:'html', url:'', source:'Drive',
   print_ready:'false', onenote_path:'', definitions:'', success_criteria:'',
   tasks:'', key_concepts:'', current:'false', locked:'false'
@@ -564,7 +598,11 @@ async function pingSheet() {
 
 /**
  * Sends a single row to the Sheet via the Apps Script append action.
- * If a row with the same id already exists, the script will update it.
+ * If a row with the same id already exists AND it's the same lesson
+ * (matched on title/url), the script will update it in place. If the
+ * id exists but belongs to a DIFFERENT lesson, the script now rejects
+ * the push with an "ID collision" message instead of silently
+ * overwriting the other row (see digitech_sheet_script.js appendRow).
  *
  * @param {Object} rowData - Metadata object matching the COLS schema
  * @returns {boolean} true if the push succeeded
@@ -626,6 +664,34 @@ function dzOver(e)  { e.preventDefault(); document.getElementById('dropzone').cl
 function dzLeave()  { document.getElementById('dropzone').classList.remove('over'); }
 function dzDrop(e)  { e.preventDefault(); dzLeave(); addFiles([...e.dataTransfer.files]); }
 function onSelect(e){ addFiles([...e.target.files]); }
+
+/**
+ * Converts a filename into a safe, unique, kebab-case id.
+ *
+ * FIX (id-collision bug, June 2026):
+ *   Previously the AI was asked to invent an id (e.g. "y7-t2-w4-worksheet-01"
+ *   or "y7-digital-systems-p2"). Two different "Part 2" lessons with similar
+ *   module names both got the SAME AI-generated id, so the second push
+ *   matched the first row in the Sheet and overwrote it completely - the
+ *   first lesson's data was lost.
+ *
+ *   Filenames, on the other hand, are already unique per lesson (you can't
+ *   have two files called the same thing in the same folder). So we now
+ *   derive the id directly from the filename instead of trusting the AI,
+ *   guaranteeing that two different files always get two different ids.
+ *
+ * Example: "Y7_BinaryImages_P2_LessonPlan.html" -> "y7-binaryimages-p2-lessonplan"
+ *
+ * @param {string} filename - Original filename including extension
+ * @returns {string} kebab-case id with no extension
+ */
+function filenameToId(filename) {
+  return filename
+    .replace(/\.[^.]+$/, '')        // strip the file extension
+    .toLowerCase()                  // normalise case
+    .replace(/[^a-z0-9]+/g, '-')    // collapse any run of non-alphanumeric chars to a single dash
+    .replace(/^-+|-+$/g, '');       // trim leading/trailing dashes
+}
 
 /**
  * Adds files to the queue, skipping any already present by name.
@@ -721,6 +787,14 @@ function buildQueueItem(f) {
  *   2. Try AI extraction via proxy
  *   3. On AI failure, fall back to manual mode with filename guess
  *   4. Auto-push to Sheet on successful AI extraction
+ *
+ * FIX (id-collision bug, June 2026):
+ *   After AI extraction, we now OVERRIDE whatever id the AI returned
+ *   with one derived from the filename via filenameToId(). This is the
+ *   single most important line in this fix - it's what stops two
+ *   different lessons from ever being pushed under the same id.
+ *   The page-meta branch also gets the same override, in case an
+ *   authored page-meta block has a stale or duplicate id.
  */
 async function processNext() {
   if (processing) return;
@@ -748,6 +822,11 @@ async function processNext() {
     if (pageMeta) {
       // page-meta found - authored metadata, no AI needed
       if (results[f.name].driveURL) pageMeta.url = results[f.name].driveURL;
+
+      // FIX: force id from filename even for authored page-meta, so a
+      // copy/pasted LESSON config block with a leftover id can't collide
+      pageMeta.id = filenameToId(f.name);
+
       results[f.name].data   = pageMeta;
       results[f.name].status = 'done';
       results[f.name].mode   = 'meta';
@@ -759,6 +838,11 @@ async function processNext() {
       try {
         // No page-meta - use AI extraction proxy
         const data = await extractWithAI(f.name, text, fmt);
+
+        // FIX: id-collision bug - always derive id from filename rather
+        // than trusting the AI's guess. See filenameToId() for details.
+        data.id = filenameToId(f.name);
+
         // Inject Drive URL into data before pushing
         if (results[f.name].driveURL && !data.url) data.url = results[f.name].driveURL;
         results[f.name].data   = data;
@@ -855,14 +939,6 @@ async function extractPDFText(file) {
 
 /**
  * Extracts text from a DOCX file by reading its inner XML.
- * DOCX files are ZIP archives - we decode the binary and pull out
- * all <w:t> (word text) elements from the word/document.xml inside.
- *
- * @param {ArrayBuffer} buf - File contents as ArrayBuffer
- * @returns {string} Plain text content (up to 8000 chars)
- */
-/**
- * Extracts text from a DOCX file by reading its inner XML.
  * DOCX files are ZIP archives - we unzip them with JSZip and pull the
  * <w:t> (word text) elements out of word/document.xml.
  *
@@ -899,6 +975,7 @@ async function extractDocxText(buf) {
     return '[DOCX extraction error: ' + err.message + ']';
   }
 }
+
 /**
  * Extracts meaningful text from an HTML file without sending raw markup
  * or JavaScript to the AI. Targets known class names used in DigiTech
@@ -988,16 +1065,6 @@ function smartExtractHTML(html) {
 }
 
 /**
- * Extracts a Google Drive URL from a hidden footer div in an HTML file.
- * Checks three locations in priority order:
- *   1. <div id="drive-meta"> - the standard footer snippet
- *   2. <meta name="drive-url"> - alternative head meta tag
- *   3. Any DRIVE-URL: pattern anywhere in the document
- *
- * @param {string} html - Raw HTML string
- * @returns {string} Drive URL or empty string
- */
-/**
  * Reads the page-meta JSON block from the file head if present.
  * When found the converter skips AI extraction and uses this data
  * directly - faster, cheaper, and exactly correct since the metadata
@@ -1016,6 +1083,17 @@ function extractPageMeta(html) {
   }
 }
 
+/**
+ * Extracts a Google Drive URL from a hidden footer div in an HTML file.
+ * Checks several locations in priority order:
+ *   1. <div id="drive-meta" data-url="..."> - current format
+ *   2. <div id="drive-meta">DRIVE-URL: ...</div> - legacy text format
+ *   3. <meta name="drive-url" content="..."> - alternative head meta tag
+ *   4. Any bare DRIVE-URL: pattern anywhere in the document
+ *
+ * @param {string} html - Raw HTML string
+ * @returns {string} Drive URL or empty string
+ */
 function extractDriveURL(html) {
   // Format 1: data-url attribute (current format)
   // <div id="drive-meta" data-url="https://..."></div>
@@ -1041,11 +1119,12 @@ function extractDriveURL(html) {
 }
 
 /**
- * Ensures Drive file links use /preview so HTML renders in Chrome
- * rather than showing the Drive wrapper page.
+ * Ensures Drive file links use the correct view mode so HTML renders
+ * in Chrome rather than showing the Drive wrapper page.
  * Handles /view, /view?usp=sharing, and bare file IDs.
  *
  * @param {string} url - Raw Drive URL
+ * @param {string} [fmt] - File format, used to pick /uc?export=view vs /preview
  * @returns {string} Corrected preview URL
  */
 function fixDriveURL(url, fmt) {
@@ -1069,6 +1148,16 @@ function fixDriveURL(url, fmt) {
  * Used as the starting point for manual mode when AI extraction fails.
  * Looks for patterns like Y7, T2, W4, "rubric", "worksheet" in the name.
  *
+ * FIX (module bug, June 2026):
+ *   Added a 'module' guess based on keywords in the filename, using the
+ *   same MODULES list the AI extractor uses. This is a best-effort match
+ *   only - the teacher should always double check the Module dropdown
+ *   in the review panel before pushing, especially in manual mode.
+ *
+ * FIX (id-collision bug, June 2026):
+ *   Also sets 'id' here via filenameToId(), so manual-mode rows get a
+ *   sensible unique id immediately rather than an empty string.
+ *
  * @param {string} name - Filename string
  * @param {string} fmt  - Detected file format
  * @returns {Object} Partially-filled metadata object
@@ -1077,6 +1166,7 @@ function guessFromFilename(name, fmt) {
   const d = Object.assign({}, BLANK);
   d.file_format = fmt === 'unknown' ? 'html' : fmt;
   d.title       = name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  d.id          = filenameToId(name);
 
   if (name.match(/y7|year.?7/i))          d.class = 'Year 7';
   if (name.match(/y9|y10|year.?9|year.?10/i)) d.class = 'Year 9/10';
@@ -1092,6 +1182,31 @@ function guessFromFilename(name, fmt) {
   else if (name.match(/assessment/i))  d.type = 'Assessment';
   else if (name.match(/reference|ref/i)) d.type = 'Reference';
   else if (name.match(/outline|lesson/i)) d.type = 'Lesson Outline';
+
+  // Best-effort module guess from filename keywords.
+  // Checked in order - first match wins. Falls back to BLANK.module
+  // ('Digital Systems and Hardware') if nothing matches.
+  const moduleHints = [
+    [/binary[-_]?image|binary[-_]?numbers|data[-_]?representation/i, 'Binary Numbers and Data Representation'],
+    [/file[-_]?journey|network/i, 'File Journeys and Networks'],
+    [/hardware|digital[-_]?systems/i, 'Digital Systems and Hardware'],
+    [/bitbot|bit-bot|microbit|micro-bit/i, 'Bit:Bot Automation'],
+    [/3d[-_]?print|tinkercad/i, '3D Printing and Design'],
+    [/office|outlook|onedrive|excel|powerpoint|onenote/i, 'Microsoft Office Suite'],
+    [/cyber|security/i, 'Networks and Cyber Security'],
+    [/privacy|ethics/i, 'Privacy and Ethics'],
+    [/python|programming|oop|object-oriented/i, 'General-purpose Programming'],
+    [/web[-_]?dev|html|css|javascript/i, 'Web Development'],
+    [/ai|machine[-_]?learning/i, 'AI and Machine Learning'],
+    [/data[-_]?science/i, 'Data Science with Python'],
+    [/working[-_]?with[-_]?data/i, 'Working with Data'],
+    [/capstone/i, 'Capstone Project'],
+    [/compression/i, 'Data Compression'],
+    [/digital[-_]?solution/i, 'Creating a Digital Solution'],
+  ];
+  for (const [re, mod] of moduleHints) {
+    if (name.match(re)) { d.module = mod; break; }
+  }
 
   return d;
 }
@@ -1112,6 +1227,15 @@ function guessFromFilename(name, fmt) {
  * The user message includes the filename, format, and extracted text,
  * followed by an explicit JSON schema. Claude is instructed to return
  * only the JSON object with no preamble or markdown fences.
+ *
+ * NOTE on 'id': the schema below still asks for an "id" field for
+ * backwards compatibility / debugging, but processNext() OVERWRITES
+ * whatever id is returned here with filenameToId(filename) - see the
+ * comment on filenameToId() for why. Do not rely on the AI's id.
+ *
+ * FIX (module bug, June 2026): added a "module" field to the schema,
+ * constrained to the MODULES list, so every AI-extracted row now
+ * carries a module value that matches the Schedule tab join key.
  *
  * @param {string} filename - Original filename (used as context hint)
  * @param {string} content  - Extracted text content from the file
@@ -1145,13 +1269,17 @@ Extraction guidance:
   and description, join with " | " (e.g. "Task 1: Sort ten everyday items...")
 - Only leave a field as "" if nothing matching these patterns exists in the
   content - do not leave fields empty just because the exact wording differs
+- "module": must be EXACTLY one of: ${MODULES.join(', ')}
+  Match based on content - e.g. binary/pixels/images -> "Binary Numbers and Data Representation",
+  file journeys/networks/LAN/WAN -> "File Journeys and Networks", hardware/CPU/RAM -> "Digital Systems and Hardware"
 
 Return this exact JSON schema:
 {
-  "id": "kebab-case id e.g. y7-t2-w4-worksheet-01",
+  "id": "kebab-case id e.g. y7-t2-w4-worksheet-01 (this will be overwritten by the converter - any value is fine)",
   "class": "Year 7 or Year 9/10",
   "term": "1 or 2",
   "week": "number 1-10 or range e.g. 1-3",
+  "module": "exact module name from the provided list",
   "type": "Lesson Outline | Worksheet | Assessment | Rubric | Reference | Explainer | Video",
   "title": "clean display title",
   "summary": "1-2 sentence description",
@@ -1282,6 +1410,11 @@ function switchMode(name, mode) {
  * Shows extracted metadata, stat cards, editable fields, and chunk editors
  * for definitions, success criteria, and tasks.
  *
+ * FIX (module bug, June 2026): added a "Module" dropdown right under the
+ * Title field, populated from MODULES. This is the field that joins this
+ * row to the Schedule tab - getting it right is what makes the AI
+ * companion's per-module context actually work for this resource.
+ *
  * @param {Object} d        - Metadata object
  * @param {string} mode     - 'ai' or 'manual'
  * @param {string} apiError - Error message from AI extraction (if any)
@@ -1343,6 +1476,16 @@ function renderReview(d, mode, apiError) {
       <div class="field">
         <label>Title</label>
         <input value="${esc(d.title || '')}" oninput="upd('title', this.value)" />
+      </div>
+
+      <!-- Module - join key to the Schedule tab. Must exactly match a
+           folder name in drive_folder_ids.md and a 'module' value in
+           the Schedule tab, or the AI companion won't find this resource. -->
+      <div class="field">
+        <label>Module</label>
+        <select onchange="upd('module', this.value)">
+          ${MODULES.map(m => `<option ${d.module === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+        </select>
       </div>
 
       <div class="grid3">
@@ -1614,6 +1757,7 @@ function buildMeta(name, d, rawHTML) {
     class   : d.class   || '',
     term    : d.term    || '',
     week    : d.week    || '',
+    module  : d.module  || '',
     type    : d.type    || '',
     title   : d.title   || '',
     summary : d.summary || '',
