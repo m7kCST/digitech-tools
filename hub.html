@@ -184,6 +184,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .tts-btn:hover{background:var(--surface2)}
 .tts-btn.active{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
 .disclaimer{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--amberl);border:1px solid rgba(133,79,11,.2);font-size:12px;color:var(--amber);line-height:1.6;display:flex;gap:8px}
+
+/* Resource card - collapsible "Key info" section */
+.rcard-toggle{padding:0 13px 9px}
+.rcard-toggle-btn{font-size:11px;font-weight:600;color:var(--ink3);cursor:pointer;background:none;border:none;padding:0;font-family:var(--sans);display:flex;align-items:center;gap:4px}
+.rcard-toggle-btn:hover{color:var(--ink)}
+.rcard-extra{display:none;padding:8px 13px 11px;border-top:1px solid var(--border);font-size:12px;line-height:1.6}
+.rcard-extra.show{display:block}
+.rx-block{margin-bottom:8px}
+.rx-block:last-child{margin-bottom:0}
+.rx-head{font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+.rx-def-term{font-weight:700;color:var(--ink)}
+.rx-item{padding:2px 0;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -550,6 +562,41 @@ function buildResourceCard(r) {
     ? `<div id="on-${esc(r.id)}" style="display:none"><div class="onenote-box"><div class="onenote-title">&#128211; How to find this in OneNote</div><div class="onenote-steps">${r.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
     : '';
 
+  // Parse chunk fields for the collapsible "Key info" section
+  const defs  = (r.definitions || '').split('|').filter(Boolean);
+  const sc    = (r.success_criteria || '').split('|').filter(Boolean);
+  const tasks = (r.tasks || '').split('|').filter(Boolean);
+  const hasExtra = defs.length || sc.length || tasks.length;
+
+  const extraHTML = hasExtra ? `
+    <div class="rcard-toggle">
+      <button class="rcard-toggle-btn" onclick="toggleExtra('${esc(r.id)}')">
+        <span id="rx-arrow-${esc(r.id)}">&#9656;</span> Key info
+      </button>
+    </div>
+    <div class="rcard-extra" id="rx-${esc(r.id)}">
+      ${defs.length ? `
+        <div class="rx-block">
+          <div class="rx-head">&#128218; Definitions</div>
+          ${defs.map(d => {
+            const idx = d.indexOf(':');
+            return idx > 0
+              ? `<div class="rx-item"><span class="rx-def-term">${esc(d.substring(0,idx).trim())}:</span> ${esc(d.substring(idx+1).trim())}</div>`
+              : `<div class="rx-item">${esc(d.trim())}</div>`;
+          }).join('')}
+        </div>` : ''}
+      ${sc.length ? `
+        <div class="rx-block">
+          <div class="rx-head">&#9989; Success criteria</div>
+          ${sc.map(s => `<div class="rx-item">${esc(s.trim())}</div>`).join('')}
+        </div>` : ''}
+      ${tasks.length ? `
+        <div class="rx-block">
+          <div class="rx-head">&#128203; Tasks</div>
+          ${tasks.map(t => `<div class="rx-item">${esc(t.trim())}</div>`).join('')}
+        </div>` : ''}
+    </div>` : '';
+
   return `<div class="rcard ${isActive?'current-mod':''}" id="rc-${esc(r.id)}">
     <div class="rcard-head">
       <div class="rcard-fmt" style="background:${fmtBg[fmt]||'#F1EFE8'};color:${fmtCol[fmt]||'#444441'}">${fmt.toUpperCase()}</div>
@@ -566,12 +613,21 @@ function buildResourceCard(r) {
     <div class="rcard-summary">${esc(r.summary||'')}</div>
     <div class="rcard-actions">${actions}</div>
     ${oneNoteBox}
+    ${extraHTML}
   </div>`;
 }
 
 function toggleOneNote(id) {
   const el=document.getElementById('on-'+id);
   if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function toggleExtra(id) {
+  const el = document.getElementById('rx-' + id);
+  const arrow = document.getElementById('rx-arrow-' + id);
+  if (!el) return;
+  const showing = el.classList.toggle('show');
+  if (arrow) arrow.innerHTML = showing ? '&#9662;' : '&#9656;';
 }
 
 function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
