@@ -863,18 +863,24 @@ async function extractPDFText(file) {
 function extractDocxText(buf) {
   try {
     const u8 = new Uint8Array(buf);
-
-    // Verify PK signature (ZIP format magic bytes)
     if (u8[0] !== 0x50 || u8[1] !== 0x4B) return '[Not a valid DOCX file]';
 
-    const dec     = new TextDecoder('utf-8', { fatal: false });
-    const matches = [...dec.decode(u8).matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)];
+    const dec = new TextDecoder('utf-8', { fatal: false });
+    const xml = dec.decode(u8);
 
-    return matches
-      .map(m => m[1])
-      .filter(Boolean)
-      .join(' ')
-      .substring(0, 8000) || '[No text found in document]';
+    // Split into paragraphs, and within each paragraph split into table
+    // cells, so structure (line breaks, term/definition pairs) survives
+    // into the plain text instead of becoming one run-on string.
+    const paras = xml.split(/<\/w:p>/);
+    const lines = paras.map(p => {
+      const cells = p.split(/<\/w:tc>/);
+      return cells
+        .map(c => [...c.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map(m => m[1]).join(''))
+        .filter(s => s.trim())
+        .join(' | ');
+    }).filter(s => s.trim());
+
+    return lines.join('\n').substring(0, 8000) || '[No text found in document]';
 
   } catch (err) {
     return '[DOCX extraction error: ' + err.message + ']';
@@ -1118,6 +1124,16 @@ FORMAT: ${fmt}
 CONTENT:
 ${content}
 
+Extraction guidance:
+- "definitions": lines formatted "Term | Definition" are glossary entries -
+  convert each to "Term: Definition" and join with " | " in the output field
+- "success_criteria": lines starting with "I can" are learning goals -
+  join them with " | "
+- "tasks": lines starting with "Task N" are tasks - extract the task number
+  and description, join with " | " (e.g. "Task 1: Sort ten everyday items...")
+- Only leave a field as "" if nothing matching these patterns exists in the
+  content - do not leave fields empty just because the exact wording differs
+
 Return this exact JSON schema:
 {
   "id": "kebab-case id e.g. y7-t2-w4-worksheet-01",
@@ -1140,7 +1156,6 @@ Return this exact JSON schema:
   "current": "false",
   "locked": "false"
 }`;
-
   // Route through Apps Script proxy - API key stays server-side
   const res = await fetch(SHEET_URL, {
     method  : 'POST',
