@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Year 7 DigiTech - Part 1 - How a File Moves Through a System</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+// LESSON CONFIG - the only block that changes per lesson.
+// tierDesc lives here (not hardcoded in the renderer) and tier ranges
+// below are auto-calculated by the renderer from the task numbers.
+const LESSON = {
+  "topic": "How a File Moves Through a System",
+  "part": 1,
+  "module": "File Journeys and Networks",
+  "year": "Year 7",
+  "duration": "80 minutes",
+  "notebook": "Digitech7a",
+  "acCodes": [
+    "AC9TDI8K01",
+    "AC9TDI8K02"
+  ],
+  "auditNote": "",
+  "focus": "Trace the journey of a file through input, processing, storage, transmission and output, and explain what happens when a file is uploaded, downloaded, saved or shared.",
+  "timing": [
+    {
+      "time": "0 - 15 min",
+      "active": false,
+      "label": "Entry ticket",
+      "desc": "What happens when you save or share a file?"
+    },
+    {
+      "time": "15 - 40 min",
+      "active": true,
+      "label": "Together",
+      "desc": "Teacher models a file journey, class builds a shared file journey flowchart"
+    },
+    {
+      "time": "40 - 70 min",
+      "active": true,
+      "label": "Your turn",
+      "desc": "Plan, draw and annotate your own file journey diagram"
+    },
+    {
+      "time": "70 - 80 min",
+      "active": false,
+      "label": "Exit ticket",
+      "desc": "One thing learnt, storage example, upload and download meanings"
+    }
+  ],
+  "onenotePage": "Part 1 - How a File Moves Through a System",
+  "successCriteria": [
+    "Describe the steps a file goes through in a digital system",
+    "Identify where storage and network transmission are involved",
+    "Explain what happens when a file is uploaded or shared",
+    "Create a labelled file journey diagram",
+    "Annotate at least two steps to explain what is happening to the file"
+  ],
+  "tasks": [
+    {
+      "num": 1,
+      "tier": "f",
+      "desc": "Vocabulary match - file, storage, upload, download, network, cloud, server, output"
+    },
+    {
+      "num": 2,
+      "tier": "f",
+      "desc": "Complete the file journey planning table for a chosen file type"
+    },
+    {
+      "num": 3,
+      "tier": "f",
+      "desc": "Identify which steps in your planning table involve storage and which involve a network"
+    },
+    {
+      "num": 4,
+      "tier": "s",
+      "desc": "Create a labelled file journey flow diagram with 5-6 steps"
+    },
+    {
+      "num": 5,
+      "tier": "s",
+      "desc": "Annotate two steps explaining what is happening to the file at each point"
+    },
+    {
+      "num": 6,
+      "tier": "e",
+      "desc": "Compare a file saved locally with the same file saved to the cloud"
+    },
+    {
+      "num": 7,
+      "tier": "e",
+      "desc": "Explain what could go wrong with the file journey if the network connection failed"
+    }
+  ],
+  "tierDesc": {
+    "f": "Match key vocabulary and plan the sequence of steps a file goes through.",
+    "s": "Draw a labelled file journey diagram and annotate key steps in writing.",
+    "e": "Compare local vs cloud storage and reason about network failure in the file journey."
+  },
+  "assessment": [
+    {
+      "evidence": "Entry ticket",
+      "lookFor": "Prior understanding of files, storage and output"
+    },
+    {
+      "evidence": "Vocabulary match",
+      "lookFor": "Correct understanding of file, upload, download, cloud, server, output"
+    },
+    {
+      "evidence": "Planning table",
+      "lookFor": "File journey sequenced in a logical order"
+    },
+    {
+      "evidence": "Flow diagram",
+      "lookFor": "At least 5 steps shown, including storage, network/cloud and output"
+    },
+    {
+      "evidence": "Annotations",
+      "lookFor": "Student explains what is happening to the file at two or more points"
+    }
+  ]
+};
+</script>
+<style>
+  :root {
+    --theme: #185FA5;
+    --themeLight: #E6F1FB;
+    --themeDark: #0C447C;
+  }
+  * { box-sizing: border-box; }
+  .dt {
+    font-family: 'Nunito', sans-serif;
+    color: #2b2b2b;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 .5rem;
+  }
+  .dt h1, .dt h2, .dt h3 { font-family: 'Nunito', sans-serif; margin: 0; }
+  .dt p { margin: .5rem 0; }
+  .dt .card {
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  /* Header band */
+  .dt .header-band {
+    background: var(--themeLight);
+    border-radius: 10px;
+    padding: 1.2rem 1.2rem;
+    margin: 1rem 0;
+    text-align: center;
+  }
+  .dt .header-band h1 {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--themeDark);
+  }
+  .dt .header-band .module-line {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--theme);
+    margin-top: .25rem;
+  }
+  .dt .pill-row {
+    margin-top: .6rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .4rem;
+  }
+  .dt .pill {
+    display: inline-block;
+    padding: .25rem .7rem;
+    border-radius: 999px;
+    font-size: .85rem;
+    font-weight: 700;
+    background: #fff;
+    border: 1px solid var(--theme);
+    color: var(--themeDark);
+  }
+  .dt .pill.theme {
+    background: var(--theme);
+    color: #fff;
+    border-color: var(--theme);
+  }
+  /* Card labels */
+  .dt .card-label {
+    font-size: .8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--theme);
+    margin: 0 0 .4rem 0;
+  }
+  /* Success criteria */
+  .dt .sc-list { list-style: none; margin: 0; padding: 0; }
+  .dt .sc-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .35rem 0;
+  }
+  .dt .sc-num {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--theme);
+    color: #fff;
+    font-weight: 800;
+    font-size: .85rem;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: .1rem;
+  }
+  /* Timing strip */
+  .dt .timing-strip { margin: .5rem 0; }
+  .dt .timing-row {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    padding: .6rem .8rem;
+    margin-bottom: .5rem;
+    border-left: 6px solid var(--theme);
+    background: var(--themeLight);
+  }
+  .dt .timing-row.inactive {
+    border-left-color: #bbb;
+    background: #f4f4f4;
+  }
+  .dt .timing-row .t-time {
+    font-size: .8rem;
+    font-weight: 800;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .dt .timing-row .t-label {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--themeDark);
+    margin-top: .1rem;
+  }
+  .dt .timing-row.inactive .t-label { color: #666; }
+  .dt .timing-row .t-desc {
+    font-size: .92rem;
+    color: #444;
+    margin-top: .2rem;
+  }
+  /* OneNote box */
+  .dt .onenote-box {
+    background: var(--themeLight);
+    border: 2px solid var(--theme);
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  .dt .onenote-box .on-title {
+    font-weight: 800;
+    color: var(--themeDark);
+    margin-bottom: .25rem;
+  }
+  .dt .onenote-box .on-path {
+    font-family: 'DM Mono', monospace;
+    background: #fff;
+    border: 1px solid var(--theme);
+    border-radius: 6px;
+    padding: .4rem .6rem;
+    display: inline-block;
+    margin-top: .3rem;
+    font-size: .9rem;
+    color: var(--themeDark);
+  }
+  /* Coding platform box (Y9/10) */
+  .dt .code-box {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+  .dt .code-box a { color: #89b4fa; font-weight: 800; }
+  /* Divider */
+  .dt .divider {
+    border: none;
+    border-top: 3px solid var(--theme);
+    margin: 2rem 0;
+  }
+  /* Parent section */
+  .dt .parent-header {
+    background: var(--themeDark);
+    color: #fff;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .dt .parent-header h2 { color: #fff; }
+  .dt .info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+    margin: .5rem 0;
+  }
+  .dt .info-grid .info-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding: .35rem 0;
+    font-size: .95rem;
+  }
+  .dt .info-grid .info-row .label { font-weight: 800; color: var(--themeDark); }
+  /* Amber audit box */
+  .dt .audit-box {
+    background: #FAEEDA;
+    border: 1px solid #854F0B;
+    color: #6b3d00;
+    border-radius: 8px;
+    padding: .9rem 1rem;
+    margin: 1rem 0;
+  }
+  /* I do we do you do */
+  .dt .idwd { margin: .5rem 0; }
+  .dt .idwd .idwd-block { margin-bottom: .9rem; }
+  .dt .idwd .idwd-block h3 { color: var(--themeDark); font-size: 1rem; margin-bottom: .3rem; }
+  /* Differentiation cards */
+  .dt .diff-stack { display: flex; flex-direction: column; gap: .7rem; margin: .5rem 0; }
+  .dt .diff-card { border-radius: 8px; padding: .8rem 1rem; border: 1px solid; }
+  .dt .diff-card.foundation { background: #FFF8E1; border-color: #FFD54F; color: #6D4C00; }
+  .dt .diff-card.standard { background: var(--themeLight); border-color: rgba(24,95,165,.25); color: var(--themeDark); }
+  .dt .diff-card.extension { background: #E8F5E9; border-color: rgba(46,125,50,.25); color: #1B5E20; }
+  .dt .diff-card h3 { font-size: .95rem; margin-bottom: .25rem; }
+  .dt .diff-card .range { font-size: .8rem; font-weight: 700; opacity: .8; }
+  /* Tables */
+  .dt table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: .5rem 0;
+    font-size: .92rem;
+  }
+  .dt th, .dt td {
+    border: 1px solid #ddd;
+    padding: .5rem .6rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .dt th { background: var(--themeLight); color: var(--themeDark); }
+  .dt .tier-pill {
+    display: inline-block;
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 800;
+  }
+  .dt .tier-pill.f { background: #FFF8E1; color: #6D4C00; border: 1px solid #FFD54F; }
+  .dt .tier-pill.s { background: var(--themeLight); color: var(--themeDark); border: 1px solid rgba(24,95,165,.25); }
+  .dt .tier-pill.e { background: #E8F5E9; color: #1B5E20; border: 1px solid rgba(46,125,50,.25); }
+  /* AC badge */
+  .dt .ac-item { display: flex; flex-direction: column; gap: .1rem; margin-bottom: .6rem; }
+  .dt .ac-badge {
+    display: inline-block;
+    background: var(--theme);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: .8rem;
+    font-weight: 800;
+    border-radius: 6px;
+    padding: .15rem .5rem;
+    width: fit-content;
+  }
+  /* Footer */
+  .dt .footer-block {
+    text-align: center;
+    color: #777;
+    font-size: .85rem;
+    margin: 1.5rem 0 .5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="dt" id="dt-root"></div>
+
+<script type="application/json" id="page-meta">
+{
+  "id": "y7-file-journeys-p1",
+  "class": "Year 7",
+  "term": "",
+  "week": "",
+  "module": "File Journeys and Networks",
+  "type": "Lesson Outline",
+  "title": "Part 1 - How a File Moves Through a System",
+  "summary": "Trace the journey of a file through input, processing, storage, transmission and output, and explain what happens when a file is uploaded, downloaded, saved or shared.",
+  "topics": "AC9TDI8K01, AC9TDI8K02",
+  "file_format": "html",
+  "url": "https://m7kcst.github.io/digitech-tools/lessons/y7/digital-systems/y7_file_journey_p1_SEQTA.html",
+  "source": "Drive",
+  "print_ready": "false",
+  "onenote_path": "Digitech7a > Classwork > Part 1 - How a File Moves Through a System",
+  "definitions": "",
+  "success_criteria": "I can describe the steps a file goes through in a digital system | I can identify where storage and network transmission are involved | I can explain what happens when a file is uploaded or shared | I can create a labelled file journey diagram | I can annotate at least two steps to explain what is happening to the file",
+  "tasks": "Vocabulary match | Planning table | Identify storage/network steps | Flow diagram | Annotate two steps | Local vs cloud comparison | Network failure",
+  "key_concepts": "AC9TDI8K01, AC9TDI8K02",
+  "current": "false",
+  "locked": "false"
+}
+</script>
+
+<script>
+(function () {
+  // Theme lookup - the only thing that changes between year groups
+  var THEMES = {
+    'Year 7':     { c: '#185FA5', l: '#E6F1FB', d: '#0C447C' },
+    'Year 8':     { c: '#2E7D32', l: '#E8F5E9', d: '#1B5E20' },
+    'Years 9/10': { c: '#534AB7', l: '#EEEDFE', d: '#3C3489' },
+    'Inquiry':    { c: '#00695C', l: '#E0F2F1', d: '#004D40' }
+  };
+
+  // AC code descriptions - lookup only, never invent
+  var AC_DESC = {
+    'AC9TDI8K01': 'How hardware specifications affect performance of digital systems',
+    'AC9TDI8K02': 'Data transmission and security in wired and wireless networks including the internet',
+    'AC9TDI8K03': 'How digital systems represent text, image and audio data using integers',
+    'AC9TDI8K04': 'How and why digital systems represent integers in binary',
+    'AC9TDI8P01': 'Acquire, store and validate data from multiple sources using spreadsheets and databases',
+    'AC9TDI8P02': 'Analyse and visualise data using software to draw conclusions and identify trends',
+    'AC9TDI8P03': 'Model and query attributes of objects and events using structured data',
+    'AC9TDI8P04': 'Define and decompose problems using design criteria and user stories',
+    'AC9TDI8P05': 'Design algorithms using nested control structures as flowcharts and pseudocode',
+    'AC9TDI8P06': 'Trace algorithms to predict output and identify errors',
+    'AC9TDI8P07': 'Design the user experience of a digital system',
+    'AC9TDI8P08': 'Generate, modify, communicate and evaluate alternative designs',
+    'AC9TDI8P09': 'Implement, modify and debug programs with control structures and functions',
+    'AC9TDI8P10': 'Evaluate solutions against design criteria, user stories and possible future impact',
+    'AC9TDI8P11': 'Select and use digital tools efficiently including unfamiliar features to create and locate content',
+    'AC9TDI8P12': 'Use digital tools responsibly to share content and manage agile projects',
+    'AC9TDI8P13': 'Multi-factor authentication, phishing and cyber security threats',
+    'AC9TDI8P14': 'Manage digital footprint and assess whether data collected is essential to purpose',
+    'AC9TDI10K01': 'How hardware and software manage, control and secure access to data in networks',
+    'AC9TDI10K02': 'Represent documents as content, structure and presentation using markup languages',
+    'AC9TDI10K03': 'Simple data compression techniques used to represent data',
+    'AC9TDI10P01': 'Acquire, store and validate data from multiple sources using software',
+    'AC9TDI10P02': 'Analyse and visualise data interactively to identify trends and outliers',
+    'AC9TDI10P03': 'Model and query entities and relationships using structured data',
+    'AC9TDI10P04': 'Define and decompose problems using stakeholder interviews and user stories',
+    'AC9TDI10P05': 'Design algorithms using logical operators as flowcharts and pseudocode',
+    'AC9TDI10P06': 'Validate algorithms and programs against a set of test cases',
+    'AC9TDI10P07': 'Design and prototype the user experience of a digital system',
+    'AC9TDI10P08': 'Generate, modify, communicate and critically evaluate alternative designs',
+    'AC9TDI10P09': 'Implement, modify and debug modular programs in a general-purpose language',
+    'AC9TDI10P10': 'Evaluate solutions against design criteria, user stories and future impact',
+    'AC9TDI10P11': 'Select and use advanced digital tools to create interactive content for diverse audiences',
+    'AC9TDI10P12': 'Use project management tools for individual and collaborative agile projects',
+    'AC9TDI10P13': 'Develop cyber security threat models and explore vulnerabilities',
+    'AC9TDI10P14': 'Apply Australian Privacy Principles to manage digital footprints of individuals and organisations'
+  };
+
+  function esc(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  var theme = THEMES[LESSON.year] || THEMES['Year 7'];
+  var root = document.getElementById('dt-root');
+  root.style.setProperty('--theme', theme.c);
+  root.style.setProperty('--themeLight', theme.l);
+  root.style.setProperty('--themeDark', theme.d);
+
+  var isY910 = LESSON.year === 'Years 9/10';
+  var partNum = isY910 ? LESSON.week : LESSON.part;
+  var partWord = isY910 ? 'Week' : 'Part';
+  var partLabel = partWord + ' ' + partNum;
+
+  // Tier ranges auto-calculate from task numbers - never hardcoded
+  function tierRange(tier) {
+    var nums = LESSON.tasks.filter(function (t) { return t.tier === tier; }).map(function (t) { return t.num; });
+    return Math.min.apply(null, nums) + '-' + Math.max.apply(null, nums);
+  }
+  var fRange = tierRange('f');
+  var sRange = '1-' + Math.max.apply(null, LESSON.tasks.filter(function (t) { return t.tier === 's'; }).map(function (t) { return t.num; }));
+  var eRange = '1-' + Math.max.apply(null, LESSON.tasks.filter(function (t) { return t.tier === 'e'; }).map(function (t) { return t.num; }));
+
+  var html = '';
+
+  // 1. Header band
+  html += '<div class="header-band">';
+  html += '<h1>' + esc(LESSON.topic) + '</h1>';
+  html += '<div class="module-line">' + partLabel + ' - ' + esc(LESSON.module) + '</div>';
+  html += '<div class="pill-row">';
+  html += '<span class="pill theme">' + esc(LESSON.year) + '</span>';
+  html += '<span class="pill">' + esc(LESSON.duration) + '</span>';
+  LESSON.acCodes.forEach(function (code) {
+    html += '<span class="pill">' + esc(code) + '</span>';
+  });
+  html += '</div></div>';
+
+  // 2. Learning Intention
+  html += '<div class="card"><div class="card-label">Learning Intention</div><p>' + esc(LESSON.focus) + '</p></div>';
+
+  // 3. Success Criteria
+  html += '<div class="card"><div class="card-label">Success Criteria</div><ul class="sc-list">';
+  LESSON.successCriteria.forEach(function (sc, i) {
+    html += '<li><span class="sc-num">' + (i + 1) + '</span><span>I can ' + esc(sc.charAt(0).toLowerCase() + sc.slice(1)) + '</span></li>';
+  });
+  html += '</ul></div>';
+
+  // 4. How we will use our time
+  html += '<div class="card"><div class="card-label">How we will use our time</div><div class="timing-strip">';
+  LESSON.timing.forEach(function (t) {
+    html += '<div class="timing-row' + (t.active ? '' : ' inactive') + '">';
+    html += '<div class="t-time">' + esc(t.time) + '</div>';
+    html += '<div class="t-label">' + esc(t.label) + '</div>';
+    html += '<div class="t-desc">' + esc(t.desc) + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // 5. Your worksheet is in OneNote
+  var notebookPath = isY910
+    ? LESSON.notebook + ' &gt; Handouts &gt; ' + esc(LESSON.onenotePage)
+    : LESSON.notebook + ' &gt; Classwork &gt; ' + esc(LESSON.onenotePage);
+  html += '<div class="onenote-box">';
+  html += '<div class="on-title">Your worksheet is in OneNote</div>';
+  html += '<p>Open your class notebook and go to:</p>';
+  html += '<div class="on-path">' + notebookPath + '</div>';
+  html += '</div>';
+
+  // 6. Coding platform (Y9/10 only)
+  if (isY910) {
+    html += '<div class="code-box">';
+    html += '<strong>Coding platform</strong><p>Write and flash your micro:bit code at <a href="https://python.microbit.org/v/3" target="_blank" rel="noopener">python.microbit.org/v/3</a>. ';
+    html += 'Use the purple "Send to micro:bit" button to flash your program.</p>';
+    html += '</div>';
+  }
+
+  // Divider
+  html += '<hr class="divider">';
+
+  // 7. Lesson information header
+  html += '<div class="parent-header"><h2>Lesson information for parents and carers</h2>';
+  html += '<p>This section gives an overview of today\'s lesson for families. If you have any questions, please contact Mr Miller through the school office or SEQTA.</p></div>';
+
+  // 8. Lesson overview info grid
+  html += '<div class="card"><div class="card-label">Lesson overview</div><div class="info-grid">';
+  html += '<div class="info-row"><span class="label">Subject</span><span>Digital Technologies</span></div>';
+  html += '<div class="info-row"><span class="label">Year</span><span>' + esc(LESSON.year) + '</span></div>';
+  html += '<div class="info-row"><span class="label">Module</span><span>' + esc(LESSON.module) + '</span></div>';
+  html += '<div class="info-row"><span class="label">Lesson</span><span>' + partLabel + ' - ' + esc(LESSON.topic) + '</span></div>';
+  html += '<div class="info-row"><span class="label">Duration</span><span>' + esc(LESSON.duration) + '</span></div>';
+  html += '<div class="info-row"><span class="label">Type</span><span>Lesson</span></div>';
+  html += '<div class="info-row"><span class="label">AC codes</span><span>' + LESSON.acCodes.join(', ') + '</span></div>';
+  if (isY910) {
+    html += '<div class="info-row"><span class="label">Hardware</span><span>BBC micro:bit + 4tronix micro:car</span></div>';
+  }
+  html += '</div></div>';
+
+  // 9. Scheduling note (conditional)
+  if (LESSON.auditNote && LESSON.auditNote.trim() !== '') {
+    html += '<div class="audit-box"><strong>Scheduling note:</strong> ' + esc(LESSON.auditNote) + '</div>';
+  }
+
+  // 10. How the lesson runs
+  html += '<div class="card"><div class="card-label">How the lesson runs</div><div class="idwd">';
+  var phases = ['I Do', 'We Do', 'You Do'];
+  var phaseDescs = [
+    'The teacher introduces the focus for today and models the key idea using a worked example or demonstration.',
+    'The class works through an example together, building shared understanding before students work independently.',
+    'Students complete the tasks below independently in OneNote, working at the depth suited to them.'
+  ];
+  phases.forEach(function (p, i) {
+    html += '<div class="idwd-block"><h3>' + p + '</h3><p>' + phaseDescs[i] + '</p></div>';
+  });
+  html += '<div class="timing-strip">';
+  LESSON.timing.forEach(function (t) {
+    html += '<div class="timing-row' + (t.active ? '' : ' inactive') + '">';
+    html += '<div class="t-time">' + esc(t.time) + '</div>';
+    html += '<div class="t-label">' + esc(t.label) + '</div>';
+    html += '<div class="t-desc">' + esc(t.desc) + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div></div>';
+
+  // 11. Differentiation
+  html += '<div class="card"><div class="card-label">Differentiation</div><div class="diff-stack">';
+  html += '<div class="diff-card foundation"><h3>Foundation <span class="range">Tasks ' + fRange + '</span></h3><p>' + esc(LESSON.tierDesc.f) + '</p></div>';
+  html += '<div class="diff-card standard"><h3>Standard <span class="range">Tasks ' + sRange + '</span></h3><p>' + esc(LESSON.tierDesc.s) + '</p></div>';
+  html += '<div class="diff-card extension"><h3>Extension <span class="range">Tasks ' + eRange + '</span></h3><p>' + esc(LESSON.tierDesc.e) + '</p></div>';
+  html += '</div></div>';
+
+  // 12. Task breakdown
+  html += '<div class="card"><div class="card-label">Task breakdown</div><table><tr><th>Task</th><th>Description</th><th>Level</th></tr>';
+  var tierName = { f: 'Foundation', s: 'Standard', e: 'Extension' };
+  LESSON.tasks.forEach(function (t) {
+    html += '<tr><td>' + t.num + '</td><td>' + esc(t.desc) + '</td><td><span class="tier-pill ' + t.tier + '">' + tierName[t.tier] + '</span></td></tr>';
+  });
+  html += '</table></div>';
+
+  // 13. Curriculum links
+  html += '<div class="card"><div class="card-label">Curriculum links</div>';
+  LESSON.acCodes.forEach(function (code) {
+    html += '<div class="ac-item"><span class="ac-badge">' + esc(code) + '</span><span>' + esc(AC_DESC[code] || '') + '</span></div>';
+  });
+  html += '</div>';
+
+  // 14. Assessment and evidence
+  html += '<div class="card"><div class="card-label">Assessment and evidence</div><table><tr><th>Evidence</th><th>What Mr Miller looks for</th></tr>';
+  LESSON.assessment.forEach(function (a) {
+    html += '<tr><td>' + esc(a.evidence) + '</td><td>' + esc(a.lookFor) + '</td></tr>';
+  });
+  html += '</table></div>';
+
+  // 15. Contact
+  html += '<div class="card"><div class="card-label">Contact</div>';
+  html += '<p>Mr Miller, Digital Technologies<br>Emmanuel Christian School<br>Questions or absences - please contact via SEQTA or the school office.</p>';
+  html += '</div>';
+
+  // 16. Footer
+  html += '<div class="footer-block">' + esc(LESSON.year) + ' - ' + esc(LESSON.topic) + ' - ' + partLabel + ' - Emmanuel Christian School - Mr Miller</div>';
+
+  root.innerHTML = html;
+})();
+
+</script>
+
+<!--
+  RESOURCE URL - pre-filled because the GitHub Pages path is fully
+  deterministic from year + module slug + filename.
+  If you rename this file or move it to a different folder, update both
+  the page-meta "url" field above AND the data-url value below to match.
+  NOTE: HTML files use GitHub Pages URLs. PDFs/DOCX use Drive links.
+-->
+<div id="drive-meta" style="display:none"
+  data-url="https://m7kcst.github.io/digitech-tools/lessons/y7/digital-systems/y7_file_journey_p1_SEQTA.html"
+></div>
+
+</body>
+</html>
