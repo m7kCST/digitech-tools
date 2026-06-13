@@ -400,7 +400,7 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQm
  * Chat action is public - no token needed. This is intentionally
  * NOT used in the hub so it does not appear in browser network traffic.
  */
-const CURRENT_WEEK = 6;
+const CURRENT_WEEK = 7;
 
 /**
  * Quiz configuration.
@@ -411,9 +411,9 @@ const CURRENT_WEEK = 6;
  *   are trimmed to the same word count (the shortest option's length,
  *   capped at this value) so option length doesn't give away the answer.
  */
-const QUIZ_POINTS_PER_CORRECT = 10;
-const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
-const QUIZ_OPTION_WORD_CAP = 8;
+const QUIZ_POINTS_PER_CORRECT = 5;
+const QUIZ_MIN_CORRECT_TO_SUBMIT = 30;
+const QUIZ_OPTION_WORD_CAP = 10;
 
 /**
  * QUIZ_MAX_MISSES - if a student gets this many questions wrong in a
