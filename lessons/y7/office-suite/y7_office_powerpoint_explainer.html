@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="application/json" id="page-meta">
+{
+  "id": "y7-office-powerpoint-explainer",
+  "class": "Year 7",
+  "term": "T1",
+  "week": "5",
+  "module": "Microsoft Office Suite",
+  "type": "html",
+  "title": "PowerPoint - The Basics",
+  "summary": "Visual explainer on slide design principles, transitions, speaker notes and presenting to an audience with accessibility in mind.",
+  "topics": "PowerPoint, slide design, transitions, speaker notes, presenting",
+  "definitions": "",
+  "success_criteria": "",
+  "tasks": "",
+  "key_concepts": "slide layout, transitions, speaker notes, accessibility, presenting"
+}
+</script>
+<meta charset="UTF-8">
+<title>PowerPoint — The Basics</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Oswald:wght@700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#f0f0f0;padding:1.5rem;min-height:100vh}
+  .page{max-width:880px;margin:0 auto}
+
+  .hero{background:linear-gradient(135deg,#be185d 0%,#7c3aed 60%,#1d4ed8 100%);border-radius:20px;padding:2.5rem 2rem 2rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.05)}
+  .hero::after{content:'';position:absolute;bottom:-40px;left:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
+  .hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.6rem}
+  .hero h1{font-family:'Oswald',sans-serif;font-size:3rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.5rem}
+  .hero h1 span{color:#f9a8d4}
+  .hero .tagline{font-size:1rem;color:rgba(255,255,255,.75);max-width:500px;line-height:1.5;margin-bottom:1.25rem}
+  .pill-row{display:flex;flex-wrap:wrap;gap:.5rem}
+  .pill{background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:.28rem .85rem;font-size:.78rem;font-weight:600}
+
+  .sec-label{display:flex;align-items:center;gap:.75rem;margin:2rem 0 1rem}
+  .sec-label .bar{width:6px;height:30px;border-radius:3px;flex-shrink:0}
+  .sec-label h2{font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+
+  .concept-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  @media(max-width:600px){.concept-grid{grid-template-columns:1fr}}
+  .concept-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;padding:1.25rem;display:flex;flex-direction:column;gap:.5rem}
+  .concept-card .icon{font-size:2rem;margin-bottom:.25rem}
+  .concept-card h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .concept-card p{font-size:.88rem;color:#94a3b8;line-height:1.6}
+  .concept-card .highlight{display:inline-block;background:#2d2d4e;color:#f9a8d4;border-radius:6px;padding:.2rem .55rem;font-size:.85rem;font-weight:700;margin-top:.25rem}
+
+  .interface-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;overflow:hidden;margin-bottom:1.5rem}
+  .interface-header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem .75rem;border-bottom:1px solid #2d2d4e}
+  .interface-emoji{font-size:1.5rem}
+  .interface-title{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .interface-title span{color:#f9a8d4}
+  .interface-body{padding:1.25rem}
+
+  /* Mock slide editor */
+  .ppt-mock{background:#1e1e35;border-radius:12px;overflow:hidden;border:1px solid #2d2d4e;margin-bottom:1rem}
+  .ppt-toolbar{background:#2d1f4e;padding:.4rem .75rem;display:flex;align-items:center;gap:.75rem;font-size:.72rem;color:#c4b5fd;font-weight:700;border-bottom:1px solid #3d2d6e}
+  .ppt-tab{padding:.2rem .6rem;border-radius:4px;background:#7c3aed;color:#fff;font-size:.7rem}
+  .ppt-workspace{display:grid;grid-template-columns:80px 1fr;min-height:200px}
+  .ppt-panel{background:#12122a;border-right:1px solid #2d2d4e;padding:.5rem;display:flex;flex-direction:column;gap:.4rem}
+  .ppt-thumb{background:#1a1a2e;border:1.5px solid #3d2d6e;border-radius:5px;height:45px;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#64748b;font-weight:700}
+  .ppt-thumb.active{border-color:#7c3aed;background:#1e1b4b}
+  .ppt-slide{padding:1rem;display:flex;flex-direction:column;justify-content:center;position:relative}
+  .ppt-slide-inner{background:linear-gradient(135deg,#1e1b4b,#2d1f4e);border-radius:8px;padding:1.25rem;min-height:160px;display:flex;flex-direction:column;justify-content:center;border:1px solid #3d2d6e;position:relative;overflow:hidden}
+  .ppt-slide-inner::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(167,139,250,.1)}
+  .slide-title-text{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:.35rem}
+  .slide-sub-text{font-size:.78rem;color:#a78bfa;line-height:1.4}
+  .slide-img-placeholder{position:absolute;right:1rem;top:50%;transform:translateY(-50%);width:60px;height:60px;background:#2d2d4e;border-radius:8px;border:1.5px dashed #4c3d6e;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+
+  .annotation-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.85rem}
+  .annotation{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:#94a3b8}
+  .annotation .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+  .anatomy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.65rem;margin-bottom:1.5rem}
+  .anatomy-item{background:#12122a;border:1px solid #2d2d4e;border-radius:10px;padding:.85rem 1rem}
+  .anatomy-item .term{font-family:'Oswald',sans-serif;font-size:.85rem;font-weight:700;color:#f9a8d4;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+  .anatomy-item .example{font-size:.85rem;color:#a78bfa;font-weight:700;margin-bottom:.3rem}
+  .anatomy-item p{font-size:.82rem;color:#94a3b8;line-height:1.5}
+
+  /* Design rules cards */
+  .design-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  .design-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:14px;padding:1.1rem;position:relative;overflow:hidden}
+  .design-card .dc-label{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem}
+  .design-card h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:#fff;margin-bottom:.35rem}
+  .design-card p{font-size:.84rem;color:#94a3b8;line-height:1.5}
+  .design-card .dc-example{margin-top:.65rem;background:#12122a;border-radius:8px;padding:.6rem .8rem;font-size:.8rem;line-height:1.5}
+  .design-card.good{border-color:#22c55e}.design-card.good .dc-label{color:#86efac}
+  .design-card.bad{border-color:#ef4444}.design-card.bad .dc-label{color:#fca5a5}
+  .design-card.tip{border-color:#a78bfa}.design-card.tip .dc-label{color:#c4b5fd}
+  .design-card.warn{border-color:#f59e0b}.design-card.warn .dc-label{color:#fcd34d}
+
+  /* Nav shortcuts */
+  .nav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-bottom:1.5rem}
+  .nav-card{background:#12122a;border:1px solid #2d2d4e;border-radius:10px;padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.75rem}
+  .nav-key{font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;color:#fff;background:#2d1f4e;border:1px solid #4c3d6e;border-radius:7px;padding:.25rem .6rem;white-space:nowrap;flex-shrink:0}
+  .nav-desc{font-size:.83rem;color:#94a3b8;line-height:1.5}
+
+  /* Golden rules */
+  .golden-rules{background:#1a1a2e;border:2px solid #f59e0b;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .golden-rules h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .rule-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.8rem}
+  .rule-num{min-width:30px;height:30px;border-radius:50%;background:#f59e0b;color:#000;font-weight:700;font-size:.88rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .rule-row p{font-size:.9rem;color:#e2e8f0;line-height:1.5}
+  .rule-row p code{background:#2d2d4e;color:#f9a8d4;padding:.1rem .35rem;border-radius:4px;font-family:'Courier New',monospace;font-size:.85rem}
+
+  /* Error guide */
+  .error-section{background:#1a0a0a;border:2px solid #dc2626;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .error-section h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .error-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.75rem;background:#200000;border-radius:10px;padding:.8rem .95rem}
+  .error-code{font-weight:700;font-size:.9rem;color:#f87171;min-width:120px;flex-shrink:0;margin-top:1px;font-family:'Inter',sans-serif}
+  .error-row p{font-size:.85rem;color:#cbd5e1;line-height:1.5}
+  .error-row p strong{color:#fca5a5}
+
+  .footer{text-align:center;padding:1rem 0 .5rem;font-size:.78rem;color:rgba(255,255,255,.2)}
+
+  @media(max-width:580px){
+    .design-grid{grid-template-columns:1fr}
+    .hero h1{font-size:2.2rem}
+  }
+  @media print{
+    body{background:#fff;color:#111;padding:0}
+    .hero{background:#be185d !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .concept-card,.interface-card,.anatomy-item,.nav-card,.golden-rules,.error-section,.error-row,.design-card{background:#f9f9f9 !important;border-color:#ccc !important}
+    .concept-card p,.nav-desc,.anatomy-item p,.rule-row p,.error-row p,.design-card p{color:#111 !important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="eyebrow">Year 7 DigiTech &nbsp;·&nbsp; Week 8</div>
+    <h1>PowerPoint:<br><span>The Basics</span></h1>
+    <p class="tagline">What it is, how it works, and how to make slides that don't make people fall asleep.</p>
+    <div class="pill-row">
+      <span class="pill">🎨 Design principles</span>
+      <span class="pill">📝 Text &amp; images</span>
+      <span class="pill">✨ Transitions</span>
+      <span class="pill">🎤 Presenting</span>
+      <span class="pill">💾 Save to OneDrive</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="sec-label"><div class="bar" style="background:#be185d"></div><h2>What Even Is PowerPoint? 🤔</h2></div>
+
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="icon">🎞️</div>
+      <h3>A Presentation App</h3>
+      <p>PowerPoint lets you build a deck of slides to share information visually. Each slide is like a page — but designed to be shown on a screen to an audience.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🌍</div>
+      <h3>Used Everywhere</h3>
+      <p>School assignments, business pitches, science conferences, TED Talks — if someone's presenting to a group, there's a good chance slides are involved.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🎨</div>
+      <h3>Design Matters</h3>
+      <p>Bad slides confuse people. Good slides support what you're saying. Today you'll learn the rules that separate the two.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">📁</div>
+      <h3>Files = Presentations</h3>
+      <p>A PowerPoint file is called a <strong>presentation</strong>. It contains multiple <strong>slides</strong>. Save it as <strong>.pptx</strong> and store it in your OneDrive folder.</p>
+      <span class="highlight">.pptx</span>
+    </div>
+  </div>
+
+  <!-- SECTION 2 -->
+  <div class="sec-label"><div class="bar" style="background:#7c3aed"></div><h2>The PowerPoint Interface 🖥️</h2></div>
+
+  <div class="interface-card">
+    <div class="interface-header">
+      <span class="interface-emoji">🗺️</span>
+      <div class="interface-title">What You're Looking At — <span>Labelled</span></div>
+    </div>
+    <div class="interface-body">
+      <div class="ppt-mock">
+        <div class="ppt-toolbar">
+          <span class="ppt-tab">Home</span>
+          <span>Insert</span><span>Design</span><span>Transitions</span><span>Animations</span><span>Slide Show</span>
+        </div>
+        <div class="ppt-workspace">
+          <div class="ppt-panel">
+            <div class="ppt-thumb active">Slide 1</div>
+            <div class="ppt-thumb">Slide 2</div>
+            <div class="ppt-thumb">Slide 3</div>
+          </div>
+          <div class="ppt-slide">
+            <div class="ppt-slide-inner">
+              <div class="slide-title-text">My Presentation Title</div>
+              <div class="slide-sub-text">Click to add subtitle &nbsp;·&nbsp; Your name here</div>
+              <div class="slide-img-placeholder">🖼️</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-row">
+        <div class="annotation"><div class="dot" style="background:#7c3aed"></div>Slide panel — all your slides listed on the left</div>
+        <div class="annotation"><div class="dot" style="background:#f9a8d4"></div>Editing area — the big slide you're working on</div>
+        <div class="annotation"><div class="dot" style="background:#fb923c"></div>Ribbon — tabs with all the tools at the top</div>
+        <div class="annotation"><div class="dot" style="background:#86efac"></div>Placeholder — click to add your text or image</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 -->
+  <div class="sec-label"><div class="bar" style="background:#f59e0b"></div><h2>Key Terms — Know These 📍</h2></div>
+
+  <div class="anatomy-grid">
+    <div class="anatomy-item">
+      <div class="term">Slide</div>
+      <div class="example">One page of your presentation</div>
+      <p>Each slide appears one at a time when you present. Keep them clean — one idea per slide.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Placeholder</div>
+      <div class="example">Click to add title</div>
+      <p>Dotted boxes on a slide. Click one to type. They keep your layout consistent across slides.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Slide Layout</div>
+      <div class="example">Title Slide / Title + Content</div>
+      <p>A preset arrangement of placeholders. Pick a layout that suits your content — don't start from scratch every time.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Theme / Design</div>
+      <div class="example">Design tab → Themes</div>
+      <p>A set of matching colours and fonts applied to every slide at once. Way faster than styling each slide manually.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Transition</div>
+      <div class="example">Fade, Push, Wipe…</div>
+      <p>The animation between slides when you click to advance. Use sparingly — one subtle transition for the whole deck is enough.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Animation</div>
+      <div class="example">Appear, Fly In, Fade…</div>
+      <p>Motion applied to individual elements on a slide. Text can fly in, images can fade. Easy to overdo — less is more.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Presenter View</div>
+      <div class="example">Slide Show → Presenter View</div>
+      <p>Shows your notes and next slide on your screen while the audience only sees the current slide. Use it when presenting.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Speaker Notes</div>
+      <div class="example">Notes panel below each slide</div>
+      <p>Your cue cards — type what you want to say here. The audience never sees them, only you do in Presenter View.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 4 -->
+  <div class="sec-label"><div class="bar" style="background:#22c55e"></div><h2>Design Rules — Good vs Bad 🎨</h2></div>
+
+  <div class="design-grid">
+    <div class="design-card good">
+      <div class="dc-label">✅ Do this</div>
+      <h3>One idea per slide</h3>
+      <p>If you have three points, make three slides. Cramming everything onto one slide overwhelms your audience.</p>
+      <div class="dc-example" style="color:#86efac">Slide 1: Point A &nbsp;→&nbsp; Slide 2: Point B &nbsp;→&nbsp; Slide 3: Point C</div>
+    </div>
+    <div class="design-card bad">
+      <div class="dc-label">❌ Never do this</div>
+      <h3>Wall of text</h3>
+      <p>If your slide has more than 6 lines of text, you're writing an essay, not a slide. Cut it down. Use dot points.</p>
+      <div class="dc-example" style="color:#fca5a5">Nobody reads 8 sentences on a slide. They'll read it instead of listening to you.</div>
+    </div>
+    <div class="design-card tip">
+      <div class="dc-label">💡 Pro tip</div>
+      <h3>The 6×6 rule</h3>
+      <p>Maximum 6 dot points per slide, maximum 6 words per dot point. Forces you to keep it tight.</p>
+      <div class="dc-example" style="color:#c4b5fd">✓ "Save to OneDrive before leaving"<br>✗ "You need to make sure that you remember to save your file to your OneDrive folder before the end of class"</div>
+    </div>
+    <div class="design-card warn">
+      <div class="dc-label">⚠️ Watch out</div>
+      <h3>Font chaos</h3>
+      <p>Max 2 fonts per presentation. One for headings, one for body text. Mixing 4 different fonts looks unprofessional.</p>
+      <div class="dc-example" style="color:#fcd34d">Heading font: bold, large &nbsp;·&nbsp; Body font: clean, readable</div>
+    </div>
+    <div class="design-card good">
+      <div class="dc-label">✅ Do this</div>
+      <h3>High contrast text</h3>
+      <p>Dark text on a light background, or light text on a dark background. Never light on light or dark on dark.</p>
+      <div class="dc-example" style="color:#86efac">White text on dark blue ✓ &nbsp;·&nbsp; Yellow text on white ✗</div>
+    </div>
+    <div class="design-card bad">
+      <div class="dc-label">❌ Never do this</div>
+      <h3>Animation overload</h3>
+      <p>Every element spinning, flying, and bouncing is distracting. One simple transition for the whole deck. That's it.</p>
+      <div class="dc-example" style="color:#fca5a5">Fade or Push = professional &nbsp;·&nbsp; Spiral + Bounce + Flash = chaos</div>
+    </div>
+  </div>
+
+  <!-- SECTION 5 -->
+  <div class="sec-label"><div class="bar" style="background:#0891b2"></div><h2>Shortcuts That Actually Help ⌨️</h2></div>
+
+  <div class="nav-grid">
+    <div class="nav-card"><div class="nav-key">Ctrl + S</div><div class="nav-desc">Save — do this constantly</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + Z</div><div class="nav-desc">Undo last action</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + D</div><div class="nav-desc">Duplicate selected slide or object</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + M</div><div class="nav-desc">Insert a new slide</div></div>
+    <div class="nav-card"><div class="nav-key">F5</div><div class="nav-desc">Start slideshow from the beginning</div></div>
+    <div class="nav-card"><div class="nav-key">Shift + F5</div><div class="nav-desc">Start slideshow from current slide</div></div>
+    <div class="nav-card"><div class="nav-key">Esc</div><div class="nav-desc">Exit slideshow / cancel action</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + G</div><div class="nav-desc">Group selected objects together</div></div>
+    <div class="nav-card"><div class="nav-key">B key</div><div class="nav-desc">Black screen during slideshow (pause)</div></div>
+  </div>
+
+  <!-- SECTION 6 -->
+  <div class="sec-label"><div class="bar" style="background:#f59e0b"></div><h2>The Rules That Actually Matter ⭐</h2></div>
+
+  <div class="golden-rules">
+    <h2>⭐ Golden Rules</h2>
+    <div class="rule-row"><div class="rule-num">1</div><p>Slides support your speaking — they're not a script. If you're reading every word off the slide, you're doing it wrong.</p></div>
+    <div class="rule-row"><div class="rule-num">2</div><p>One idea per slide. If you're unsure, split it into two slides.</p></div>
+    <div class="rule-row"><div class="rule-num">3</div><p>Pick a theme and stick with it. Consistency looks professional. Changing colours and fonts on every slide looks chaotic.</p></div>
+    <div class="rule-row"><div class="rule-num">4</div><p>Images must be relevant. A random clip-art fish on a slide about climate change just confuses people.</p></div>
+    <div class="rule-row"><div class="rule-num">5</div><p>Save to OneDrive — <code>Ctrl+S</code> — before you close the app. Every time.</p></div>
+    <div class="rule-row" style="margin-bottom:0"><div class="rule-num">6</div><p>Practice out loud before you present. Knowing your slides is not the same as knowing your talk.</p></div>
+  </div>
+
+  <!-- SECTION 7 -->
+  <div class="sec-label"><div class="bar" style="background:#dc2626"></div><h2>When Things Go Wrong 🚨</h2></div>
+
+  <div class="error-section">
+    <h2>🚨 Common Mistakes</h2>
+    <div class="error-row">
+      <div class="error-code">Too much text</div>
+      <p><strong>Fix:</strong> Cut each dot point to 6 words or less. Move the detail into your speaker notes instead.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Font too small</div>
+      <p><strong>Fix:</strong> Minimum 24pt for body text, 36pt+ for headings. If it looks big on your laptop, it's probably right on a projector.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Images look blurry</div>
+      <p><strong>Fix:</strong> Use high-resolution images. Don't stretch a small image to fill a slide — find a bigger one instead.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Slideshow won't start</div>
+      <p><strong>Fix:</strong> Press <strong>F5</strong> or go to Slide Show tab → From Beginning. Make sure you're not in a text box when you press it.</p>
+    </div>
+    <div class="error-row" style="margin-bottom:0">
+      <div class="error-code">File not saved</div>
+      <p><strong>Fix:</strong> <strong>Ctrl+S</strong> right now. Check it's saved to OneDrive → Year 7 → DigiTech → Classwork, not just locally.</p>
+    </div>
+  </div>
+
+  <div class="footer">Year 7 DigiTech &nbsp;·&nbsp; Week 8 &nbsp;·&nbsp; PowerPoint: The Basics &nbsp;·&nbsp; Emmanuel Christian School</div>
+</div>
+</body>
+</html>
