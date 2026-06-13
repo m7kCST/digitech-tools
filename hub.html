@@ -222,6 +222,34 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .fc-nav button:hover{background:var(--surface)}
 .fc-nav button:disabled{opacity:.4;cursor:not-allowed}
 .fc-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
+
+/* Quiz */
+.qz-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.qz-name-row{display:flex;gap:6px}
+.qz-name-row input{flex:1;padding:8px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none}
+.qz-name-row input:focus{border-color:var(--border2);background:var(--surface)}
+.qz-scorebar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink3);font-family:var(--mono)}
+.qz-scorebar strong{color:var(--ink);font-family:var(--sans)}
+.qz-question{font-size:15px;font-weight:700;color:var(--ink);line-height:1.5;padding:14px;border-radius:var(--radiuslg);background:var(--surface2);border:1.5px solid var(--border2);min-height:70px;display:flex;align-items:center}
+.qz-options{display:flex;flex-direction:column;gap:8px}
+.qz-opt{padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border2);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);text-align:left;font-family:var(--sans);transition:all .13s}
+.qz-opt:hover:not(:disabled){border-color:var(--y7);background:var(--y7l)}
+.qz-opt:disabled{cursor:default}
+.qz-opt.correct{border-color:var(--green);background:var(--greenl);color:var(--green)}
+.qz-opt.incorrect{border-color:var(--red);background:var(--redl);color:var(--red)}
+.qz-feedback{font-size:12px;font-weight:700;text-align:center;min-height:18px}
+.qz-feedback.good{color:var(--green)}
+.qz-feedback.bad{color:var(--red)}
+.qz-next-row{display:flex;gap:8px}
+.qz-next-row button{flex:1;padding:10px 12px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y7)}
+.qz-next-row button:hover{opacity:.88}
+.qz-next-row button:disabled{opacity:.4;cursor:not-allowed}
+.qz-submit-row{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+.qz-submit-row button{padding:10px 18px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y8)}
+.qz-submit-row button:disabled{opacity:.4;cursor:not-allowed}
+.qz-submit-hint{font-size:11px;color:var(--ink3)}
+.qz-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
+.qz-sent{font-size:13px;font-weight:700;color:var(--green);text-align:center;padding:8px}
 </style>
 </head>
 <body>
@@ -266,6 +294,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
         <span class="panel-head-icon">&#128193;</span>
         <div class="panel-head-title">Resources</div>
         <div class="panel-head-action">
+          <button class="fc-btn" onclick="openQuiz()">&#127919; Quiz</button>
           <button class="fc-btn" onclick="openFlashcards()">&#127183; Flashcards</button>
         </div>
       </div>
@@ -325,6 +354,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
     </div>
   </div>
 
+  <!-- Quiz modal -->
+  <div class="fc-overlay" id="qzOverlay" onclick="if(event.target===this) closeQuiz()">
+    <div class="fc-modal">
+      <div class="fc-head">
+        <div class="fc-head-title">&#127919; Quiz</div>
+        <button class="fc-close" onclick="closeQuiz()">&#10005;</button>
+      </div>
+      <div class="qz-body" id="qzBody"></div>
+    </div>
+  </div>
+
 </div>
 <script>
 /**
@@ -361,6 +401,19 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQm
  * NOT used in the hub so it does not appear in browser network traffic.
  */
 const CURRENT_WEEK = 6;
+
+/**
+ * Quiz configuration.
+ * QUIZ_POINTS_PER_CORRECT - points awarded for each correct answer.
+ * QUIZ_MIN_CORRECT_TO_SUBMIT - minimum correct answers needed before the
+ *   "Submit score" button unlocks (prevents inbox spam from low-effort runs).
+ * QUIZ_OPTION_WORD_CAP - max words shown per answer option. All options
+ *   are trimmed to the same word count (the shortest option's length,
+ *   capped at this value) so option length doesn't give away the answer.
+ */
+const QUIZ_POINTS_PER_CORRECT = 10;
+const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
+const QUIZ_OPTION_WORD_CAP = 8;
 
 /**
  * Column schema - must match Sheet header row exactly.
@@ -424,6 +477,16 @@ let messages     = [];
 let aiLoading    = false;
 let ttsEnabled   = false;
 let currentUtterance = null;
+
+// Quiz state
+let qzDeck       = [];   // pool of {question, options:[...], correctIndex, type}
+let qzIndex      = 0;
+let qzCorrect    = 0;
+let qzAnswered   = 0;
+let qzAnsweredThisQ = false;
+let qzName       = '';
+let qzGeneralPool = null; // cached general-knowledge questions from Quiz tab
+let qzSelectedIndex = -1;
 
 // =============================================================================
 // SCHEDULE TAB
@@ -811,6 +874,293 @@ function fcRender() {
       <button onclick="fcPrev()" ${fcIndex===0?'disabled':''}>&#8592; Prev</button>
       <button onclick="fcNext()" ${fcIndex===fcDeck.length-1?'disabled':''}>Next &#8594;</button>
     </div>`;
+}
+
+// =============================================================================
+// QUIZ
+// One question at a time, 3-4 multiple choice options. Pool combines:
+//   - Auto-generated "what does X mean?" questions from definitions
+//   - General knowledge questions from the optional 'Quiz' Sheet tab
+// Options are trimmed to equal word length and shuffled into a random
+// position each time, so option length/position can't be used to guess.
+// Score is kept for the session; students enter a name and can submit
+// once they pass QUIZ_MIN_CORRECT_TO_SUBMIT correct answers - this emails
+// the teacher via the Apps Script emailQuizScore action.
+// =============================================================================
+
+/** Trims text to at most n words, adding an ellipsis if shortened. */
+function qzTrimWords(text, n) {
+  const words = String(text).trim().split(/\s+/);
+  if (words.length <= n) return words.join(' ');
+  return words.slice(0, n).join(' ') + '…';
+}
+
+/**
+ * Builds a 4-option set from a correct answer and 3 distractors.
+ * All options are trimmed to the same word count (the shortest option's
+ * word count, capped at QUIZ_OPTION_WORD_CAP, floor of 3) and shuffled.
+ * Returns {options:[4 strings], correctIndex}.
+ */
+function qzBuildOptions(correctText, distractors) {
+  const all = [correctText, ...distractors];
+  let minWords = Math.min(...all.map(t => String(t).trim().split(/\s+/).length));
+  minWords = Math.max(3, Math.min(minWords, QUIZ_OPTION_WORD_CAP));
+
+  const items = all.map((t, i) => ({ text: qzTrimWords(t, minWords), correct: i === 0 }));
+
+  // Fisher-Yates shuffle
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+
+  return {
+    options: items.map(it => it.text),
+    correctIndex: items.findIndex(it => it.correct)
+  };
+}
+
+/**
+ * Builds definition-based questions: "What does X mean?" with the correct
+ * definition plus 3 distractor definitions drawn from other terms in the
+ * same class. Skips terms if there aren't enough distractors available.
+ */
+function qzBuildDefinitionQuestions() {
+  const className = CLASS_NAMES[currentClass];
+  const pairs = [];
+
+  allResources
+    .filter(r => r.class === className && (r.definitions || '').trim())
+    .forEach(r => {
+      (r.definitions || '').split('|').filter(Boolean).forEach(item => {
+        const idx = item.indexOf(':');
+        if (idx > 0) {
+          pairs.push({
+            term: item.substring(0, idx).trim(),
+            def : item.substring(idx + 1).trim()
+          });
+        }
+      });
+    });
+
+  // De-duplicate by term
+  const seen = new Set();
+  const deduped = pairs.filter(p => {
+    const key = p.term.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  if (deduped.length < 4) return [];
+
+  return deduped.map((p, i) => {
+    const otherDefs = deduped
+      .filter((_, j) => j !== i)
+      .map(o => o.def)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3);
+
+    const built = qzBuildOptions(p.def, otherDefs);
+    return {
+      question: `What does "${p.term}" mean?`,
+      options: built.options,
+      correctIndex: built.correctIndex,
+      type: 'definition'
+    };
+  });
+}
+
+/**
+ * Fetches general-knowledge questions from the 'Quiz' Sheet tab
+ * (cached after first load) and builds question objects from them.
+ */
+async function qzBuildGeneralQuestions() {
+  const className = CLASS_NAMES[currentClass];
+
+  if (qzGeneralPool === null) {
+    try {
+      const res  = await fetch(`${SCRIPT_URL}?action=getQuiz&class=${encodeURIComponent(className)}`);
+      const data = await res.json();
+      qzGeneralPool = (data.success && Array.isArray(data.rows)) ? data.rows : [];
+    } catch (err) {
+      qzGeneralPool = [];
+    }
+  }
+
+  return qzGeneralPool
+    .filter(r => r.question && r.correct)
+    .map(r => {
+      const distractors = [r.wrong1, r.wrong2, r.wrong3].filter(Boolean);
+      if (distractors.length < 3) return null;
+      const built = qzBuildOptions(r.correct, distractors);
+      return {
+        question: r.question,
+        options: built.options,
+        correctIndex: built.correctIndex,
+        type: 'general'
+      };
+    })
+    .filter(Boolean);
+}
+
+/** Shuffles an array in place (Fisher-Yates) and returns it. */
+function qzShuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Opens the quiz modal and builds a fresh deck for the current class. */
+async function openQuiz() {
+  document.getElementById('qzOverlay').classList.add('show');
+  document.getElementById('qzBody').innerHTML = `<div class="qz-empty">Loading quiz...</div>`;
+
+  const defQuestions = qzBuildDefinitionQuestions();
+  const genQuestions = await qzBuildGeneralQuestions();
+
+  qzDeck = qzShuffleArray([...defQuestions, ...genQuestions]);
+  qzIndex = 0;
+  qzCorrect = 0;
+  qzAnswered = 0;
+  qzAnsweredThisQ = false;
+  qzSelectedIndex = -1;
+
+  qzRender();
+}
+
+function closeQuiz() {
+  document.getElementById('qzOverlay').classList.remove('show');
+}
+
+/** Updates the stored student name as they type. */
+function qzSetName(val) {
+  qzName = val;
+}
+
+/**
+ * Handles selecting an answer: locks in the choice, scores it,
+ * colours the correct/incorrect options, and shows feedback.
+ */
+function qzSelectAnswer(i) {
+  if (qzAnsweredThisQ || !qzDeck.length) return;
+  qzAnsweredThisQ = true;
+  qzAnswered++;
+  qzSelectedIndex = i;
+
+  const q = qzDeck[qzIndex];
+  if (i === q.correctIndex) qzCorrect++;
+
+  qzRender();
+}
+
+/** Advances to the next question, looping and reshuffling if the deck ends. */
+function qzNext() {
+  if (!qzAnsweredThisQ) return;
+  qzIndex++;
+  if (qzIndex >= qzDeck.length) {
+    qzDeck = qzShuffleArray([...qzDeck]);
+    qzIndex = 0;
+  }
+  qzAnsweredThisQ = false;
+  qzSelectedIndex = -1;
+  qzRender();
+} the current session score to the teacher via the Apps Script
+ * emailQuizScore action. Only enabled once QUIZ_MIN_CORRECT_TO_SUBMIT is met.
+ */
+async function qzSubmit() {
+  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
+  const btn = document.getElementById('qzSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action : 'emailQuizScore',
+        name   : qzName.trim() || 'Unknown',
+        class  : CLASS_NAMES[currentClass],
+        score  : score,
+        correct: qzCorrect,
+        total  : qzAnswered,
+        date   : new Date().toISOString()
+      })
+    });
+  } catch (err) {
+    // Silent fail - student doesn't need to see network errors here
+  }
+
+  qzRender(true);
+}
+
+/** Renders the quiz modal body: name entry, score bar, question and controls. */
+function qzRender(submitted) {
+  const body = document.getElementById('qzBody');
+
+  if (!qzDeck.length) {
+    body.innerHTML = `<div class="qz-empty">
+      <div style="font-size:28px;margin-bottom:8px;opacity:.35">&#127919;</div>
+      <div style="font-weight:600;color:var(--ink2);margin-bottom:3px">No quiz questions yet</div>
+      <div style="font-size:12px;line-height:1.5">This class doesn't have enough definitions or general knowledge questions loaded yet.</div>
+    </div>`;
+    return;
+  }
+
+  const q = qzDeck[qzIndex];
+  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
+  const canSubmit = qzCorrect >= QUIZ_MIN_CORRECT_TO_SUBMIT && qzName.trim().length > 0;
+
+  let optionsHtml = q.options.map((opt, i) => {
+    let cls = 'qz-opt';
+    if (qzAnsweredThisQ) {
+      if (i === q.correctIndex) cls += ' correct';
+      else if (i === qzSelectedIndex) cls += ' incorrect';
+    }
+    return `<button class="${cls}" ${qzAnsweredThisQ ? 'disabled' : ''} onclick="qzSelectAnswer(${i})">${esc(opt)}</button>`;
+  }).join('');
+
+  let feedbackHtml = '';
+  if (qzAnsweredThisQ) {
+    feedbackHtml = (qzSelectedIndex === q.correctIndex)
+      ? `<div class="qz-feedback good">&#10003; Correct!</div>`
+      : `<div class="qz-feedback bad">&#10007; Not quite - the correct answer is highlighted.</div>`;
+  }
+
+  let submitHtml;
+  if (submitted) {
+    submitHtml = `<div class="qz-sent">&#9989; Score sent for the leaderboard!</div>`;
+  } else {
+    const remaining = Math.max(0, QUIZ_MIN_CORRECT_TO_SUBMIT - qzCorrect);
+    const hint = !qzName.trim()
+      ? 'Enter your name to submit'
+      : remaining > 0
+        ? `Get ${remaining} more correct to unlock submitting`
+        : 'You can submit your score now';
+    submitHtml = `
+      <div class="qz-submit-row">
+        <button id="qzSubmitBtn" ${canSubmit ? '' : 'disabled'} onclick="qzSubmit()">&#128228; Submit score</button>
+        <div class="qz-submit-hint">${esc(hint)}</div>
+      </div>`;
+  }
+
+  body.innerHTML = `
+    <div class="qz-name-row">
+      <input type="text" placeholder="Your name" value="${esc(qzName)}" oninput="qzSetName(this.value)" />
+    </div>
+    <div class="qz-scorebar">
+      <span>Question ${qzIndex + 1} of ${qzDeck.length}</span>
+      <span><strong>${qzCorrect}</strong> correct &bull; <strong>${score}</strong> pts</span>
+    </div>
+    <div class="qz-question">${esc(q.question)}</div>
+    <div class="qz-options">${optionsHtml}</div>
+    ${feedbackHtml}
+    <div class="qz-next-row">
+      <button onclick="qzNext()" ${qzAnsweredThisQ ? '' : 'disabled'}>Next question &#8594;</button>
+    </div>
+    ${submitHtml}
+  `;
 }
 
 function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
