@@ -416,6 +416,13 @@ const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
 const QUIZ_OPTION_WORD_CAP = 8;
 
 /**
+ * QUIZ_MAX_MISSES - if a student gets this many questions wrong in a
+ * session, their score resets to zero and they start over. Encourages
+ * a clean run rather than spamming guesses to grind points.
+ */
+const QUIZ_MAX_MISSES = 3;
+
+/**
  * Column schema - must match Sheet header row exactly.
  * The 'module' column is the join key between Resources and Schedule tabs.
  */
@@ -482,11 +489,13 @@ let currentUtterance = null;
 let qzDeck       = [];   // pool of {question, options:[...], correctIndex, type}
 let qzIndex      = 0;
 let qzCorrect    = 0;
+let qzMisses     = 0;
 let qzAnswered   = 0;
 let qzAnsweredThisQ = false;
 let qzName       = '';
 let qzGeneralPool = null; // cached general-knowledge questions from Quiz tab
 let qzSelectedIndex = -1;
+let qzJustReset = false;
 
 // =============================================================================
 // SCHEDULE TAB
@@ -1024,6 +1033,8 @@ async function openQuiz() {
   qzDeck = qzShuffleArray([...defQuestions, ...genQuestions]);
   qzIndex = 0;
   qzCorrect = 0;
+  qzMisses = 0;
+  qzJustReset = false;
   qzAnswered = 0;
   qzAnsweredThisQ = false;
   qzSelectedIndex = -1;
@@ -1051,7 +1062,14 @@ function qzSelectAnswer(i) {
   qzSelectedIndex = i;
 
   const q = qzDeck[qzIndex];
-  if (i === q.correctIndex) qzCorrect++;
+  if (i === q.correctIndex) {
+    qzCorrect++;
+  } else {
+    qzMisses++;
+    if (qzMisses >= QUIZ_MAX_MISSES) {
+      qzJustReset = true;
+    }
+  }
 
   qzRender();
 }
@@ -1059,6 +1077,13 @@ function qzSelectAnswer(i) {
 /** Advances to the next question, looping and reshuffling if the deck ends. */
 function qzNext() {
   if (!qzAnsweredThisQ) return;
+
+  if (qzJustReset) {
+    qzCorrect = 0;
+    qzMisses = 0;
+    qzJustReset = false;
+  }
+
   qzIndex++;
   if (qzIndex >= qzDeck.length) {
     qzDeck = qzShuffleArray([...qzDeck]);
@@ -1126,9 +1151,13 @@ function qzRender(submitted) {
 
   let feedbackHtml = '';
   if (qzAnsweredThisQ) {
-    feedbackHtml = (qzSelectedIndex === q.correctIndex)
-      ? `<div class="qz-feedback good">&#10003; Correct!</div>`
-      : `<div class="qz-feedback bad">&#10007; Not quite - the correct answer is highlighted.</div>`;
+    if (qzSelectedIndex === q.correctIndex) {
+      feedbackHtml = `<div class="qz-feedback good">&#10003; Correct!</div>`;
+    } else if (qzJustReset) {
+      feedbackHtml = `<div class="qz-feedback bad">&#10007; That's ${QUIZ_MAX_MISSES} misses - score resets to 0 on the next question.</div>`;
+    } else {
+      feedbackHtml = `<div class="qz-feedback bad">&#10007; Not quite - the correct answer is highlighted.</div>`;
+    }
   }
 
   let submitHtml;
@@ -1154,7 +1183,7 @@ function qzRender(submitted) {
     </div>
     <div class="qz-scorebar">
       <span>Question ${qzIndex + 1} of ${qzDeck.length}</span>
-      <span><strong>${qzCorrect}</strong> correct &bull; <strong>${score}</strong> pts</span>
+      <span><strong>${qzCorrect}</strong> correct &bull; <strong>${score}</strong> pts &bull; <strong>${qzMisses}</strong>/${QUIZ_MAX_MISSES} missed</span>
     </div>
     <div class="qz-question">${esc(q.question)}</div>
     <div class="qz-options">${optionsHtml}</div>
