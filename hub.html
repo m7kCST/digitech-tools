@@ -1067,7 +1067,10 @@ function qzNext() {
   qzAnsweredThisQ = false;
   qzSelectedIndex = -1;
   qzRender();
-} the current session score to the teacher via the Apps Script
+}
+
+/**
+ * Submits the current session score to the teacher via the Apps Script
  * emailQuizScore action. Only enabled once QUIZ_MIN_CORRECT_TO_SUBMIT is met.
  */
 async function qzSubmit() {
