@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="application/json" id="page-meta">
+{
+  "id": "y7-office-excel-explainer",
+  "class": "Year 7",
+  "term": "T1",
+  "week": "3",
+  "module": "Microsoft Office Suite",
+  "type": "html",
+  "title": "Excel - The Basics",
+  "summary": "Visual explainer covering spreadsheet structure, data entry, SUM/AVERAGE/COUNT formulas, basic charts and formatting.",
+  "topics": [
+    "Excel",
+    "spreadsheets",
+    "formulas",
+    "SUM",
+    "AVERAGE",
+    "COUNT",
+    "charts"
+  ],
+  "chunks": {
+    "definitions": [],
+    "success_criteria": [],
+    "tasks": [],
+    "key_concepts": [
+      "cells",
+      "rows",
+      "columns",
+      "formulas",
+      "SUM",
+      "AVERAGE",
+      "COUNT",
+      "charts"
+    ]
+  }
+}
+</script>
+<meta charset="UTF-8">
+<title>Excel — The Basics</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Oswald:wght@700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#f0f0f0;padding:1.5rem;min-height:100vh}
+  .page{max-width:880px;margin:0 auto}
+
+  /* ── Hero banner ── */
+  .hero{background:linear-gradient(135deg,#6d28d9 0%,#0891b2 60%,#065f46 100%);border-radius:20px;padding:2.5rem 2rem 2rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.05)}
+  .hero::after{content:'';position:absolute;bottom:-40px;left:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
+  .hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.6rem}
+  .hero h1{font-family:'Oswald',sans-serif;font-size:3rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.5rem}
+  .hero h1 span{color:#67e8f9}
+  .hero .tagline{font-size:1rem;color:rgba(255,255,255,.75);max-width:500px;line-height:1.5;margin-bottom:1.25rem}
+  .pill-row{display:flex;flex-wrap:wrap;gap:.5rem}
+  .pill{background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:.28rem .85rem;font-size:.78rem;font-weight:600}
+
+  /* ── Section label ── */
+  .sec-label{display:flex;align-items:center;gap:.75rem;margin:2rem 0 1rem}
+  .sec-label .bar{width:6px;height:30px;border-radius:3px;flex-shrink:0}
+  .sec-label h2{font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+
+  /* ── Concept cards (what is Excel / interface) ── */
+  .concept-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  @media(max-width:600px){.concept-grid{grid-template-columns:1fr}}
+  .concept-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;padding:1.25rem;display:flex;flex-direction:column;gap:.5rem}
+  .concept-card .icon{font-size:2rem;margin-bottom:.25rem}
+  .concept-card h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .concept-card p{font-size:.88rem;color:#94a3b8;line-height:1.6}
+  .concept-card .highlight{display:inline-block;background:#2d2d4e;color:#a78bfa;border-radius:6px;padding:.2rem .55rem;font-family:'Courier New',monospace;font-size:.85rem;font-weight:700;margin-top:.25rem}
+
+  /* ── Interface diagram ── */
+  .interface-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;overflow:hidden;margin-bottom:1.5rem}
+  .interface-header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem .75rem;border-bottom:1px solid #2d2d4e}
+  .interface-emoji{font-size:1.5rem}
+  .interface-title{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .interface-title span{color:#67e8f9}
+  .interface-body{padding:1.25rem}
+  .interface-mock{background:#12122a;border-radius:12px;overflow:hidden;margin-bottom:1rem;border:1px solid #2d2d4e}
+  .excel-toolbar{background:#1e3a5f;padding:.4rem .75rem;display:flex;align-items:center;gap:1rem;font-size:.75rem;color:#93c5fd;font-weight:600;border-bottom:1px solid #2d2d4e}
+  .excel-toolbar .tab{padding:.2rem .6rem;border-radius:4px;background:#1d4ed8;color:#fff;font-size:.72rem}
+  .excel-formula-bar{background:#12122a;border-bottom:1px solid #2d2d4e;padding:.35rem .75rem;display:flex;align-items:center;gap:.75rem;font-size:.8rem}
+  .cell-ref{background:#1e3a5f;color:#67e8f9;padding:.15rem .5rem;border-radius:4px;font-family:'Courier New',monospace;font-weight:700;font-size:.78rem;min-width:44px;text-align:center}
+  .formula-bar-text{color:#a78bfa;font-family:'Courier New',monospace;font-size:.82rem}
+  .excel-grid{display:grid}
+  .col-headers{display:grid;grid-template-columns:40px repeat(5,1fr);background:#1e3a5f}
+  .col-h{padding:.3rem;text-align:center;font-size:.75rem;font-weight:700;color:#93c5fd;border-right:1px solid #2d2d4e}
+  .grid-row{display:grid;grid-template-columns:40px repeat(5,1fr);border-bottom:1px solid #1a1f2e}
+  .row-h{padding:.35rem;text-align:center;font-size:.75rem;font-weight:700;color:#93c5fd;background:#1e3a5f;border-right:1px solid #2d2d4e}
+  .cell{padding:.35rem .5rem;font-size:.78rem;color:#cbd5e1;border-right:1px solid #1a1f2e;min-height:28px}
+  .cell.active{background:#1e3a5f;color:#67e8f9;font-weight:700;outline:2px solid #0891b2;outline-offset:-2px}
+  .cell.formula{color:#a78bfa;font-family:'Courier New',monospace}
+  .cell.header-cell{color:#fff;font-weight:700;background:#1a2540}
+  .cell.result{color:#86efac;font-weight:700}
+  .annotation-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.85rem}
+  .annotation{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:#94a3b8}
+  .annotation .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+  /* ── Anatomy table ── */
+  .anatomy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.65rem;margin-bottom:1.5rem}
+  .anatomy-item{background:#12122a;border:1px solid #2d2d4e;border-radius:10px;padding:.85rem 1rem}
+  .anatomy-item .term{font-family:'Oswald',sans-serif;font-size:.85rem;font-weight:700;color:#67e8f9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+  .anatomy-item .example{font-family:'Courier New',monospace;font-size:.85rem;color:#a78bfa;font-weight:700;margin-bottom:.3rem}
+  .anatomy-item p{font-size:.82rem;color:#94a3b8;line-height:1.5}
+
+  /* ── Formula explainer cards (from original) ── */
+  .formula-grid{display:flex;flex-direction:column;gap:1.1rem;margin-bottom:1.5rem}
+  .fcard{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;overflow:hidden}
+  .fcard-top{display:grid;grid-template-columns:1fr 1fr;min-height:170px}
+  .meme-panel{background:#12122a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem;border-right:2px solid #2d2d4e;text-align:center}
+  .meme-panel .big-emoji{font-size:3rem;margin-bottom:.4rem;display:block}
+  .meme-panel .top-text{font-family:'Oswald',sans-serif;font-size:.9rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;margin-bottom:.3rem}
+  .meme-panel .bot-text{font-family:'Oswald',sans-serif;font-size:.9rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em;line-height:1.2}
+  .explain-panel{padding:1.1rem 1.4rem;display:flex;flex-direction:column;justify-content:center}
+  .formula-display{font-family:'Courier New',monospace;font-size:1.3rem;font-weight:700;margin-bottom:.65rem;padding:.45rem .8rem;border-radius:8px;display:inline-block}
+  .explain-panel h3{font-family:'Oswald',sans-serif;font-size:.95rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem}
+  .explain-panel p{font-size:.86rem;color:#cbd5e1;line-height:1.55;margin-bottom:.4rem}
+  .breakdown{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.3rem}
+  .chunk{padding:.22rem .55rem;border-radius:6px;font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.3rem}
+  .chunk .label{font-family:'Inter',sans-serif;font-size:.72rem;font-weight:400;opacity:.8;font-style:italic}
+  .fcard-bottom{padding:.65rem 1.1rem;border-top:1px solid #2d2d4e;display:flex;align-items:center;gap:.55rem}
+  .fcard-bottom p{font-size:.82rem;color:#94a3b8;line-height:1.4}
+  .fcard-bottom strong{color:#e2e8f0}
+  .theme-sum .formula-display{background:#1e1b4b;color:#a78bfa}
+  .theme-sum .explain-panel h3{color:#a78bfa}
+  .theme-sum .meme-panel{background:#0d0b2a}
+  .theme-avg .formula-display{background:#052e16;color:#4ade80}
+  .theme-avg .explain-panel h3{color:#4ade80}
+  .theme-avg .meme-panel{background:#021a0e}
+  .theme-mult .formula-display{background:#2d1a00;color:#fb923c}
+  .theme-mult .explain-panel h3{color:#fb923c}
+  .theme-mult .meme-panel{background:#1a0e00}
+  .theme-avg2 .formula-display{background:#1a0a2e;color:#f472b6}
+  .theme-avg2 .explain-panel h3{color:#f472b6}
+  .theme-avg2 .meme-panel{background:#0f0616}
+  .ck-purple{background:#2d1f5e;color:#c4b5fd}
+  .ck-orange{background:#3a1a00;color:#fdba74}
+  .ck-green{background:#052e16;color:#86efac}
+  .ck-pink{background:#2d0a1e;color:#f9a8d4}
+  .ck-blue{background:#0c1a3a;color:#93c5fd}
+  .ck-gray{background:#1a1a2e;color:#94a3b8}
+
+  /* ── Navigation tip cards ── */
+  .nav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-bottom:1.5rem}
+  .nav-card{background:#12122a;border:1px solid #2d2d4e;border-radius:10px;padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.75rem}
+  .nav-key{font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;color:#fff;background:#1e3a5f;border:1px solid #2d5f8f;border-radius:7px;padding:.25rem .6rem;white-space:nowrap;flex-shrink:0}
+  .nav-desc{font-size:.83rem;color:#94a3b8;line-height:1.5}
+
+  /* ── Golden rules ── */
+  .golden-rules{background:#1a1a2e;border:2px solid #f59e0b;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .golden-rules h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .rule-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.8rem}
+  .rule-num{min-width:30px;height:30px;border-radius:50%;background:#f59e0b;color:#000;font-weight:700;font-size:.88rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .rule-row p{font-size:.9rem;color:#e2e8f0;line-height:1.5}
+  .rule-row p code{background:#2d2d4e;color:#a78bfa;padding:.1rem .35rem;border-radius:4px;font-family:'Courier New',monospace;font-size:.85rem}
+
+  /* ── Error guide ── */
+  .error-section{background:#1a0a0a;border:2px solid #dc2626;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .error-section h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .error-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.75rem;background:#200000;border-radius:10px;padding:.8rem .95rem}
+  .error-code{font-family:'Courier New',monospace;font-weight:700;font-size:.95rem;color:#f87171;min-width:85px;flex-shrink:0;margin-top:1px}
+  .error-row p{font-size:.85rem;color:#cbd5e1;line-height:1.5}
+  .error-row p strong{color:#fca5a5}
+
+  /* ── Footer ── */
+  .footer{text-align:center;padding:1rem 0 .5rem;font-size:.78rem;color:rgba(255,255,255,.2)}
+
+  @media(max-width:580px){
+    .fcard-top{grid-template-columns:1fr}
+    .meme-panel{border-right:none;border-bottom:2px solid #2d2d4e;min-height:auto;padding:.85rem}
+    .hero h1{font-size:2.2rem}
+  }
+  @media print{
+    body{background:#fff;color:#111;padding:0}
+    .hero{background:#6d28d9 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fcard,.concept-card,.interface-card,.anatomy-item,.nav-card,.golden-rules,.error-section,.error-row,.meme-panel,.explain-panel{background:#f9f9f9 !important;border-color:#ccc !important}
+    .formula-display,.chunk,.nav-key,.highlight{background:#eef !important}
+    .explain-panel p,.fcard-bottom p,.rule-row p,.error-row p,.anatomy-item p,.concept-card p,.nav-desc{color:#111 !important}
+    .top-text,.bot-text,.interface-title,.concept-card h3,.anatomy-item .term,.golden-rules h2,.error-section h2,.sec-label h2{color:#111 !important}
+    .cell,.row-h,.col-h{color:#111 !important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── HERO ── -->
+  <div class="hero">
+    <div class="eyebrow">Year 7 DigiTech &nbsp;·&nbsp; Week 7</div>
+    <h1>Excel:<br><span>The Basics</span></h1>
+    <p class="tagline">Everything you need to know to get started — what it is, how it works, and how to make it do the maths for you.</p>
+    <div class="pill-row">
+      <span class="pill">📊 Spreadsheets</span>
+      <span class="pill">⚡ Formulas</span>
+      <span class="pill">🧮 Maths on autopilot</span>
+      <span class="pill">💾 Save to OneDrive</span>
+    </div>
+  </div>
+
+  <!-- ── SECTION 1: What is Excel ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#0891b2"></div>
+    <h2>What Even Is Excel? 🤔</h2>
+  </div>
+
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="icon">📋</div>
+      <h3>A Spreadsheet App</h3>
+      <p>Excel is a grid of boxes called <strong>cells</strong>. You put numbers, words, or formulas in each cell. It's like a super-powered calculator that organises data at the same time.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🏢</div>
+      <h3>Used Everywhere</h3>
+      <p>Budgets, rosters, science data, sports stats, business reports — if someone needs to organise numbers, they're probably using Excel (or something like it).</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">⚡</div>
+      <h3>Formulas Do the Work</h3>
+      <p>Instead of adding up 50 numbers on a calculator, you type one formula and Excel does it instantly. Change any number and the answer updates automatically.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">📁</div>
+      <h3>Files = Workbooks</h3>
+      <p>An Excel file is called a <strong>workbook</strong>. Inside it you can have multiple <strong>sheets</strong> (tabs at the bottom). Today you'll use Sheet1 and Sheet2.</p>
+      <span class="highlight">.xlsx</span>
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: The Interface ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#7c3aed"></div>
+    <h2>The Excel Interface 🖥️</h2>
+  </div>
+
+  <div class="interface-card">
+    <div class="interface-header">
+      <span class="interface-emoji">🗺️</span>
+      <div class="interface-title">What You're Looking At — <span>Labelled</span></div>
+    </div>
+    <div class="interface-body">
+      <div class="interface-mock">
+        <div class="excel-toolbar">
+          <span class="tab">Home</span>
+          <span>Insert</span><span>Page Layout</span><span>Formulas</span><span>Data</span>
+        </div>
+        <div class="excel-formula-bar">
+          <div class="cell-ref">B3</div>
+          <span style="color:#64748b;font-size:.8rem">fx</span>
+          <span class="formula-bar-text">=SUM(B2:B6)</span>
+        </div>
+        <div class="excel-grid">
+          <div class="col-headers">
+            <div class="col-h"></div>
+            <div class="col-h">A</div>
+            <div class="col-h">B</div>
+            <div class="col-h">C</div>
+            <div class="col-h">D</div>
+            <div class="col-h">E</div>
+          </div>
+          <div class="grid-row">
+            <div class="row-h">1</div>
+            <div class="cell header-cell">Item</div>
+            <div class="cell header-cell">Cost ($)</div>
+            <div class="cell header-cell">Qty</div>
+            <div class="cell header-cell">Total ($)</div>
+            <div class="cell"></div>
+          </div>
+          <div class="grid-row">
+            <div class="row-h">2</div>
+            <div class="cell">Pens</div>
+            <div class="cell">2.50</div>
+            <div class="cell">3</div>
+            <div class="cell formula">=B2*C2</div>
+            <div class="cell"></div>
+          </div>
+          <div class="grid-row">
+            <div class="row-h">3</div>
+            <div class="cell">Notebook</div>
+            <div class="cell active">4.00</div>
+            <div class="cell">2</div>
+            <div class="cell formula">=B3*C3</div>
+            <div class="cell"></div>
+          </div>
+          <div class="grid-row">
+            <div class="row-h">4</div>
+            <div class="cell">Ruler</div>
+            <div class="cell">1.50</div>
+            <div class="cell">1</div>
+            <div class="cell formula">=B4*C4</div>
+            <div class="cell"></div>
+          </div>
+          <div class="grid-row">
+            <div class="row-h">5</div>
+            <div class="cell" style="color:#64748b;font-style:italic">Grand Total</div>
+            <div class="cell"></div>
+            <div class="cell"></div>
+            <div class="cell result">26.50</div>
+            <div class="cell"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="annotation-row">
+        <div class="annotation"><div class="dot" style="background:#0891b2"></div>Selected cell — currently <strong style="color:#67e8f9;margin-left:.2rem">B3</strong></div>
+        <div class="annotation"><div class="dot" style="background:#a78bfa"></div>Formula bar — shows what's inside the selected cell</div>
+        <div class="annotation"><div class="dot" style="background:#fb923c"></div>Formula in cell — starts with <code style="background:#2d2d4e;color:#a78bfa;padding:.1rem .3rem;border-radius:3px;font-size:.78rem">=</code></div>
+        <div class="annotation"><div class="dot" style="background:#86efac"></div>Result — Excel calculated this automatically</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: Cell Addresses ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#f59e0b"></div>
+    <h2>Cell Addresses — The GPS of Excel 📍</h2>
+  </div>
+
+  <div class="anatomy-grid">
+    <div class="anatomy-item">
+      <div class="term">Column</div>
+      <div class="example">A  B  C  D …</div>
+      <p>Goes left to right. Labelled with letters. Column A is always on the far left.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Row</div>
+      <div class="example">1  2  3  4 …</div>
+      <p>Goes top to bottom. Labelled with numbers. Row 1 is always at the top.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Cell Address</div>
+      <div class="example">B3</div>
+      <p>Column letter first, then row number. <strong>B3</strong> = column B, row 3. Click any cell to see its address in the Name Box (top left).</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Cell Range</div>
+      <div class="example">A2:A8</div>
+      <p>A group of cells. The colon means "from … to". <strong>A2:A8</strong> means every cell from A2 down to A8.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Formula Bar</div>
+      <div class="example">fx  =SUM(…)</div>
+      <p>The bar above the grid. Shows exactly what's inside the selected cell — including the full formula, not just the result.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Sheet Tab</div>
+      <div class="example">Sheet1  Sheet2</div>
+      <p>Tabs at the bottom of the screen. One workbook can have many sheets. Double-click a tab to rename it.</p>
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: Formulas ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#a78bfa"></div>
+    <h2>Formulas — Making Excel Do the Work ⚡</h2>
+  </div>
+
+  <div class="formula-grid">
+
+    <div class="fcard theme-sum">
+      <div class="fcard-top">
+        <div class="meme-panel">
+          <div class="top-text">ME DOING MATHS</div>
+          <span class="big-emoji">🧮</span>
+          <div class="bot-text">VS. EXCEL DOING MATHS</div>
+        </div>
+        <div class="explain-panel">
+          <div class="formula-display">=SUM(A2:A6)</div>
+          <h3>Adds up a range of numbers</h3>
+          <p>Instead of adding every number yourself, SUM does it instantly. Give it a range and it handles the rest.</p>
+          <div class="breakdown">
+            <div class="chunk ck-purple"><span>=</span><span class="label">start every formula with this</span></div>
+            <div class="chunk ck-blue"><span>SUM</span><span class="label">the function</span></div>
+            <div class="chunk ck-gray"><span>(</span></div>
+            <div class="chunk ck-orange"><span>A2:A6</span><span class="label">the range</span></div>
+            <div class="chunk ck-gray"><span>)</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="fcard-bottom">
+        <span>💡</span>
+        <p><strong>Try it:</strong> Click an empty cell, type <code style="background:#2d2d4e;color:#a78bfa;padding:.1rem .3rem;border-radius:4px;font-family:'Courier New',monospace">=SUM(</code> then drag to select your numbers. Excel writes the range for you.</p>
+      </div>
+    </div>
+
+    <div class="fcard theme-avg">
+      <div class="fcard-top">
+        <div class="meme-panel">
+          <div class="top-text">MY SCREEN TIME</div>
+          <span class="big-emoji">📱</span>
+          <div class="bot-text">ON AVERAGE. PER DAY.</div>
+        </div>
+        <div class="explain-panel">
+          <div class="formula-display">=AVERAGE(E2:E8)</div>
+          <h3>Finds the average of a range</h3>
+          <p>Adds all the numbers then divides by how many there are. Exactly what you'd do by hand — but instant.</p>
+          <div class="breakdown">
+            <div class="chunk ck-purple"><span>=</span><span class="label">start</span></div>
+            <div class="chunk ck-green"><span>AVERAGE</span><span class="label">the function</span></div>
+            <div class="chunk ck-gray"><span>(</span></div>
+            <div class="chunk ck-orange"><span>E2:E8</span><span class="label">all 7 days</span></div>
+            <div class="chunk ck-gray"><span>)</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="fcard-bottom">
+        <span>💡</span>
+        <p><strong>Used for:</strong> Weekly Average row in your Screen Time Tracker — see which day you were most online 😬</p>
+      </div>
+    </div>
+
+    <div class="fcard theme-mult">
+      <div class="fcard-top">
+        <div class="meme-panel">
+          <div class="top-text">COST × QUANTITY</div>
+          <span class="big-emoji">🛒</span>
+          <div class="bot-text">= TOTAL. EVERY TIME.</div>
+        </div>
+        <div class="explain-panel">
+          <div class="formula-display">=B2*C2</div>
+          <h3>Multiplies two cells together</h3>
+          <p>The <code style="background:#2d2d4e;color:#fb923c;padding:.1rem .3rem;border-radius:4px;font-family:'Courier New',monospace">*</code> symbol means multiply. Use it to calculate totals — like cost × quantity for each item.</p>
+          <div class="breakdown">
+            <div class="chunk ck-purple"><span>=</span><span class="label">start</span></div>
+            <div class="chunk ck-orange"><span>B2</span><span class="label">cost</span></div>
+            <div class="chunk ck-gray"><span>*</span><span class="label">multiply</span></div>
+            <div class="chunk ck-blue"><span>C2</span><span class="label">quantity</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="fcard-bottom">
+        <span>💡</span>
+        <p><strong>Shortcut:</strong> Write <code style="background:#2d2d4e;color:#fb923c;padding:.1rem .3rem;border-radius:4px;font-family:'Courier New',monospace">=B2*C2</code> in D2, then press <code style="background:#2d2d4e;color:#a78bfa;padding:.1rem .3rem;border-radius:4px;font-family:'Courier New',monospace">Ctrl+D</code> in cells below to copy the formula down.</p>
+      </div>
+    </div>
+
+    <div class="fcard theme-avg2">
+      <div class="fcard-top">
+        <div class="meme-panel">
+          <div class="top-text">THE GRAND TOTAL</div>
+          <span class="big-emoji">🏆</span>
+          <div class="bot-text">HAS ENTERED THE CHAT</div>
+        </div>
+        <div class="explain-panel">
+          <div class="formula-display">=SUM(D2:D6)</div>
+          <h3>Adds the Total column</h3>
+          <p>After calculating each row's total, use this at the bottom to add them all up for a Grand Total.</p>
+          <div class="breakdown">
+            <div class="chunk ck-purple"><span>=</span><span class="label">start</span></div>
+            <div class="chunk ck-pink"><span>SUM</span><span class="label">function</span></div>
+            <div class="chunk ck-gray"><span>(</span></div>
+            <div class="chunk ck-orange"><span>D2:D6</span><span class="label">all 5 totals</span></div>
+            <div class="chunk ck-gray"><span>)</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="fcard-bottom">
+        <span>💡</span>
+        <p><strong>In your Budget:</strong> Put this below the last row in your Total column. It adds up all 5 item totals at once.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── SECTION 5: Keyboard Shortcuts ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#0891b2"></div>
+    <h2>Shortcuts That Actually Help ⌨️</h2>
+  </div>
+
+  <div class="nav-grid">
+    <div class="nav-card"><div class="nav-key">Ctrl + S</div><div class="nav-desc">Save your file — do this constantly</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + Z</div><div class="nav-desc">Undo — go back one step</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + B</div><div class="nav-desc">Bold the selected cells</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + D</div><div class="nav-desc">Fill Down — copies formula from cell above</div></div>
+    <div class="nav-card"><div class="nav-key">Alt + =</div><div class="nav-desc">AutoSum — Excel writes =SUM() for you 🙌</div></div>
+    <div class="nav-card"><div class="nav-key">F2</div><div class="nav-desc">Edit the contents of the selected cell</div></div>
+    <div class="nav-card"><div class="nav-key">Tab</div><div class="nav-desc">Move right to the next cell</div></div>
+    <div class="nav-card"><div class="nav-key">Enter</div><div class="nav-desc">Confirm and move down one cell</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + Home</div><div class="nav-desc">Jump back to cell A1</div></div>
+  </div>
+
+  <!-- ── SECTION 6: Golden Rules ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#f59e0b"></div>
+    <h2>The Rules That Actually Matter ⭐</h2>
+  </div>
+
+  <div class="golden-rules">
+    <h2>⭐ Golden Rules</h2>
+    <div class="rule-row">
+      <div class="rule-num">1</div>
+      <p>Every formula starts with <code>=</code> — no equals sign, no formula. It just shows as text.</p>
+    </div>
+    <div class="rule-row">
+      <div class="rule-num">2</div>
+      <p>A range uses a colon — <code>A2:A6</code> means from A2 to A6. Excel reads it as "everything between these two cells."</p>
+    </div>
+    <div class="rule-row">
+      <div class="rule-num">3</div>
+      <p>Cell names = column letter + row number. <code>B3</code> = column B, row 3. That's the whole rule.</p>
+    </div>
+    <div class="rule-row">
+      <div class="rule-num">4</div>
+      <p>Save constantly — <code>Ctrl+S</code>. If your laptop dies and you haven't saved, that's on you.</p>
+    </div>
+    <div class="rule-row" style="margin-bottom:0">
+      <div class="rule-num">5</div>
+      <p>Never merge cells without asking your teacher first. It causes problems that are annoying to fix.</p>
+    </div>
+  </div>
+
+  <!-- ── SECTION 7: Error Translator ── -->
+  <div class="sec-label">
+    <div class="bar" style="background:#dc2626"></div>
+    <h2>Error Translator 🚨</h2>
+  </div>
+
+  <div class="error-section">
+    <h2>🚨 When Things Go Wrong</h2>
+    <div class="error-row">
+      <div class="error-code">#VALUE!</div>
+      <p><strong>Translation:</strong> "You gave me words when I wanted numbers." Check your formula range — one of the cells probably has text in it (like a heading row you accidentally included).</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">#REF!</div>
+      <p><strong>Translation:</strong> "I can't find the cells you pointed me to." A cell your formula referenced has been deleted. Press <strong>Ctrl+Z</strong> to undo and try again.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Shows as text</div>
+      <p><strong>Translation:</strong> "You forgot the = at the start." Delete the cell contents and retype starting with <code style="background:#2d2d4e;color:#f87171;padding:.1rem .3rem;border-radius:4px;font-family:'Courier New',monospace">=</code></p>
+    </div>
+    <div class="error-row" style="margin-bottom:0">
+      <div class="error-code">Result = 0</div>
+      <p><strong>Translation:</strong> "The cells in my range are empty." Click each cell in your formula range to confirm it actually contains a number.</p>
+    </div>
+  </div>
+
+  <div class="footer">Year 7 DigiTech &nbsp;·&nbsp; Week 7 &nbsp;·&nbsp; Excel: The Basics</div>
+</div>
+</body>
+</html>

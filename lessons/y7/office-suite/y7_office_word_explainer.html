@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="application/json" id="page-meta">
+{
+  "id": "y7-office-word-explainer",
+  "class": "Year 7",
+  "term": "T1",
+  "week": "1",
+  "module": "Microsoft Office Suite",
+  "type": "html",
+  "title": "Microsoft Word - The Basics",
+  "summary": "Visual explainer introducing the Word interface, formatting tools, styles, and document basics for school work.",
+  "topics": [
+    "Word",
+    "document formatting",
+    "styles",
+    "ribbon",
+    "templates"
+  ],
+  "chunks": {
+    "definitions": [],
+    "success_criteria": [],
+    "tasks": [],
+    "key_concepts": [
+      "ribbon",
+      "styles",
+      "formatting",
+      "headers",
+      "templates"
+    ]
+  }
+}
+</script>
+<meta charset="UTF-8">
+<title>Microsoft Word — The Basics</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Oswald:wght@700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#f0f0f0;padding:1.5rem;min-height:100vh}
+  .page{max-width:880px;margin:0 auto}
+
+  /* Hero */
+  .hero{background:linear-gradient(135deg,#0369a1 0%,#0891b2 50%,#065f46 100%);border-radius:20px;padding:2.5rem 2rem 2rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.05)}
+  .hero::after{content:'';position:absolute;bottom:-40px;left:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
+  .hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.6rem}
+  .hero h1{font-family:'Oswald',sans-serif;font-size:3rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.5rem}
+  .hero h1 span{color:#67e8f9}
+  .hero .tagline{font-size:1rem;color:rgba(255,255,255,.75);max-width:520px;line-height:1.5;margin-bottom:1.25rem}
+  .pill-row{display:flex;flex-wrap:wrap;gap:.5rem}
+  .pill{background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:.28rem .85rem;font-size:.78rem;font-weight:600}
+
+  /* Section label */
+  .sec-label{display:flex;align-items:center;gap:.75rem;margin:2rem 0 1rem}
+  .sec-label .bar{width:6px;height:30px;border-radius:3px;flex-shrink:0}
+  .sec-label h2{font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+
+  /* Concept cards */
+  .concept-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  @media(max-width:600px){.concept-grid{grid-template-columns:1fr}}
+  .concept-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;padding:1.25rem;display:flex;flex-direction:column;gap:.5rem}
+  .concept-card .icon{font-size:2rem;margin-bottom:.25rem}
+  .concept-card h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .concept-card p{font-size:.88rem;color:#94a3b8;line-height:1.6}
+  .concept-card .highlight{display:inline-block;background:#2d2d4e;color:#67e8f9;border-radius:6px;padding:.2rem .55rem;font-size:.85rem;font-weight:700;margin-top:.25rem}
+
+  /* Interface mock */
+  .interface-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;overflow:hidden;margin-bottom:1.5rem}
+  .interface-header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem .75rem;border-bottom:1px solid #2d2d4e}
+  .interface-emoji{font-size:1.5rem}
+  .interface-title{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .interface-title span{color:#67e8f9}
+  .interface-body{padding:1.25rem}
+
+  /* Word mock UI */
+  .word-mock{background:#1e1e35;border-radius:12px;overflow:hidden;border:1px solid #2d2d4e;margin-bottom:1rem}
+  .word-titlebar{background:#2b579a;padding:.35rem .75rem;display:flex;align-items:center;gap:.75rem;font-size:.72rem;color:#c7dcff;font-weight:700;border-bottom:1px solid #1a3a6e}
+  .word-titlebar .doc-name{color:#fff;font-weight:800}
+  .word-ribbon{background:#2b579a;border-bottom:2px solid #1a3a6e;padding:0 .75rem}
+  .ribbon-tabs{display:flex;gap:0}
+  .rtab{padding:.3rem .75rem;font-size:.72rem;font-weight:700;color:#c7dcff;cursor:default;border-bottom:2px solid transparent}
+  .rtab.on{color:#fff;border-bottom:2px solid #fff;background:rgba(255,255,255,.08)}
+  .ribbon-tools{background:#dde6f4;border-bottom:1px solid #b8c8e8;padding:.4rem .75rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+  .rtool{background:#fff;border:1px solid #b8c8e8;border-radius:4px;padding:.18rem .55rem;font-size:.72rem;color:#1e293b;font-weight:700;white-space:nowrap}
+  .rtool.active{background:#d4e3ff;border-color:#2b579a;color:#1a3a6e}
+  .rtool.sep{background:transparent;border:none;color:#94a3b8;padding:0 .1rem}
+  .word-doc{background:#f8f9fa;padding:1rem 1.5rem;min-height:140px;position:relative}
+  .word-ruler{background:#e2e8f0;height:18px;border-bottom:1px solid #cbd5e1;display:flex;align-items:center;padding:0 1.5rem;margin-bottom:.5rem}
+  .ruler-mark{font-size:.6rem;color:#94a3b8;flex:1;text-align:center}
+  .doc-title{font-size:1.1rem;font-weight:700;color:#1e3a5f;margin-bottom:.3rem;font-family:'Georgia',serif}
+  .doc-heading{font-size:.85rem;font-weight:700;color:#1e293b;margin-bottom:.2rem}
+  .doc-body{font-size:.75rem;color:#374151;line-height:1.6;margin-bottom:.35rem}
+  .cursor{display:inline-block;width:1.5px;height:13px;background:#1a3a6e;vertical-align:middle;animation:blink 1s step-end infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  .word-statusbar{background:#2b579a;padding:.2rem .75rem;font-size:.68rem;color:#c7dcff;display:flex;gap:1rem}
+
+  .annotation-row{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.85rem}
+  .annotation{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:#94a3b8}
+  .annotation .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+  /* Anatomy grid */
+  .anatomy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.65rem;margin-bottom:1.5rem}
+  .anatomy-item{background:#12122a;border:1px solid #2d2d4e;border-radius:10px;padding:.85rem 1rem}
+  .anatomy-item .term{font-family:'Oswald',sans-serif;font-size:.85rem;font-weight:700;color:#67e8f9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+  .anatomy-item .example{font-size:.85rem;color:#7dd3fc;font-weight:700;margin-bottom:.3rem;font-family:'Courier New',monospace}
+  .anatomy-item p{font-size:.82rem;color:#94a3b8;line-height:1.5}
+
+  /* Formatting showcase */
+  .format-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.75rem;margin-bottom:1.5rem}
+  .format-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:14px;padding:1rem}
+  .format-card .fc-key{font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;color:#fff;background:#1e3a5f;border:1px solid #2b579a;border-radius:6px;padding:.22rem .6rem;display:inline-block;margin-bottom:.5rem}
+  .format-card .fc-name{font-size:.78rem;font-weight:700;color:#67e8f9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem}
+  .format-card .fc-preview{font-size:1rem;color:#e2e8f0;margin-bottom:.35rem}
+  .format-card p{font-size:.8rem;color:#94a3b8;line-height:1.45}
+
+  /* Styles showcase */
+  .styles-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;padding:1.25rem;margin-bottom:1.5rem}
+  .styles-card h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:#67e8f9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.85rem}
+  .style-row{display:flex;align-items:baseline;gap:1rem;padding:.55rem .75rem;background:#12122a;border-radius:8px;margin-bottom:.4rem;border-left:3px solid #0369a1}
+  .style-name{font-size:.72rem;font-weight:700;color:#64748b;min-width:90px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em}
+  .style-preview{color:#e2e8f0;line-height:1.2}
+  .style-desc{font-size:.75rem;color:#64748b;margin-left:auto;text-align:right;flex-shrink:0}
+
+  /* Views section */
+  .views-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+  @media(max-width:600px){.views-grid{grid-template-columns:1fr}}
+  .view-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:14px;padding:1.1rem}
+  .view-card .vc-icon{font-size:1.6rem;margin-bottom:.4rem}
+  .view-card h3{font-family:'Oswald',sans-serif;font-size:.95rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem}
+  .view-card p{font-size:.85rem;color:#94a3b8;line-height:1.55;margin-bottom:.5rem}
+  .view-card .vc-how{font-size:.78rem;color:#67e8f9;font-weight:700;background:#0c1a2e;border-radius:6px;padding:.3rem .6rem;display:inline-block}
+
+  /* Navigation pane mock */
+  .nav-mock{background:#12122a;border-radius:10px;border:1px solid #2d2d4e;overflow:hidden;margin-bottom:1.5rem}
+  .nav-mock-hdr{background:#1e3a5f;padding:.45rem .85rem;font-size:.75rem;font-weight:700;color:#67e8f9;border-bottom:1px solid #2d2d4e;display:flex;align-items:center;gap:.5rem}
+  .nav-mock-body{padding:.65rem .85rem;display:flex;gap:1.5rem}
+  .nav-pane{flex:0 0 180px;border-right:1px solid #2d2d4e;padding-right:1rem}
+  .nav-pane-hdr{font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem}
+  .nav-item{font-size:.82rem;color:#94a3b8;padding:.22rem 0;cursor:default;display:block;border-radius:4px}
+  .nav-item.h1{font-weight:700;color:#e2e8f0;padding-left:0}
+  .nav-item.h2{padding-left:.85rem;color:#94a3b8}
+  .nav-item.h3{padding-left:1.7rem;color:#64748b;font-size:.76rem}
+  .nav-item.active{color:#67e8f9}
+  .nav-doc{flex:1;font-size:.8rem;color:#94a3b8;line-height:1.6}
+  .nav-doc .nd-h1{font-size:.95rem;font-weight:700;color:#e2e8f0;margin-bottom:.25rem}
+  .nav-doc .nd-h2{font-size:.85rem;font-weight:700;color:#7dd3fc;margin:.35rem 0 .2rem}
+  .nav-doc .nd-body{font-size:.78rem;color:#64748b;margin-bottom:.35rem}
+
+  /* Tables section */
+  .table-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;padding:1.25rem;margin-bottom:1.5rem}
+  .table-card h3{font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;color:#67e8f9;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.85rem}
+  .word-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:.85rem}
+  .word-table th{background:#1e3a5f;color:#7dd3fc;padding:.45rem .7rem;text-align:left;border:1px solid #2b579a;font-weight:700}
+  .word-table td{padding:.42rem .7rem;border:1px solid #2d2d4e;color:#94a3b8;vertical-align:top}
+  .word-table tr:nth-child(even) td{background:#12122a}
+  .table-steps{display:flex;flex-direction:column;gap:.4rem}
+  .table-step{display:flex;gap:.65rem;align-items:flex-start;font-size:.84rem;color:#94a3b8;line-height:1.5}
+  .ts-num{min-width:22px;height:22px;border-radius:50%;background:#0369a1;color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+  /* Shortcuts */
+  .nav-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-bottom:1.5rem}
+  .nav-card{background:#12122a;border:1px solid #2d2d4e;border-radius:10px;padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.75rem}
+  .nav-key{font-family:'Courier New',monospace;font-size:.82rem;font-weight:700;color:#fff;background:#1e3a5f;border:1px solid #2b579a;border-radius:7px;padding:.25rem .6rem;white-space:nowrap;flex-shrink:0}
+  .nav-desc{font-size:.83rem;color:#94a3b8;line-height:1.5}
+
+  /* Golden rules */
+  .golden-rules{background:#1a1a2e;border:2px solid #f59e0b;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .golden-rules h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .rule-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.8rem}
+  .rule-num{min-width:30px;height:30px;border-radius:50%;background:#f59e0b;color:#000;font-weight:700;font-size:.88rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .rule-row p{font-size:.9rem;color:#e2e8f0;line-height:1.5}
+  .rule-row p code{background:#2d2d4e;color:#67e8f9;padding:.1rem .35rem;border-radius:4px;font-family:'Courier New',monospace;font-size:.85rem}
+
+  /* Error guide */
+  .error-section{background:#1a0a0a;border:2px solid #dc2626;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .error-section h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .error-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.75rem;background:#200000;border-radius:10px;padding:.8rem .95rem}
+  .error-code{font-weight:700;font-size:.9rem;color:#f87171;min-width:150px;flex-shrink:0;margin-top:1px}
+  .error-row p{font-size:.85rem;color:#cbd5e1;line-height:1.5}
+  .error-row p strong{color:#fca5a5}
+
+  .footer{text-align:center;padding:1rem 0 .5rem;font-size:.78rem;color:rgba(255,255,255,.2)}
+
+  @media(max-width:580px){
+    .hero h1{font-size:2.2rem}
+    .views-grid{grid-template-columns:1fr}
+    .format-grid{grid-template-columns:1fr 1fr}
+  }
+  @media print{
+    body{background:#fff;color:#111;padding:0}
+    .hero{background:#0369a1 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .concept-card,.interface-card,.anatomy-item,.format-card,.styles-card,.view-card,.nav-mock,.table-card,.nav-card,.golden-rules,.error-section,.error-row{background:#f9f9f9 !important;border-color:#ccc !important}
+    .concept-card p,.anatomy-item p,.format-card p,.view-card p,.nav-desc,.rule-row p,.error-row p,.doc-body{color:#111 !important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="eyebrow">Year 7 DigiTech &nbsp;·&nbsp; Week 5</div>
+    <h1>Microsoft Word:<br><span>The Basics</span></h1>
+    <p class="tagline">What it is, how the interface works, and how to create documents that look professional — not like you typed it in Notepad.</p>
+    <div class="pill-row">
+      <span class="pill">📝 Formatting</span>
+      <span class="pill">🏷️ Heading styles</span>
+      <span class="pill">🗺️ Navigation pane</span>
+      <span class="pill">📊 Tables</span>
+      <span class="pill">💾 Save to OneDrive</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1 — What is Word -->
+  <div class="sec-label"><div class="bar" style="background:#0891b2"></div><h2>What Even Is Word? 🤔</h2></div>
+
+  <div class="concept-grid">
+    <div class="concept-card">
+      <div class="icon">📄</div>
+      <h3>A Word Processor</h3>
+      <p>Word lets you create, edit and format text documents. Essays, letters, reports, resumes — if it's a document with words, Word is the tool for it.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🌍</div>
+      <h3>Used Everywhere</h3>
+      <p>Schools, offices, hospitals, law firms — everyone uses Word. Knowing how to use it properly is one of the most useful skills you'll pick up this year.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">🎨</div>
+      <h3>Formatting = Clarity</h3>
+      <p>Good formatting makes documents easier to read and more professional. Headings, spacing, fonts — these aren't decorations, they're communication tools.</p>
+    </div>
+    <div class="concept-card">
+      <div class="icon">📁</div>
+      <h3>Files = Documents</h3>
+      <p>A Word file is called a <strong>document</strong>. Save it as <strong>.docx</strong> and store it in your OneDrive folder using the correct filename from the File Name Wizard.</p>
+      <span class="highlight">.docx</span>
+    </div>
+  </div>
+
+  <!-- SECTION 2 — Interface -->
+  <div class="sec-label"><div class="bar" style="background:#0369a1"></div><h2>The Word Interface 🖥️</h2></div>
+
+  <div class="interface-card">
+    <div class="interface-header">
+      <span class="interface-emoji">🗺️</span>
+      <div class="interface-title">What You're Looking At — <span>Labelled</span></div>
+    </div>
+    <div class="interface-body">
+      <div class="word-mock">
+        <div class="word-titlebar">
+          <span class="doc-name">2026-03-25_DigiTech_Classwork_My-Document.docx</span>
+          <span style="margin-left:auto;opacity:.6">Word</span>
+        </div>
+        <div class="word-ribbon">
+          <div class="ribbon-tabs">
+            <div class="rtab on">Home</div>
+            <div class="rtab">Insert</div>
+            <div class="rtab">Design</div>
+            <div class="rtab">Layout</div>
+            <div class="rtab">References</div>
+            <div class="rtab">View</div>
+          </div>
+        </div>
+        <div class="ribbon-tools">
+          <span class="rtool">Calibri</span>
+          <span class="rtool">12</span>
+          <span class="rtool sep">|</span>
+          <span class="rtool active"><b>B</b></span>
+          <span class="rtool"><i>I</i></span>
+          <span class="rtool"><u>U</u></span>
+          <span class="rtool sep">|</span>
+          <span class="rtool">Heading 1</span>
+          <span class="rtool">Heading 2</span>
+          <span class="rtool active">Normal</span>
+          <span class="rtool sep">|</span>
+          <span class="rtool">≡ Left</span>
+          <span class="rtool">≡ Centre</span>
+        </div>
+        <div class="word-ruler">
+          <span class="ruler-mark">1</span><span class="ruler-mark">2</span>
+          <span class="ruler-mark">3</span><span class="ruler-mark">4</span>
+          <span class="ruler-mark">5</span><span class="ruler-mark">6</span>
+        </div>
+        <div class="word-doc">
+          <div class="doc-title">My Document Title</div>
+          <div class="doc-heading">Introduction</div>
+          <div class="doc-body">This is the main body text of the document. You type here in the white area called the <strong>document canvas</strong>. The cursor shows where your text will appear.<span class="cursor"></span></div>
+          <div class="doc-body" style="color:#94a3b8;font-size:.7rem">Page 1 of 1 &nbsp;·&nbsp; 24 words &nbsp;·&nbsp; English (Australia)</div>
+        </div>
+        <div class="word-statusbar">
+          <span>Page 1 of 1</span><span>24 words</span><span style="margin-left:auto">100%</span>
+        </div>
+      </div>
+      <div class="annotation-row">
+        <div class="annotation"><div class="dot" style="background:#2b579a"></div>Title bar — filename and save status</div>
+        <div class="annotation"><div class="dot" style="background:#67e8f9"></div>Ribbon — tabs containing all tools</div>
+        <div class="annotation"><div class="dot" style="background:#f59e0b"></div>Toolbar — formatting buttons for the active tab</div>
+        <div class="annotation"><div class="dot" style="background:#86efac"></div>Document canvas — where you type</div>
+        <div class="annotation"><div class="dot" style="background:#a78bfa"></div>Status bar — page count, word count</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 — Key terms -->
+  <div class="sec-label"><div class="bar" style="background:#f59e0b"></div><h2>Key Terms — Know These 📍</h2></div>
+
+  <div class="anatomy-grid">
+    <div class="anatomy-item">
+      <div class="term">Ribbon</div>
+      <div class="example">Home / Insert / Layout</div>
+      <p>The toolbar at the top with tabs. Each tab (Home, Insert, etc.) shows different groups of tools relevant to that task.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Font</div>
+      <div class="example">Calibri, Arial, Times</div>
+      <p>The style of the letters. Calibri is Word's default — clean and readable. Change it in the Home tab. Stick to one font for the whole document.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Font Size</div>
+      <div class="example">12pt body / 16pt heading</div>
+      <p>How big the text is, measured in points (pt). Body text is usually 12pt. Headings are bigger — 14–18pt depending on the level.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Paragraph Style</div>
+      <div class="example">Normal / Heading 1 / Heading 2</div>
+      <p>Pre-set formatting applied to a whole paragraph. Styles control font, size, colour and spacing all at once — much faster than formatting manually.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Line Spacing</div>
+      <div class="example">1.0 / 1.5 / 2.0</div>
+      <p>The gap between lines of text. Single spacing (1.0) is compact. Double spacing (2.0) is common for assignments. Set it in Layout or Home.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Margins</div>
+      <div class="example">Layout tab > Margins</div>
+      <p>The blank space around the edges of the page. Default is 2.54cm (1 inch) on all sides. Don't shrink them to squeeze more text in.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Navigation Pane</div>
+      <div class="example">View > Navigation Pane</div>
+      <p>A panel showing all your headings as a clickable outline. Click any heading to jump straight to that section — essential for long documents.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Word Count</div>
+      <div class="example">Bottom status bar</div>
+      <p>Shows how many words are in your document. Click it for a detailed breakdown. You can also select text first to count just that section.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 4 — Formatting -->
+  <div class="sec-label"><div class="bar" style="background:#be185d"></div><h2>Text Formatting ✏️</h2></div>
+
+  <div class="format-grid">
+    <div class="format-card">
+      <div class="fc-key">Ctrl + B</div>
+      <div class="fc-name">Bold</div>
+      <div class="fc-preview"><strong>This text is bold</strong></div>
+      <p>Use for headings, key terms, or anything that needs to stand out. Don't bold random words for decoration.</p>
+    </div>
+    <div class="format-card">
+      <div class="fc-key">Ctrl + I</div>
+      <div class="fc-name">Italic</div>
+      <div class="fc-preview"><em>This text is italic</em></div>
+      <p>Use for titles of books/films, technical terms, or subtle emphasis. Avoid whole paragraphs in italics.</p>
+    </div>
+    <div class="format-card">
+      <div class="fc-key">Ctrl + U</div>
+      <div class="fc-name">Underline</div>
+      <div class="fc-preview"><u>This text is underlined</u></div>
+      <p>Rarely needed in modern documents — links are underlined automatically. Use sparingly if at all.</p>
+    </div>
+    <div class="format-card">
+      <div class="fc-key">Ctrl + E</div>
+      <div class="fc-name">Centre Align</div>
+      <div class="fc-preview" style="text-align:center">Centred text</div>
+      <p>Good for titles and headings. Don't centre body text — left-align is easier to read.</p>
+    </div>
+    <div class="format-card">
+      <div class="fc-key">Ctrl + L</div>
+      <div class="fc-name">Left Align</div>
+      <div class="fc-preview">Left-aligned text</div>
+      <p>The default for body text. Left-aligned text is easier for the eye to track line by line.</p>
+    </div>
+    <div class="format-card">
+      <div class="fc-key">Ctrl + Z</div>
+      <div class="fc-name">Undo</div>
+      <div class="fc-preview" style="color:#67e8f9">↩ Undo last action</div>
+      <p>Undoes your last action. Press multiple times to go back further. Your best friend when something goes wrong.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 5 — Heading Styles -->
+  <div class="sec-label"><div class="bar" style="background:#7c3aed"></div><h2>Paragraph Styles &amp; Headings 🏷️</h2></div>
+
+  <div class="styles-card">
+    <h3>Why Use Styles Instead of Manual Formatting?</h3>
+    <div style="font-size:.86rem;color:#94a3b8;margin-bottom:.85rem;line-height:1.6">
+      Instead of manually making text big and bold for every heading, apply a <strong style="color:#e2e8f0">Style</strong> — a saved set of formatting. Change the style once and every heading updates automatically. It also enables the Navigation Pane and Table of Contents features.
+    </div>
+    <div class="style-row">
+      <span class="style-name">Title</span>
+      <span class="style-preview" style="font-size:1.35rem;font-weight:700;color:#fff;font-family:'Georgia',serif">Document Title</span>
+      <span class="style-desc">28pt bold · once per doc</span>
+    </div>
+    <div class="style-row" style="border-left-color:#0891b2">
+      <span class="style-name">Heading 1</span>
+      <span class="style-preview" style="font-size:1.1rem;font-weight:700;color:#7dd3fc">Major Section</span>
+      <span class="style-desc">18pt · main sections</span>
+    </div>
+    <div class="style-row" style="border-left-color:#0891b2;opacity:.85">
+      <span class="style-name">Heading 2</span>
+      <span class="style-preview" style="font-size:.95rem;font-weight:700;color:#93c5fd">Sub-section</span>
+      <span class="style-desc">14pt · sub-sections</span>
+    </div>
+    <div class="style-row" style="border-left-color:#64748b;opacity:.75">
+      <span class="style-name">Heading 3</span>
+      <span class="style-preview" style="font-size:.88rem;font-weight:700;color:#cbd5e1">Sub-sub-section</span>
+      <span class="style-desc">12pt bold · minor sections</span>
+    </div>
+    <div class="style-row" style="border-left-color:#374151">
+      <span class="style-name">Normal</span>
+      <span class="style-preview" style="font-size:.88rem;color:#94a3b8">Body text goes here. This is what most of your document looks like.</span>
+      <span class="style-desc">12pt · all body text</span>
+    </div>
+    <div style="margin-top:.85rem;background:#12122a;border-radius:9px;padding:.75rem 1rem;font-size:.82rem;color:#67e8f9;line-height:1.6">
+      💡 <strong>How to apply:</strong> Click anywhere in a paragraph → go to Home tab → click the style name in the Styles gallery. Done. No manual font sizing needed.
+    </div>
+  </div>
+
+  <!-- SECTION 6 — Views & Navigation Pane -->
+  <div class="sec-label"><div class="bar" style="background:#0891b2"></div><h2>Views &amp; Navigation Pane 🗺️</h2></div>
+
+  <div class="views-grid">
+    <div class="view-card">
+      <div class="vc-icon">📄</div>
+      <h3>Print Layout View</h3>
+      <p>The default view — shows exactly how the document will look when printed. White page, margins visible. Use this for most work.</p>
+      <div class="vc-how">View tab > Print Layout</div>
+    </div>
+    <div class="view-card">
+      <div class="vc-icon">🔍</div>
+      <h3>Focus / Immersive Reader</h3>
+      <p>Hides the ribbon and toolbars so you can read or write without distractions. Good for checking your work.</p>
+      <div class="vc-how">View tab > Focus</div>
+    </div>
+    <div class="view-card">
+      <div class="vc-icon">🗺️</div>
+      <h3>Navigation Pane</h3>
+      <p>Shows all your Heading 1, 2 and 3 styles as a clickable outline on the left side. Click any heading to jump straight there — essential for long documents.</p>
+      <div class="vc-how">View tab > Navigation Pane ✓</div>
+    </div>
+    <div class="view-card">
+      <div class="vc-icon">🔎</div>
+      <h3>Zoom</h3>
+      <p>Change how big the document appears on screen without changing the actual font size. Use the slider in the bottom-right corner.</p>
+      <div class="vc-how">Bottom-right slider or View > Zoom</div>
+    </div>
+  </div>
+
+  <div class="nav-mock">
+    <div class="nav-mock-hdr">🗺️ Navigation Pane — what it looks like in action</div>
+    <div class="nav-mock-body">
+      <div class="nav-pane">
+        <div class="nav-pane-hdr">Headings</div>
+        <div class="nav-item h1">Introduction</div>
+        <div class="nav-item h2">Background</div>
+        <div class="nav-item h2 active">Key findings</div>
+        <div class="nav-item h3">Finding 1</div>
+        <div class="nav-item h3">Finding 2</div>
+        <div class="nav-item h1">Conclusion</div>
+        <div class="nav-item h2">Summary</div>
+        <div class="nav-item h2">References</div>
+      </div>
+      <div class="nav-doc">
+        <div class="nd-h2">Key findings</div>
+        <div class="nd-body">Clicking "Key findings" in the pane jumped directly here. No scrolling required.</div>
+        <div class="nd-h2" style="color:#64748b">Finding 1</div>
+        <div class="nd-body">This only works if you used Heading styles — not manually bolded text. That's why styles matter.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 7 — Tables -->
+  <div class="sec-label"><div class="bar" style="background:#065f46"></div><h2>Tables 📊</h2></div>
+
+  <div class="table-card">
+    <h3>When and How to Use Tables</h3>
+    <div style="font-size:.86rem;color:#94a3b8;margin-bottom:.85rem;line-height:1.6">
+      Tables organise data into rows and columns. Use them for comparing things, showing schedules, or presenting data clearly. Don't use tables just to make text sit side-by-side — that's what columns are for.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:#86efac;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">Example table</div>
+        <table class="word-table">
+          <thead>
+            <tr><th>App</th><th>File type</th><th>Used for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Word</td><td>.docx</td><td>Documents</td></tr>
+            <tr><td>Excel</td><td>.xlsx</td><td>Spreadsheets</td></tr>
+            <tr><td>PowerPoint</td><td>.pptx</td><td>Presentations</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:#86efac;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem">How to insert a table</div>
+        <div class="table-steps">
+          <div class="table-step"><div class="ts-num">1</div><span>Click where you want the table in your document.</span></div>
+          <div class="table-step"><div class="ts-num">2</div><span>Go to <strong>Insert tab</strong> → click <strong>Table</strong>.</span></div>
+          <div class="table-step"><div class="ts-num">3</div><span>Drag over the grid to choose rows and columns, or click <strong>Insert Table</strong> to type the numbers.</span></div>
+          <div class="table-step"><div class="ts-num">4</div><span>Click inside any cell and start typing. Press <strong>Tab</strong> to move to the next cell.</span></div>
+          <div class="table-step"><div class="ts-num">5</div><span>Use <strong>Table Design</strong> and <strong>Layout</strong> tabs to style and resize.</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="background:#12122a;border-radius:9px;padding:.75rem 1rem;font-size:.82rem;color:#67e8f9;line-height:1.6">
+      💡 <strong>Tab key trick:</strong> Pressing Tab in the last cell of the last row automatically adds a new row. No right-clicking needed.
+    </div>
+  </div>
+
+  <!-- SECTION 8 — Page Layout -->
+  <div class="sec-label"><div class="bar" style="background:#f59e0b"></div><h2>Page Layout 📐</h2></div>
+
+  <div class="anatomy-grid">
+    <div class="anatomy-item">
+      <div class="term">Margins</div>
+      <div class="example">Layout > Margins</div>
+      <p>Default is Normal (2.54cm all around). Use Narrow only if you genuinely need more space. Don't use tiny margins to cheat word counts.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Orientation</div>
+      <div class="example">Layout > Orientation</div>
+      <p>Portrait (tall) is the default. Landscape (wide) is useful for wide tables or diagrams. Most documents stay Portrait.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Line Spacing</div>
+      <div class="example">Home > Line Spacing</div>
+      <p>Single (1.0) for normal documents. 1.5 or Double (2.0) for assignments that need space for marking. Set it for the whole document before you start typing.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Page Breaks</div>
+      <div class="example">Ctrl + Enter</div>
+      <p>Forces the next content onto a new page. Use this instead of hammering Enter lots of times — pressing Enter to create space will break your formatting.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Headers & Footers</div>
+      <div class="example">Insert > Header / Footer</div>
+      <p>Text that appears on every page — your name, date, page numbers. Double-click at the top or bottom of a page to edit them.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Page Numbers</div>
+      <div class="example">Insert > Page Number</div>
+      <p>Auto-numbers every page. Goes in the footer usually. Essential for any document longer than 2 pages.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 9 — Saving -->
+  <div class="sec-label"><div class="bar" style="background:#22c55e"></div><h2>Saving &amp; File Naming 💾</h2></div>
+
+  <div class="anatomy-grid">
+    <div class="anatomy-item">
+      <div class="term">Step 1 — Name first</div>
+      <div class="example">File Name Wizard</div>
+      <p>Go to the class site → File Name Wizard before opening Word. Generate your filename. Copy it. Then open Word.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Step 2 — Save to OneDrive</div>
+      <div class="example">File > Save As > OneDrive</div>
+      <p>File → Save As → OneDrive → Year 7 → DigiTech → Classwork → paste filename → Save.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Step 3 — Ctrl+S always</div>
+      <div class="example">Every 5 minutes</div>
+      <p>Save constantly. If the laptop dies or Word crashes and you haven't saved, that work is gone. No exceptions.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Check the title bar</div>
+      <div class="example">Should show OneDrive</div>
+      <p>The filename at the top should include your correct name. If it says Document1 or shows a Desktop path, you haven't saved correctly yet.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 10 — Printing -->
+  <div class="sec-label"><div class="bar" style="background:#64748b"></div><h2>Printing Basics 🖨️</h2></div>
+
+  <div class="anatomy-grid">
+    <div class="anatomy-item">
+      <div class="term">Print Preview</div>
+      <div class="example">Ctrl + P</div>
+      <p>Always preview before printing. Ctrl+P opens the print dialog with a preview. Check all pages look right before sending to the printer.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Printer selection</div>
+      <div class="example">Choose the right printer</div>
+      <p>Make sure the correct printer is selected at the top. Sending to the wrong printer means walking around trying to find your document.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Page range</div>
+      <div class="example">All / Current / Custom</div>
+      <p>Print all pages, just the current page, or a range (e.g. 2-4). Don't print 20 pages when you only need page 3.</p>
+    </div>
+    <div class="anatomy-item">
+      <div class="term">Print layout check</div>
+      <div class="example">Before you print</div>
+      <p>Check margins, check no text is cut off, check headings are on the right pages. Fix any issues before printing — paper is not free.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 11 — Shortcuts -->
+  <div class="sec-label"><div class="bar" style="background:#0891b2"></div><h2>Shortcuts That Actually Help ⌨️</h2></div>
+
+  <div class="nav-grid">
+    <div class="nav-card"><div class="nav-key">Ctrl + S</div><div class="nav-desc">Save — do this constantly</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + Z</div><div class="nav-desc">Undo last action</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + B</div><div class="nav-desc">Bold selected text</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + I</div><div class="nav-desc">Italic selected text</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + U</div><div class="nav-desc">Underline selected text</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + E</div><div class="nav-desc">Centre align paragraph</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + L</div><div class="nav-desc">Left align paragraph</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + A</div><div class="nav-desc">Select all text</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + P</div><div class="nav-desc">Print / print preview</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + Enter</div><div class="nav-desc">Insert a page break</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + F</div><div class="nav-desc">Find text in document</div></div>
+    <div class="nav-card"><div class="nav-key">Ctrl + H</div><div class="nav-desc">Find and replace text</div></div>
+  </div>
+
+  <!-- SECTION 12 — Golden Rules -->
+  <div class="sec-label"><div class="bar" style="background:#f59e0b"></div><h2>The Rules That Actually Matter ⭐</h2></div>
+
+  <div class="golden-rules">
+    <h2>⭐ Golden Rules</h2>
+    <div class="rule-row"><div class="rule-num">1</div><p>Use <strong>Styles</strong> for headings — never manually bold and resize text. Styles give you the Navigation Pane, consistent formatting, and the ability to update everything at once.</p></div>
+    <div class="rule-row"><div class="rule-num">2</div><p>Never press Enter multiple times to create space. Use <strong>paragraph spacing</strong> (Home > Line Spacing > Add Space After Paragraph) or a page break (<code>Ctrl+Enter</code>).</p></div>
+    <div class="rule-row"><div class="rule-num">3</div><p>Stick to <strong>one font</strong> for the whole document. Calibri or Arial for body text is standard. Don't mix Comic Sans and Times New Roman.</p></div>
+    <div class="rule-row"><div class="rule-num">4</div><p>Use the <strong>Navigation Pane</strong> for any document longer than one page. View tab > Navigation Pane. Click headings to jump around instantly.</p></div>
+    <div class="rule-row"><div class="rule-num">5</div><p>Name your file using the <strong>File Name Wizard</strong> before you open Word. Save to OneDrive. <code>Ctrl+S</code> every few minutes. No excuses.</p></div>
+    <div class="rule-row" style="margin-bottom:0"><div class="rule-num">6</div><p>Always <strong>preview before printing</strong> (<code>Ctrl+P</code>). Check every page looks right. Printing a broken document and reprinting it is a waste of everyone's time and paper.</p></div>
+  </div>
+
+  <!-- SECTION 13 — Errors -->
+  <div class="sec-label"><div class="bar" style="background:#dc2626"></div><h2>When Things Go Wrong 🚨</h2></div>
+
+  <div class="error-section">
+    <h2>🚨 Common Mistakes</h2>
+    <div class="error-row">
+      <div class="error-code">Spacing looks wrong</div>
+      <p><strong>Fix:</strong> You've probably been pressing Enter to add space. Select the paragraph, go to Home > Line Spacing > Remove Space After Paragraph. Then set proper spacing in the style settings.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Navigation Pane is empty</div>
+      <p><strong>Fix:</strong> You haven't used Heading styles. The Navigation Pane only picks up text formatted with Heading 1, 2 or 3 styles — not manually bolded text. Apply the styles from the Home tab.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Text is in a weird font</div>
+      <p><strong>Fix:</strong> Select all (Ctrl+A), then set the font in the Home tab to Calibri 12pt. This resets everything. Then reapply your heading styles.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">File saved as Document1</div>
+      <p><strong>Fix:</strong> File > Save As > choose OneDrive > Year 7 > DigiTech > Classwork > type the correct filename > Save. Check the title bar shows the right name afterward.</p>
+    </div>
+    <div class="error-row">
+      <div class="error-code">Table columns wrong size</div>
+      <p><strong>Fix:</strong> Click inside the table, go to the Layout tab (appears when you're in a table) > AutoFit > AutoFit Contents. Or drag the column borders manually.</p>
+    </div>
+    <div class="error-row" style="margin-bottom:0">
+      <div class="error-code">Red / blue squiggly lines</div>
+      <p><strong>Red:</strong> Spelling error — right-click for suggestions. <strong>Blue:</strong> Grammar or style suggestion — right-click to see what Word recommends. Don't ignore them.</p>
+    </div>
+  </div>
+
+  <div class="footer">Year 7 DigiTech &nbsp;·&nbsp; Week 5 &nbsp;·&nbsp; Microsoft Word: The Basics &nbsp;·&nbsp; Emmanuel Christian School</div>
+</div>
+</body>
+</html>
