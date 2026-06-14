@@ -93,6 +93,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .sheet-dot.connected{background:#3B6D11}
 .sheet-dot.error{background:var(--red)}
 .sheet-dot.checking{background:var(--y7);animation:pulse 1s infinite}
+.auth-badge{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:20px;margin-top:4px;display:inline-block}
+.auth-ok{background:var(--greenl);color:var(--green);border:1px solid rgba(59,109,17,.2)}
+.auth-fail{background:var(--redl);color:var(--red);border:1px solid rgba(163,45,45,.2)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .sheet-status{font-size:12px;color:var(--ink2);flex:1;font-family:var(--mono)}
 .sheet-actions{display:flex;gap:6px;margin-left:auto}
@@ -276,6 +279,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
       <button class="btn btn-ghost btn-sm" onclick="togglePushLog()">&#9776; Log</button>
     </div>
   </div>
+  <div style="padding:6px 14px 8px;font-size:11px;color:var(--ink3)">
+    <span class="auth-badge auth-fail" id="authBadge">&#9203; Checking auth...</span>
+    <span id="authStatus" style="margin-left:8px;font-family:var(--mono);font-size:11px"></span>
+  </div>
   <div class="push-log" id="pushLog"></div>
 
   <!-- =========================================================
@@ -440,19 +447,56 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 
 // =============================================================================
 // CONFIGURATION
-// Update SHEET_URL and WRITE_TOKEN to match your Apps Script deployment.
-// WRITE_TOKEN must be identical to the value in digitech_sheet_script.js
 // =============================================================================
 
 /** Apps Script web app URL - all API and proxy calls go here */
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQmwcLH_smIQktJIHVC-rPjU5NNf_OhMk9hMeb4H_7uPf8UY7h/exec';
 
 /**
- * Shared write token.
- * Included in every POST request that modifies the Sheet or uses the AI proxy.
- * Must match WRITE_TOKEN in digitech_sheet_script.js.
+ * Write token — NOT stored here anymore.
+ *
+ * I removed the hardcoded token from this file because index.html is deployed
+ * publicly on GitHub Pages, which means anyone could view source and use the
+ * token to write directly to the Sheet, bypassing the converter UI.
+ *
+ * Instead, the token is fetched from Apps Script at load time via the
+ * getWriteToken action. Apps Script checks Session.getActiveUser() and only
+ * returns the token to a signed-in school Google account. The token lives in
+ * memory only — it is never written into the HTML or stored in localStorage.
+ *
+ * If the browser is not signed into a school Google account, writeToken stays
+ * null and all write actions (push, delete, AI proxy) show an auth error.
  */
-const WRITE_TOKEN = 'Miller-Digitech-2026-woodentigersm7k';
+let writeToken = null;      // populated by initWriteToken() on page load
+let authedEmail = null;     // school email of the authenticated user
+
+/**
+ * Fetches the write token from Apps Script.
+ * Apps Script checks the caller's Google session — only school accounts pass.
+ * Updates the auth status badge in the UI.
+ */
+async function initWriteToken() {
+  const badge  = document.getElementById('authBadge');
+  const status = document.getElementById('authStatus');
+  try {
+    const res  = await fetch(SHEET_URL + '?action=getWriteToken');
+    const data = await res.json();
+    if (data.success && data.token) {
+      writeToken   = data.token;
+      authedEmail  = data.email;
+      if (badge)  badge.className  = 'auth-badge auth-ok';
+      if (status) status.textContent = '&#9989; Signed in: ' + data.email;
+    } else {
+      writeToken  = null;
+      if (badge)  badge.className  = 'auth-badge auth-fail';
+      if (status) status.textContent = '&#9888; Not signed in - open converter in Chrome signed into your school account';
+    }
+  } catch (err) {
+    writeToken = null;
+    if (badge)  badge.className  = 'auth-badge auth-fail';
+    if (status) status.textContent = '&#10007; Auth check failed: ' + err.message;
+  }
+}
 
 /**
  * Column schema - must match the Google Sheet header row exactly.
@@ -608,12 +652,17 @@ async function pingSheet() {
  * @returns {boolean} true if the push succeeded
  */
 async function pushRowToSheet(rowData) {
+  if (!writeToken) {
+    pushLog('Auth error: not signed in with a school Google account', 'fail');
+    alert('You need to open this converter in Chrome signed into your school Google account.');
+    return false;
+  }
   pushLog('Pushing row: ' + rowData.id + '...', 'info');
   try {
     const res = await fetch(SHEET_URL, {
       method  : 'POST',
       headers : { 'Content-Type': 'text/plain' },
-      body    : JSON.stringify({ action: 'append', token: WRITE_TOKEN, row: rowData })
+      body    : JSON.stringify({ action: 'append', token: writeToken, row: rowData })
     });
     const data = await res.json();
 
@@ -1180,7 +1229,8 @@ function guessFromFilename(name, fmt) {
   if (name.match(/rubric/i))           d.type = 'Rubric';
   else if (name.match(/worksheet|activity/i)) d.type = 'Worksheet';
   else if (name.match(/assessment/i))  d.type = 'Assessment';
-  else if (name.match(/reference|ref/i)) d.type = 'Reference';
+  else if (name.match(/explainer|interactive/i)) d.type = 'Interactive';
+  else if (name.match(/reference|ref|guide/i)) d.type = 'Guide';
   else if (name.match(/outline|lesson/i)) d.type = 'Lesson Outline';
 
   // Best-effort module guess from filename keywords.
@@ -1280,7 +1330,7 @@ Return this exact JSON schema:
   "term": "1 or 2",
   "week": "number 1-10 or range e.g. 1-3",
   "module": "exact module name from the provided list",
-  "type": "Lesson Outline | Worksheet | Assessment | Rubric | Reference | Explainer | Video",
+  "type": "Lesson Outline | Worksheet | Assessment | Rubric | Guide | Interactive | Video",
   "title": "clean display title",
   "summary": "1-2 sentence description",
   "topics": "comma-separated key topics",
@@ -1302,7 +1352,7 @@ Return this exact JSON schema:
     headers : { 'Content-Type': 'text/plain' },
     body    : JSON.stringify({
       action    : 'ai',
-      token     : WRITE_TOKEN,
+      token     : writeToken,
       system    : systemPrompt,
       messages  : [{ role: 'user', content: userMessage }],
       max_tokens: 1200
@@ -1511,7 +1561,7 @@ function renderReview(d, mode, apiError) {
         <div class="field">
           <label>Type</label>
           <select onchange="upd('type', this.value)">
-            ${['Lesson Outline','Worksheet','Assessment','Rubric','Reference','Explainer','Video']
+            ${['Lesson Outline','Worksheet','Assessment','Rubric','Guide','Interactive','Video']
               .map(t => `<option ${d.type === t ? 'selected' : ''}>${t}</option>`)
               .join('')}
           </select>
@@ -1895,7 +1945,8 @@ if (typeof pdfjsLib !== 'undefined') {
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  await initWriteToken();
   pingSheet();
 });
 </script>
