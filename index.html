@@ -1,1383 +1,1953 @@
 <!DOCTYPE html>
 <!--
   =============================================================================
-  DigiTech Hub - Student Interface v2
+  DigiTech Hub - Resource Converter
   =============================================================================
 
-  Student-facing AI companion and resource browser.
-  Reads live from two Google Sheet tabs:
-    - Resources  : all files, links, definitions, success criteria
-    - Schedule   : which module is active for each class right now
+  Teacher-facing tool for processing resource files into the content pipeline.
+  Runs entirely in the browser - no local server required when hosted on
+  GitHub Pages or any HTTPS origin.
 
-  The Schedule tab drives everything:
-    1. Hub fetches Schedule - finds active=TRUE row for student's class
-    2. Gets current module name from that row
-    3. Filters Resources to matching module rows
-    4. Injects definitions + criteria + tasks into AI system prompt
-    5. AI answers with full context of what the class is actually doing
+  What it does:
+    1. Accepts .html, .docx, and .pdf file drops
+    2. Extracts text content from each file format
+    3. Sends extracted content to the AI proxy (Apps Script) for metadata
+       extraction - title, class, term, week, definitions, tasks, criteria
+    4. Presents extracted data for review and editing before committing
+    5. Pushes a structured row to the Google Sheet via the Apps Script API
+    6. Generates an updated HTML file with a page-meta JSON block injected
+       into the head - allows the student hub to surface content without
+       loading the entire file
 
-  Updating the current module: flip active=TRUE/FALSE in the Schedule tab.
-  Public holiday: change start_week or end_week in the Schedule tab.
-  No code changes needed for either.
+  File format support:
+    .html  - Full text extraction via regex pattern matching on known
+             class names (section-label, wtile-word, scene-title etc.)
+    .docx  - Raw text extracted from XML inside the zip container
+    .pdf   - Text extracted page by page using PDF.js
 
-  Classes: Year 7 (blue), Year 8 (green), Year 9/10 (purple), Inquiry (teal)
-  AI modes: ELI5, Explain it, Quiz me, Let's debate, Help me think
-  Inquiry modes: ELI5, Explain it, Quiz me, Give me ideas, Help me build
-
-  Author  : M. Miller - Emmanuel Christian School, Tasmania
-  Version : 2.0 - Schedule tab integration + 4 classes
+  Author  : M. Miller
+  School  : Emmanuel Christian School, Tasmania
+  Version : 1.0
   =============================================================================
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DigiTech Hub - Emmanuel Christian School</title>
+<title>DigiTech Resource Converter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- PDF.js - used to extract text from .pdf files page by page -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
+/*
+ * Design tokens
+ * All colours, radii and font stacks are defined here as CSS custom
+ * properties. Changing a token cascades through the entire UI.
+ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --ink:#1a1d23;--ink2:#4a5060;--ink3:#8a8f9e;
-  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f5;
-  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
-  --y7:#185FA5;--y7l:#E6F1FB;--y7d:#0C447C;--y7m:#378ADD;
-  --y8:#2E7D32;--y8l:#E8F5E9;--y8d:#1B5E20;--y8m:#43A047;
-  --y910:#534AB7;--y910l:#EEEDFE;--y910d:#3C3489;--y910m:#7F77DD;
-  --inq:#00695C;--inql:#E0F2F1;--inqd:#004D40;--inqm:#26A69A;
-  --green:#3B6D11;--greenl:#EAF3DE;
-  --amber:#854F0B;--amberl:#FAEEDA;
-  --red:#A32D2D;--redl:#FCEBEB;
-  --radius:10px;--radiuslg:14px;
-  --shadow:0 1px 3px rgba(0,0,0,0.07),0 4px 12px rgba(0,0,0,0.05);
-  --mono:'DM Mono',monospace;--sans:'Nunito',sans-serif;
+  --ink:#0f1117;         /* Primary text */
+  --ink2:#3a3f4d;        /* Secondary text */
+  --ink3:#6b7280;        /* Tertiary / placeholder text */
+  --bg:#f7f7f5;          /* Page background */
+  --surface:#ffffff;     /* Card / panel background */
+  --surface2:#f0f0ec;    /* Inset / code background */
+  --border:#e2e2dc;      /* Default border */
+  --border2:#c8c8c0;     /* Stronger border */
+  --y7:#185FA5;          /* Year 7 accent (blue) */
+  --y7l:#E6F1FB;         /* Year 7 light */
+  --y7d:#0C447C;         /* Year 7 dark */
+  --y910:#534AB7;        /* Year 9/10 accent (purple) */
+  --y910l:#EEEDFE;       /* Year 9/10 light */
+  --y910d:#3C3489;       /* Year 9/10 dark */
+  --green:#3B6D11;       /* Success */
+  --greenl:#EAF3DE;
+  --amber:#854F0B;       /* Warning */
+  --amberl:#FAEEDA;
+  --red:#A32D2D;         /* Error */
+  --redl:#FCEBEB;
+  --radius:8px;
+  --radiuslg:12px;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
 }
 body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6}
-.page{max-width:1100px;margin:0 auto;padding:16px 14px 60px}
+.page{max-width:980px;margin:0 auto;padding:24px 20px 60px}
 
-/* Header */
-.site-header{display:flex;align-items:center;gap:12px;padding:14px 18px;margin-bottom:14px;background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);box-shadow:var(--shadow)}
-.header-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--y7),var(--y910));display:flex;align-items:center;justify-content:center;color:white;font-size:17px;flex-shrink:0}
-.header-title{font-size:17px;font-weight:800;letter-spacing:-.3px}
-.header-sub{font-size:11px;color:var(--ink3);margin-top:1px}
-.header-badges{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.hbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
-.hb-week{background:var(--greenl);color:var(--green);border:1px solid rgba(59,109,17,.2)}
-.hb-module{background:var(--amberl);color:var(--amber);border:1px solid rgba(133,79,11,.2);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Top bar */
+.top-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.logo{width:38px;height:38px;border-radius:10px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-size:18px}
+.top-title{font-size:17px;font-weight:600;letter-spacing:-0.3px}
+.top-sub{font-size:12px;color:var(--ink3);font-family:var(--mono)}
+.badge-row{margin-left:auto;display:flex;gap:6px;align-items:center}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--mono)}
+.badge-blue{background:var(--y7l);color:var(--y7d)}
+.badge-purple{background:var(--y910l);color:var(--y910d)}
+.badge-green{background:var(--greenl);color:var(--green)}
 
-/* Class tabs - 4 cols */
-.class-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-@media(max-width:680px){.class-tabs{grid-template-columns:1fr 1fr}}
-.class-tab{padding:11px 12px;border-radius:var(--radiuslg);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .18s;box-shadow:var(--shadow)}
-.class-tab:hover{border-color:var(--border2)}
-.class-tab-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--surface2);color:var(--ink3);transition:all .18s}
-.class-tab-title{font-size:13px;font-weight:700}
-.class-tab-sub{font-size:10px;color:var(--ink3);margin-top:1px}
-.class-tab.active-7{border-color:var(--y7);background:var(--y7l)}.class-tab.active-7 .class-tab-icon{background:var(--y7);color:white}.class-tab.active-7 .class-tab-title{color:var(--y7d)}
-.class-tab.active-8{border-color:var(--y8);background:var(--y8l)}.class-tab.active-8 .class-tab-icon{background:var(--y8);color:white}.class-tab.active-8 .class-tab-title{color:var(--y8d)}
-.class-tab.active-910{border-color:var(--y910);background:var(--y910l)}.class-tab.active-910 .class-tab-icon{background:var(--y910);color:white}.class-tab.active-910 .class-tab-title{color:var(--y910d)}
-.class-tab.active-inq{border-color:var(--inq);background:var(--inql)}.class-tab.active-inq .class-tab-icon{background:var(--inq);color:white}.class-tab.active-inq .class-tab-title{color:var(--inqd)}
+/* Sheet connection status bar */
+.sheet-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radiuslg);border:1px solid var(--border);background:var(--surface);margin-bottom:16px}
+.sheet-dot{width:9px;height:9px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s}
+.sheet-dot.connected{background:#3B6D11}
+.sheet-dot.error{background:var(--red)}
+.sheet-dot.checking{background:var(--y7);animation:pulse 1s infinite}
+.auth-badge{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:20px;margin-top:4px;display:inline-block}
+.auth-ok{background:var(--greenl);color:var(--green);border:1px solid rgba(59,109,17,.2)}
+.auth-fail{background:var(--redl);color:var(--red);border:1px solid rgba(163,45,45,.2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sheet-status{font-size:12px;color:var(--ink2);flex:1;font-family:var(--mono)}
+.sheet-actions{display:flex;gap:6px;margin-left:auto}
 
-/* Two panel layout */
-.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:680px){.main-grid{grid-template-columns:1fr}}
-.panel{background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0}
-.panel-ai{height:620px}
-.panel-res{height:620px}
-.panel-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;border-radius:var(--radiuslg) var(--radiuslg) 0 0}
-.panel-head-title{font-size:13px;font-weight:700}
-.panel-head-icon{font-size:15px;color:var(--ink3)}
+/* Push log - shows timestamped output of Sheet and AI operations */
+.push-log{background:#111;border-radius:var(--radius);padding:10px 12px;font-family:var(--mono);font-size:11px;line-height:1.8;max-height:120px;overflow-y:auto;margin-top:10px;display:none}
+.push-log.show{display:block}
+.push-log::-webkit-scrollbar{width:4px}
+.push-log::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
+.pl-pass{color:#7ec87e}.pl-fail{color:#e87e7e}.pl-info{color:#7ec8e8}.pl-warn{color:#e8c87e}
+.pl-time{color:#666;margin-right:5px;font-size:10px}
 
-/* Resource browser */
-.filter-row{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface)}
-.filter-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink3);transition:all .13s;white-space:nowrap}
-.filter-pill:hover{background:var(--surface);color:var(--ink)}
-.filter-pill.active-7{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
-.filter-pill.active-8{background:var(--y8l);color:var(--y8d);border-color:var(--y8)}
-.filter-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
-.filter-pill.active-inq{background:var(--inql);color:var(--inqd);border-color:var(--inq)}
-.search-row{padding:8px 10px;border-bottom:1px solid var(--border)}
-.search-row input{width:100%;padding:7px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
-.search-row input:focus{border-color:var(--border2);background:var(--surface)}
-.search-row input::placeholder{color:var(--ink3)}
-.res-list{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0;width:100%}
-.res-list::-webkit-scrollbar{width:4px}.res-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+/* Two-column main layout - left: drop + queue, right: output */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:700px){.cols{grid-template-columns:1fr}}
 
-/* Resource cards */
-.rcard{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);transition:border-color .13s;width:100%}
-.rcard:hover{border-color:var(--border2)}
-.rcard.current-mod{border-left:3px solid var(--green)}
-.rcard-head{display:flex;align-items:flex-start;gap:10px;padding:11px 13px 6px}
-.rcard-fmt{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--mono);margin-top:2px}
-.rcard-info{flex:1;min-width:0}
-.rcard-title{font-size:13px;font-weight:700;color:var(--ink);line-height:1.4;word-break:break-word;white-space:normal}
-.rcard-meta{font-size:11px;color:var(--ink3);margin-top:3px}
-.rcard-tags{display:flex;gap:4px;padding:0 13px 6px;flex-wrap:wrap}
-.rtag{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.rt-html{background:var(--y7l);color:var(--y7d)}.rt-pdf{background:var(--redl);color:var(--red)}
-.rt-docx{background:var(--greenl);color:var(--green)}.rt-onenote{background:var(--y910l);color:var(--y910d)}
-.rt-cur{background:var(--greenl);color:var(--green)}.rt-type{background:var(--surface2);color:var(--ink3)}
-.rt-guide{background:var(--amberl);color:var(--amber);border:1px solid rgba(133,79,11,.15)}
-.rt-interactive{background:var(--y910l);color:var(--y910d);border:1px solid rgba(83,74,183,.15)}
-.rcard-summary{font-size:12px;color:var(--ink2);padding:0 13px 10px;line-height:1.6}
-.rcard-actions{display:flex;gap:5px;padding:0 13px 11px;flex-wrap:wrap}
-.ract{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:opacity .13s}
-.ract:hover{opacity:.85}
-.ract-blue{background:var(--y7);color:white}.ract-green{background:var(--y8);color:white}
-.ract-purple{background:var(--y910);color:white}.ract-teal{background:var(--inq);color:white}
-.ract-red{background:var(--red);color:white}.ract-ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--border2)}
-.onenote-box{margin:0 11px 9px;background:var(--y910l);border-radius:var(--radius);padding:9px 11px}
-.onenote-title{font-size:11px;font-weight:700;color:var(--y910d);margin-bottom:5px}
-.onenote-steps{font-size:11px;color:var(--y910);line-height:1.9}
-.list-empty{text-align:center;padding:32px 16px;color:var(--ink3)}
-.list-empty-icon{font-size:28px;display:block;margin-bottom:8px;opacity:.35}
-.list-empty-t{font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:3px}
-.list-empty-s{font-size:12px;line-height:1.5}
-.loading-dots{display:flex;gap:5px;justify-content:center;margin-top:8px}
-.loading-dots span{width:6px;height:6px;border-radius:50%;background:var(--ink3);animation:ldp 1.2s infinite}
-.loading-dots span:nth-child(2){animation-delay:.2s}.loading-dots span:nth-child(3){animation-delay:.4s}
-@keyframes ldp{0%,80%,100%{opacity:.2;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+/* Card component */
+.card{background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);overflow:hidden}
+.card-head{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface2)}
+.card-head-title{font-size:13px;font-weight:600}
+.card-head-sub{font-size:11px;color:var(--ink3);margin-left:auto;font-family:var(--mono)}
+.card-body{padding:14px}
 
-/* Module banner - shows current module above resource list */
-.module-banner{margin:8px 10px 0;padding:8px 12px;border-radius:var(--radius);font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px}
-.mb-7{background:var(--y7l);color:var(--y7d);border:1px solid rgba(24,95,165,.2)}
-.mb-8{background:var(--y8l);color:var(--y8d);border:1px solid rgba(46,125,50,.2)}
-.mb-910{background:var(--y910l);color:var(--y910d);border:1px solid rgba(83,74,183,.2)}
-.mb-inq{background:var(--inql);color:var(--inqd);border:1px solid rgba(0,105,92,.2)}
+/* Drop zone */
+.dropzone{border:2px dashed var(--border2);border-radius:var(--radiuslg);padding:28px 20px;text-align:center;cursor:pointer;transition:all .15s;position:relative;background:var(--surface)}
+.dropzone:hover,.dropzone.over{border-color:var(--y7);background:var(--y7l)}
+.dz-icon{font-size:26px;margin-bottom:8px;display:block;color:var(--ink3)}
+.dz-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.dz-sub{font-size:12px;color:var(--ink3);line-height:1.5}
+.dz-fmts{display:flex;gap:5px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.ft{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;font-family:var(--mono)}
+.ft-html{background:var(--y7l);color:var(--y7d)}
+.ft-pdf{background:var(--redl);color:var(--red)}
+.ft-docx{background:var(--greenl);color:var(--green)}
+/* The actual file input is invisible and covers the entire drop zone */
+.dz-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
 
-/* AI companion */
-.mode-pills{display:flex;gap:5px;padding:8px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.mode-pill{padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink3);transition:all .13s;white-space:nowrap}
-.mode-pill:hover{background:var(--surface);color:var(--ink)}
-.mode-pill.active-7{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
-.mode-pill.active-8{background:var(--y8l);color:var(--y8d);border-color:var(--y8)}
-.mode-pill.active-910{background:var(--y910l);color:var(--y910d);border-color:var(--y910)}
-.mode-pill.active-inq{background:var(--inql);color:var(--inqd);border-color:var(--inq)}
-.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;min-height:0}
-.chat-msgs::-webkit-scrollbar{width:4px}.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
-.msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13px;line-height:1.6;animation:msgIn .18s ease-out}
-@keyframes msgIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.msg.ai{align-self:flex-start;background:var(--surface2);color:var(--ink);border:1px solid var(--border);border-bottom-left-radius:3px}
-.msg.user{align-self:flex-end;color:white;border-bottom-right-radius:3px}
-.msg.u7{background:var(--y7)}.msg.u8{background:var(--y8)}.msg.u910{background:var(--y910)}.msg.uinq{background:var(--inq)}
-.msg.thinking{align-self:flex-start;background:var(--surface2);color:var(--ink3);font-style:italic;font-size:12px;border:1px solid var(--border);border-bottom-left-radius:3px}
-.ai-chunk{margin-bottom:10px;line-height:1.65;font-size:14px}
-.ai-chunk:last-child{margin-bottom:0}
-.ai-section-head{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:5px;margin-top:12px}
-.ai-section-head:first-child{margin-top:0}
-.msg.ai strong{color:var(--ink);font-weight:700}
-.inline-rcard{margin-top:8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);overflow:hidden}
-.inline-rcard-head{padding:8px 11px;border-bottom:1px solid var(--border)}
-.inline-rcard-title{font-size:12px;font-weight:700;color:var(--ink)}
-.inline-rcard-sub{font-size:10px;color:var(--ink3);margin-top:1px}
-.inline-rcard-btns{display:flex;gap:5px;padding:8px 11px;flex-wrap:wrap}
-.quick-strip{display:flex;gap:5px;padding:6px 10px;border-top:1px solid var(--border);overflow-x:auto;flex-shrink:0}
-.quick-strip::-webkit-scrollbar{display:none}
-.quick-btn{padding:4px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:11px;font-weight:600;color:var(--ink3);white-space:nowrap;transition:all .13s;flex-shrink:0;font-family:var(--sans)}
-.quick-btn:hover{background:var(--surface);color:var(--ink)}
-.quick-shuffle{opacity:.55;padding:4px 8px}.quick-shuffle:hover{opacity:1}
-.chat-input{display:flex;gap:7px;padding:9px 11px;border-top:1px solid var(--border);flex-shrink:0}
-.chat-input input{flex:1;padding:9px 13px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
-.chat-input input:focus{border-color:var(--border2);background:var(--surface)}
-.chat-input input::placeholder{color:var(--ink3)}
-.send-btn{padding:9px 16px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;transition:opacity .13s;flex-shrink:0}
-.send-btn:hover{opacity:.88}.send-btn:disabled{opacity:.4;cursor:not-allowed}
-.sb7{background:var(--y7)}.sb8{background:var(--y8)}.sb910{background:var(--y910)}.sbinq{background:var(--inq)}
-.tts-bar{display:flex;align-items:center;gap:7px;padding:6px 11px;border-top:1px solid var(--border);background:var(--surface2);flex-shrink:0}
-.tts-label{font-size:11px;color:var(--ink3);font-weight:600}
-.tts-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);color:var(--ink2);transition:all .13s}
-.tts-btn:hover{background:var(--surface2)}
-.tts-btn.active{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
-.disclaimer{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--amberl);border:1px solid rgba(133,79,11,.2);font-size:12px;color:var(--amber);line-height:1.6;display:flex;gap:8px}
+/* Queue - list of dropped files with status indicators */
+.queue{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto;padding:2px}
+.queue::-webkit-scrollbar{width:4px}
+.queue::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.qitem{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);transition:all .15s;cursor:pointer}
+.qitem:hover{border-color:var(--border2)}
+.qitem.sel{border-color:var(--y7);background:var(--y7l)}
+/* Left border colour indicates status */
+.qitem.qdone   {border-left:3px solid var(--green)}
+.qitem.qpushed {border-left:3px solid var(--y910)}
+.qitem.qmanual {border-left:3px solid var(--amber)}
+.qitem.qerr    {border-left:3px solid var(--red)}
+.qitem.qproc   {border-left:3px solid var(--y7)}
+.qi-row{display:flex;align-items:center;gap:8px;padding:9px 12px}
+.qi-fmt{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;font-family:var(--mono);flex-shrink:0}
+.qi-name{font-size:12px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qi-st{font-size:11px;font-family:var(--mono);flex-shrink:0}
+.st-wait{color:var(--ink3)}.st-proc{color:var(--y7)}.st-done{color:var(--green)}
+.st-pushed{color:var(--y910)}.st-man{color:var(--amber)}.st-err{color:var(--red)}
 
-/* Resource card - collapsible "Key info" section */
-.rcard-toggle{padding:0 13px 9px}
-.rcard-toggle-btn{font-size:11px;font-weight:600;color:var(--ink3);cursor:pointer;background:none;border:none;padding:0;font-family:var(--sans);display:flex;align-items:center;gap:4px}
-.rcard-toggle-btn:hover{color:var(--ink)}
-.rcard-extra{display:none;padding:8px 13px 11px;border-top:1px solid var(--border);font-size:12px;line-height:1.6}
-.rcard-extra.show{display:block}
-.rx-block{margin-bottom:8px}
-.rx-block:last-child{margin-bottom:0}
-.rx-head{font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
-.rx-def-term{font-weight:700;color:var(--ink)}
-.rx-item{padding:2px 0;color:var(--ink2)}
+/* Animated processing dots */
+.dots{display:inline-flex;gap:2px;margin-left:2px;vertical-align:middle}
+.dots span{width:4px;height:4px;border-radius:50%;background:var(--y7);animation:dp 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes dp{0%,80%,100%{opacity:.25;transform:scale(.75)}40%{opacity:1;transform:scale(1)}}
 
-/* Flashcards */
-.panel-head-action{margin-left:auto;display:flex;gap:6px}
-.fc-btn{padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink2);transition:all .13s;font-family:var(--sans)}
-.fc-btn:hover{background:var(--surface2)}
-.fc-overlay{position:fixed;inset:0;background:rgba(20,22,28,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
-.fc-overlay.show{display:flex}
-.fc-modal{background:var(--surface);border-radius:var(--radiuslg);box-shadow:var(--shadow);width:100%;max-width:480px;display:flex;flex-direction:column;max-height:90vh}
-.fc-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
-.fc-head-title{font-size:14px;font-weight:800;flex:1}
-.fc-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink3);padding:2px 6px;line-height:1}
-.fc-close:hover{color:var(--ink)}
-.fc-controls{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.fc-controls select{flex:1;min-width:140px;padding:6px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:12px;font-family:var(--sans);outline:none}
-.fc-body{padding:20px 16px;display:flex;flex-direction:column;align-items:center;gap:14px}
-.fc-progress{font-size:11px;color:var(--ink3);font-family:var(--mono)}
-.fc-card{width:100%;min-height:160px;border-radius:var(--radiuslg);border:1.5px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;cursor:pointer;transition:border-color .13s}
-.fc-card:hover{border-color:var(--y7)}
-.fc-card-term{font-size:19px;font-weight:800;color:var(--ink);line-height:1.4}
-.fc-card-def{font-size:14px;color:var(--ink2);line-height:1.6}
-.fc-card-hint{font-size:11px;color:var(--ink3);margin-top:10px}
-.fc-nav{display:flex;gap:8px;width:100%}
-.fc-nav button{flex:1;padding:9px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:var(--ink)}
-.fc-nav button:hover{background:var(--surface)}
-.fc-nav button:disabled{opacity:.4;cursor:not-allowed}
-.fc-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
+/* Form fields */
+.field{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.field label{font-size:10px;font-weight:600;color:var(--ink2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select,.field textarea{padding:6px 9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:12px;font-family:var(--sans);outline:none;transition:border-color .12s;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--y7);background:var(--surface)}
+.field textarea{resize:vertical;min-height:56px;line-height:1.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 
-/* Quiz */
-.qz-body{padding:16px;display:flex;flex-direction:column;gap:12px}
-.qz-name-row{display:flex;gap:6px}
-.qz-name-row input{flex:1;padding:8px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none}
-.qz-name-row input:focus{border-color:var(--border2);background:var(--surface)}
-.qz-scorebar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink3);font-family:var(--mono)}
-.qz-scorebar strong{color:var(--ink);font-family:var(--sans)}
-.qz-question{font-size:15px;font-weight:700;color:var(--ink);line-height:1.5;padding:14px;border-radius:var(--radiuslg);background:var(--surface2);border:1.5px solid var(--border2);min-height:70px;display:flex;align-items:center}
-.qz-options{display:flex;flex-direction:column;gap:8px}
-.qz-opt{padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border2);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);text-align:left;font-family:var(--sans);transition:all .13s}
-.qz-opt:hover:not(:disabled){border-color:var(--y7);background:var(--y7l)}
-.qz-opt:disabled{cursor:default}
-.qz-opt.correct{border-color:var(--green);background:var(--greenl);color:var(--green)}
-.qz-opt.incorrect{border-color:var(--red);background:var(--redl);color:var(--red)}
-.qz-feedback{font-size:12px;font-weight:700;text-align:center;min-height:18px}
-.qz-feedback.good{color:var(--green)}
-.qz-feedback.bad{color:var(--red)}
-.qz-next-row{display:flex;gap:8px}
-.qz-next-row button{flex:1;padding:10px 12px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y7)}
-.qz-next-row button:hover{opacity:.88}
-.qz-next-row button:disabled{opacity:.4;cursor:not-allowed}
-.qz-submit-row{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
-.qz-submit-row button{padding:10px 18px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y8)}
-.qz-submit-row button:disabled{opacity:.4;cursor:not-allowed}
-.qz-submit-hint{font-size:11px;color:var(--ink3)}
-.qz-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
-.qz-sent{font-size:13px;font-weight:700;color:var(--green);text-align:center;padding:8px}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius);border:none;cursor:pointer;font-size:12px;font-weight:500;font-family:var(--sans);transition:all .13s;white-space:nowrap}
+.btn:hover{opacity:.88}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-blue{background:var(--y7);color:white}
+.btn-green{background:var(--green);color:white}
+.btn-ghost{background:var(--surface2);color:var(--ink);border:1px solid var(--border)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+/* Output panel tabs */
+.otabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 14px}
+.otab{padding:8px 13px;font-size:12px;font-weight:500;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s;white-space:nowrap}
+.otab:hover{color:var(--ink)}.otab.on{color:var(--y7);border-bottom-color:var(--y7)}
+.opanel{display:none;padding:14px}.opanel.show{display:block}
+
+/* Code output block - used for the page-meta JSON preview */
+.code-out{background:#111;color:#e8e8e0;border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;line-height:1.7;overflow:auto;white-space:pre;max-height:280px}
+.code-out::-webkit-scrollbar{width:4px;height:4px}
+.code-out::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
+.copy-row{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+
+/* CSV table - compact preview of the Sheet row */
+.csv-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+.csv-t{border-collapse:collapse;font-size:11px;font-family:var(--mono);min-width:600px;width:100%}
+.csv-t th{padding:6px 9px;background:var(--surface2);border-bottom:1px solid var(--border);font-weight:500;color:var(--ink2);white-space:nowrap;text-align:left}
+.csv-t td{padding:6px 9px;border-bottom:1px solid var(--border);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csv-t tr:last-child td{border-bottom:none}
+
+/* Summary stat cards at the top of the review panel */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--surface2);border-radius:var(--radius);padding:9px 10px;text-align:center}
+.stat-n{font-size:20px;font-weight:600;font-family:var(--mono)}
+.stat-l{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+
+/* Chunk editor - editable lists of definitions, criteria, tasks */
+.chunk-sec{margin-bottom:12px}
+.chunk-lbl{font-size:10px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);margin-bottom:5px}
+.ci{display:flex;align-items:flex-start;gap:6px;padding:5px 8px;border-radius:6px;background:var(--surface2);margin-bottom:3px;font-size:12px}
+.ci-t{flex:1;color:var(--ink2);line-height:1.45}
+.ci-del{color:var(--red);cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;background:none;border:none;padding:0;margin-top:-1px}
+.chunk-add{display:flex;gap:6px;margin-top:4px}
+.chunk-add input{flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-family:var(--sans);background:var(--surface);outline:none;color:var(--ink)}
+.chunk-add input:focus{border-color:var(--y7)}
+.chunk-add button{padding:5px 10px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;font-size:11px;font-family:var(--sans);color:var(--ink2)}
+.chunk-add button:hover{background:var(--border)}
+
+/* Notice / alert banners */
+.notice{display:flex;gap:8px;padding:9px 11px;border-radius:var(--radius);font-size:12px;line-height:1.5;margin-bottom:10px}
+.n-blue  {background:var(--y7l);  color:var(--y7d);  border:1px solid #B5D4F4}
+.n-green {background:var(--greenl);color:var(--green);border:1px solid #C0DD97}
+.n-amber {background:var(--amberl);color:var(--amber);border:1px solid #FAC775}
+.n-purple{background:var(--y910l);color:var(--y910d);border:1px solid #CECBF6}
+.divider{height:1px;background:var(--border);margin:12px 0}
+
+/* Empty state - shown when queue or output has nothing to display */
+.empty{text-align:center;padding:28px 12px;color:var(--ink3)}
+.empty-icon{font-size:28px;display:block;margin-bottom:8px;opacity:.35}
+.empty-t{font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:3px}
+.empty-s{font-size:12px;line-height:1.5}
+
+/* Batch download bar - appears once at least one file is processed */
+.dl-bar{background:var(--greenl);border:1px solid #C0DD97;border-radius:var(--radiuslg);padding:11px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.dl-bar-t strong{font-size:13px;color:var(--green);display:block}
+.dl-bar-t span{font-size:11px;color:#3B6D11}
+
+/* Mode toggle - AI extraction vs manual entry */
+.mode-toggle{display:flex;gap:8px;margin-bottom:12px}
+.mode-btn{flex:1;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;font-weight:500;font-family:var(--sans);text-align:center;transition:all .13s;color:var(--ink3)}
+.mode-btn.on-ai    {border-color:var(--y7);  background:var(--y7l);  color:var(--y7d)}
+.mode-btn.on-manual{border-color:var(--amber);background:var(--amberl);color:var(--amber)}
+.manual-banner{background:var(--amberl);border:1px solid #FAC775;border-radius:var(--radius);padding:10px 13px;font-size:12px;color:var(--amber);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
 </style>
 </head>
 <body>
 <div class="page">
 
-  <div class="site-header">
-    <div class="header-logo">&#128161;</div>
+  <!-- =========================================================
+       PAGE HEADER
+       ========================================================= -->
+  <div class="top-bar">
+    <div class="logo">&#9881;</div>
     <div>
-      <div class="header-title">DigiTech Hub</div>
-      <div class="header-sub">Emmanuel Christian School - Mr Miller</div>
+      <div class="top-title">DigiTech resource converter</div>
+      <div class="top-sub">Mr Miller - Emmanuel Christian School</div>
     </div>
-    <div class="header-badges">
-      <span class="hbadge hb-week" id="weekBadge">Week --</span>
-      <span class="hbadge hb-module" id="moduleBadge">Loading...</span>
+    <div class="badge-row">
+      <span class="badge badge-blue">Year 7</span>
+      <span class="badge badge-purple">Year 9/10</span>
+      <span class="badge badge-green">&#128274; Key via proxy</span>
     </div>
   </div>
 
-  <div class="class-tabs">
-    <button class="class-tab active-7" id="tab7" onclick="setClass('7')">
-      <div class="class-tab-icon">&#128187;</div>
-      <div><div class="class-tab-title">Year 7</div><div class="class-tab-sub">Digital Systems</div></div>
-    </button>
-    <button class="class-tab" id="tab8" onclick="setClass('8')">
-      <div class="class-tab-icon">&#128202;</div>
-      <div><div class="class-tab-title">Year 8</div><div class="class-tab-sub">Networks and Data</div></div>
-    </button>
-    <button class="class-tab" id="tab910" onclick="setClass('910')">
-      <div class="class-tab-icon">&#129302;</div>
-      <div><div class="class-tab-title">Year 9/10</div><div class="class-tab-sub">Automation and 3D</div></div>
-    </button>
-    <button class="class-tab" id="tabinq" onclick="setClass('inq')">
-      <div class="class-tab-icon">&#128640;</div>
-      <div><div class="class-tab-title">Inquiry</div><div class="class-tab-sub">Free exploration</div></div>
-    </button>
+  <!-- =========================================================
+       SHEET CONNECTION BAR
+       Pings the Apps Script endpoint on load to confirm the
+       pipeline is live before any files are processed.
+       ========================================================= -->
+  <div class="sheet-bar">
+    <div class="sheet-dot checking" id="sheetDot"></div>
+    <div>
+      <div class="sheet-status" id="sheetStatus">Connecting to Google Sheet...</div>
+      <div style="font-size:10px;color:var(--ink3);font-family:var(--mono)">
+        DigiTech Resources 2026 - Apps Script endpoint
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost btn-sm" onclick="pingSheet()">&#8635; Test</button>
+      <button class="btn btn-ghost btn-sm" onclick="togglePushLog()">&#9776; Log</button>
+    </div>
+  </div>
+  <div style="padding:6px 14px 8px;font-size:11px;color:var(--ink3)">
+    <span class="auth-badge auth-fail" id="authBadge">&#9203; Checking auth...</span>
+    <span id="authStatus" style="margin-left:8px;font-family:var(--mono);font-size:11px"></span>
+  </div>
+  <div class="push-log" id="pushLog"></div>
+
+  <!-- =========================================================
+       BATCH DOWNLOAD BAR
+       Hidden until at least one file has been processed.
+       ========================================================= -->
+  <div id="dlBar" style="display:none" class="dl-bar">
+    <div class="dl-bar-t">
+      <strong>&#10003; Files processed</strong>
+      <span id="dlBarSub">0 rows pushed to Sheet</span>
+    </div>
+    <button class="btn btn-green"      onclick="pushAllToSheet()">&#8679; Push all to Sheet</button>
+    <button class="btn btn-ghost btn-sm" onclick="downloadAllCSV()">&#8595; All CSV rows</button>
+    <button class="btn btn-ghost btn-sm" onclick="downloadAllHTML()">&#8595; Updated HTML files</button>
   </div>
 
-  <div class="main-grid">
+  <!-- =========================================================
+       MAIN TWO-COLUMN LAYOUT
+       Left: file drop zone + processing queue
+       Right: review/edit panel + output tabs
+       ========================================================= -->
+  <div class="cols">
 
-    <!-- LEFT - Resource browser -->
-    <div class="panel panel-res">
-      <div class="panel-head">
-        <span class="panel-head-icon">&#128193;</span>
-        <div class="panel-head-title">Resources</div>
-        <div class="panel-head-action">
-          <button class="fc-btn" onclick="openQuiz()">&#127919; Quiz</button>
-          <button class="fc-btn" onclick="openFlashcards()">&#127183; Flashcards</button>
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- Drop zone -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">Drop your files</div>
+          <div class="card-head-sub">HTML / DOCX / PDF</div>
+        </div>
+        <div class="card-body">
+          <div class="dropzone" id="dropzone"
+            ondragover="dzOver(event)"
+            ondragleave="dzLeave()"
+            ondrop="dzDrop(event)">
+            <input type="file" class="dz-input" id="fileInput"
+              multiple accept=".html,.htm,.docx,.pdf,.doc"
+              onchange="onSelect(event)" />
+            <span class="dz-icon">&#128194;</span>
+            <div class="dz-title">Drop files here or click to browse</div>
+            <div class="dz-sub">
+              AI extracts metadata and pushes<br>row directly to your Google Sheet
+            </div>
+            <div class="dz-fmts">
+              <span class="ft ft-html">.html</span>
+              <span class="ft ft-docx">.docx</span>
+              <span class="ft ft-pdf">.pdf</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div id="moduleBannerWrap"></div>
-      <div class="filter-row" id="filterRow"></div>
-      <div class="search-row">
-        <input type="text" id="searchBox" placeholder="Search resources, topics, definitions..." oninput="renderResources()" />
-      </div>
-      <div class="res-list" id="resList">
-        <div class="list-empty">
-          <span class="list-empty-icon">&#128193;</span>
-          <div class="list-empty-t">Loading resources...</div>
-          <div class="loading-dots"><span></span><span></span><span></span></div>
+
+      <!-- Processing queue -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">Queue</div>
+          <div class="card-head-sub" id="qCount">0 files</div>
+        </div>
+        <div class="card-body" style="padding:10px">
+          <div class="queue" id="queue">
+            <div class="empty">
+              <span class="empty-icon">&#128464;</span>
+              <div class="empty-t">No files yet</div>
+              <div class="empty-s">Drop files above to start</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- RIGHT - AI companion -->
-    <div class="panel panel-ai">
-      <div class="panel-head">
-        <span class="panel-head-icon">&#128172;</span>
-        <div class="panel-head-title">AI companion</div>
-      </div>
-      <div class="mode-pills" id="modePills"></div>
-      <div class="tts-bar" id="ttsBar" style="display:none">
-        <span class="tts-label">&#128266; Read aloud</span>
-        <button class="tts-btn" id="ttsToggle" onclick="toggleTTS()">Off</button>
-        <button class="tts-btn" onclick="stopTTS()">&#9632; Stop</button>
-      </div>
-      <div class="chat-msgs" id="chatMsgs"></div>
-      <div class="quick-strip" id="quickStrip"></div>
-      <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Ask about your lessons..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMsg()" />
-        <button class="send-btn sb7" id="sendBtn" onclick="sendMsg()">Send</button>
-      </div>
-    </div>
+    </div><!-- /LEFT COLUMN -->
 
-  </div>
-
-  <div class="disclaimer">
-    <span>&#9888;</span>
-    <span>This AI is your <strong>thinking partner</strong>, not your answer machine. It will push back, ask questions, and make you defend your reasoning. Always check your class notes and SEQTA resources too.</span>
-  </div>
-
-  <!-- Flashcards modal -->
-  <div class="fc-overlay" id="fcOverlay" onclick="if(event.target===this) closeFlashcards()">
-    <div class="fc-modal">
-      <div class="fc-head">
-        <div class="fc-head-title">&#127183; Flashcards</div>
-        <button class="fc-close" onclick="closeFlashcards()">&#10005;</button>
+    <!-- RIGHT COLUMN - Output panel -->
+    <div class="card" style="min-height:480px">
+      <div class="card-head">
+        <div class="card-head-title">Output</div>
+        <div class="card-head-sub" id="outName">-</div>
       </div>
-      <div class="fc-controls">
-        <select id="fcModuleSelect" onchange="fcRebuildDeck()"></select>
-        <button class="fc-btn" onclick="fcShuffle()">&#128256; Shuffle</button>
-      </div>
-      <div class="fc-body" id="fcBody"></div>
-    </div>
-  </div>
 
-  <!-- Quiz modal -->
-  <div class="fc-overlay" id="qzOverlay" onclick="if(event.target===this) closeQuiz()">
-    <div class="fc-modal">
-      <div class="fc-head">
-        <div class="fc-head-title">&#127919; Quiz</div>
-        <button class="fc-close" onclick="closeQuiz()">&#10005;</button>
+      <!-- Empty state - shown until a processed file is selected -->
+      <div id="outEmpty" class="card-body">
+        <div class="empty">
+          <span class="empty-icon">&#9881;</span>
+          <div class="empty-t">Select a file from the queue</div>
+          <div class="empty-s">
+            Click a processed file to review, edit and push to your Sheet.
+          </div>
+        </div>
       </div>
-      <div class="qz-body" id="qzBody"></div>
-    </div>
-  </div>
 
-</div>
+      <!-- Output content - hidden until a file is selected -->
+      <div id="outContent" style="display:none">
+        <div class="otabs">
+          <div class="otab on" onclick="showTab('review')">Review and edit</div>
+          <div class="otab"    onclick="showTab('csv')">Sheet row</div>
+          <div class="otab"    onclick="showTab('meta')">Updated HTML</div>
+        </div>
+
+        <!-- Tab: Review and edit extracted metadata -->
+        <div class="opanel show" id="tab-review">
+          <div id="reviewBody"></div>
+        </div>
+
+        <!-- Tab: CSV row ready to paste into Google Sheets -->
+        <div class="opanel" id="tab-csv">
+          <div class="notice n-green">
+            &#10003; This row matches the Sheet schema. Push to Sheet or copy manually.
+          </div>
+          <div class="csv-wrap">
+            <table class="csv-t" id="csvTable"></table>
+          </div>
+          <div class="copy-row">
+            <button class="btn btn-ghost btn-sm" onclick="copyCSV()">&#10064; Copy row</button>
+            <button class="btn btn-green btn-sm" onclick="dlCSV()">&#8595; Download</button>
+          </div>
+        </div>
+
+        <!-- Tab: Updated HTML with page-meta block injected -->
+        <div class="opanel" id="tab-meta">
+          <div class="notice n-amber">
+            &#9432; Updated HTML with <code>page-meta</code> block reflecting current metadata.
+            The student hub reads this block to surface content chunks.
+            If your file already has a page-meta block it has been updated in place.
+          </div>
+          <div class="code-out" id="metaOut"></div>
+          <div class="copy-row">
+            <button class="btn btn-ghost btn-sm" onclick="copyMeta()">&#10064; Copy</button>
+            <button class="btn btn-blue btn-sm"  onclick="dlMeta()">&#8595; Download updated HTML</button>
+          </div>
+        </div>
+      </div><!-- /outContent -->
+    </div><!-- /RIGHT COLUMN -->
+
+  </div><!-- /cols -->
+</div><!-- /page -->
+
 <script>
 /**
  * =============================================================================
- * DigiTech Hub v2 - Client Script
+ * DigiTech Resource Converter - Client Script
  * =============================================================================
  *
- * Data flow:
- *   Page load
- *     -> loadSchedule()   fetch Schedule tab, find active module for class
- *     -> loadResources()  fetch Resources tab, filter by class
- *     -> renderResources() show filtered + module-highlighted cards
- *     -> newChat()        show mode welcome message
+ * Architecture overview:
  *
- *   Student sends message
- *     -> Apps Script buildDynamicPrompt() - built server-side from Sheet
- *     -> POST to Apps Script AI proxy
- *     -> renderAIResponse()   chunks into readable blocks
+ *   User drops file
+ *     -> readFile()         extract text from html/docx/pdf
+ *     -> extractWithAI()   send to Apps Script AI proxy, get JSON metadata
+ *     -> review panel       user can edit extracted data
+ *     -> generate()         build CSV row and updated HTML
+ *     -> pushRowToSheet()   POST to Apps Script Sheet API
  *
- *   Schedule update (teacher flips active=TRUE in Sheet)
- *     -> Next page load picks it up automatically - no code change needed
+ * State is held in two module-level arrays:
+ *   fileList[]  - File objects from the drop event
+ *   results{}   - Map of filename -> processing result object
+ *
+ * Processing is sequential (one file at a time) via processNext().
+ * This avoids hammering the Apps Script proxy with concurrent requests.
  * =============================================================================
  */
 
-// =============================================================================
-// CONFIG - update CURRENT_WEEK each Monday
-// =============================================================================
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQmwcLH_smIQktJIHVC-rPjU5NNf_OhMk9hMeb4H_7uPf8UY7h/exec';
-
-/**
- * Write token - only needed for converter (append/update/delete).
- * Chat action is public - no token needed. This is intentionally
- * NOT used in the hub so it does not appear in browser network traffic.
- */
-const CURRENT_WEEK = 6;
-
-
-/**
- * Quiz configuration.
- * QUIZ_POINTS_PER_CORRECT - points per correct answer.
- * QUIZ_MIN_CORRECT_TO_SUBMIT - minimum correct before Submit unlocks.
- * QUIZ_OPTION_WORD_CAP - max words per answer option (trims to shortest).
- * QUIZ_MAX_MISSES - misses before score resets to zero.
- */
-const QUIZ_POINTS_PER_CORRECT    = 10;
-const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
-const QUIZ_OPTION_WORD_CAP       = 8;
-const QUIZ_MAX_MISSES            = 3;
-
-/**
- * Column schema - must match Sheet header row exactly.
- * The 'module' column is the join key between Resources and Schedule tabs.
- */
-const COLS = ['id','class','term','week','module','type','title','summary','topics',
-  'file_format','url','source','print_ready','onenote_path','definitions',
-  'success_criteria','tasks','key_concepts','current','locked'];
-
-/**
- * Class name mapping - internal key -> Sheet value
- */
-const CLASS_NAMES = {'7':'Year 7','8':'Year 8','910':'Year 9/10','inq':'Inquiry'};
-
-/**
- * Quick prompt suggestions per class per mode.
- */
-const QUICK_PROMPTS = {
-  '7':{
-    eli5    :['RAM please','What is binary?','What is a CPU?','What is the internet?','What is a pixel?','What does a GPU do?','What is an operating system?','What is a file?','What is a network?','What is storage?'],
-    explain :['What is RAM?','Explain binary','Hardware vs software','How does a file travel?','What is an IP address?','How does a CPU work?','Explain file naming conventions','What is cloud storage?','How does WiFi work?','What is metadata?'],
-    quiz    :['Quiz me on binary','Test me on hardware','File journey quiz','Test everything','Quiz me on storage types','Test me on input and output devices','Binary to decimal quiz','Quiz me on file types','Hardware components quiz','Network basics quiz'],
-    debate  :['Should schools track devices?','Who owns your data?','Should AI mark work?','Is the digital divide fair?','Should phones be banned in schools?','Does technology make us less creative?','Should kids have online privacy from parents?','Is it okay to use AI for homework?'],
-    help    :['Help with my system diagram','Stuck on the assessment','Check my binary','Help me start the file journey task','Help me name my files correctly','How do I set up my OneDrive folder?','Help me write my reflection','Check my hardware list']
-  },
-  '8':{
-    eli5    :['What is WiFi?','What is hacking?','What is a spreadsheet?','What is encryption?','What is a firewall?','What is phishing?','What is a protocol?','What is two-factor auth?','What is a packet?','What is malware?'],
-    explain :['What is a network?','Explain cybersecurity','What is a database?','How does the internet work?','Explain TCP/IP','What is a VPN?','How does encryption work?','What is a LAN vs WAN?','Explain social engineering','What is data integrity?'],
-    quiz    :['Quiz me on networks','Test me on cyber threats','Spreadsheet formulas quiz','Data and binary quiz','Network topology quiz','Cybersecurity terms quiz','Quiz me on spreadsheet functions','Test me on data types','Protocol quiz','Quiz me on everything'],
-    debate  :['Should governments monitor internet traffic?','Is personal data ever truly private?','Should schools block social media?','Who is responsible for cybercrime?','Should hackers who expose flaws be punished?','Is free WiFi a human right?','Should companies profit from your data?','Can AI ever be truly secure?'],
-    help    :['Help with my spreadsheet','Stuck on my data project','Help with my digital solution','Check my network diagram','Help me write my cybersecurity report','My formula is not working','Help plan my solution','Check my network topology']
-  },
-  '910':{
-    eli5    :['PWM in simple words','What does def do?','Why use functions?','What is duty cycle?','What is a loop?','What is a variable?','What does return do?','What is a list in Python?','What is a sensor?','What is iteration?'],
-    explain :['Explain PWM','What is a function?','Bit:Bot XL wiring','Tolerance in 3D printing','Explain for loops in Python','What is a parameter vs argument?','How does a servo work?','Explain boolean logic','What is object-oriented programming?','How does the micro:bit read sensors?'],
-    quiz    :['Quiz me on Python','Test micro:bit sensors','3D printing quiz','Mix both terms','Python syntax quiz','Quiz me on functions','Bit:Bot wiring quiz','Test me on loops','Quiz me on data types','Test me on everything'],
-    debate  :['Robots replacing workers?','Who owns a 3D design?','AI in schools?','Autonomous vehicles and blame','Should Python be taught in primary school?','Is automation fair to workers?','Who is responsible when AI makes a mistake?','Should 3D printed weapons be illegal?'],
-    help    :['My Bit:Bot code is wrong','Help plan my portfolio','Stuck on a function','Assessment help','My loop is not working','Help me debug this','Help me plan my 3D design','Check my Python logic']
-  },
-  'inq':{
-    eli5    :['What is coding?','What is AI?','How does WiFi work?','What is an algorithm?','What is a robot?','What is the cloud?','What is an app?','What is virtual reality?','What is open source?','What is a database?'],
-    explain :['How does AI work?','What can I make with a micro:bit?','How does 3D printing work?','What is game design?','How do recommendation algorithms work?','What is machine learning?','How does a search engine work?','Explain how apps are made','What is cybersecurity?','How does GPS work?'],
-    quiz    :['Quiz me on anything tech','Test me on AI','What do I know about coding?','Tech trivia','Quiz me on the internet','Test me on robots','AI and machine learning quiz','What do I know about apps?','Quiz me on digital safety','Random tech quiz'],
-    debate  :['Will AI take over all jobs?','Should kids learn to code?','Is social media good or bad?','Should robots have rights?','Should AI be used in art?','Is screen time really harmful?','Should the internet be free for everyone?','Can technology solve climate change?'],
-    help    :["I want to build something - where do I start?",'Help me with my project idea','I am stuck on my creation','What should I make next?','Help me pick a project','I want to learn Python - where do I start?','Help me design my project','How do I present my work?']
-  }
-};
 
 // =============================================================================
-// STATE
+// CONFIGURATION
 // =============================================================================
 
-let currentClass = '7';
-let currentMode  = 'explain';
-let currentTerm  = 0;
-let currentType  = 'all';
-let allResources = [];
-let schedule     = [];
-let activeModule = null;    // Current module name from Schedule tab
-let messages     = [];
-let aiLoading    = false;
-let ttsEnabled   = false;
-let currentUtterance = null;
-
-
-// Quiz state
-let qzDeck          = [];
-let qzIndex         = 0;
-let qzCorrect       = 0;
-let qzMisses        = 0;
-let qzAnswered      = 0;
-let qzAnsweredThisQ = false;
-let qzName          = '';
-let qzGeneralPool   = null;
-let qzSelectedIndex = -1;
-let qzJustReset     = false;
-
-// =============================================================================
-// SCHEDULE TAB
-// Fetches the Schedule tab and finds the active module for a given class.
-// =============================================================================
+/** Apps Script web app URL - all API and proxy calls go here */
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQmwcLH_smIQktJIHVC-rPjU5NNf_OhMk9hMeb4H_7uPf8UY7h/exec';
 
 /**
- * Fetches the Schedule tab from the Apps Script endpoint.
- * Looks for action=getSchedule - falls back gracefully if not yet deployed.
- * Once loaded, calls updateActiveModule() to highlight the current module.
+ * Write token — NOT stored here anymore.
+ *
+ * I removed the hardcoded token from this file because index.html is deployed
+ * publicly on GitHub Pages, which means anyone could view source and use the
+ * token to write directly to the Sheet, bypassing the converter UI.
+ *
+ * Instead, the token is fetched from Apps Script at load time via the
+ * getWriteToken action. Apps Script checks Session.getActiveUser() and only
+ * returns the token to a signed-in school Google account. The token lives in
+ * memory only — it is never written into the HTML or stored in localStorage.
+ *
+ * If the browser is not signed into a school Google account, writeToken stays
+ * null and all write actions (push, delete, AI proxy) show an auth error.
  */
-async function loadSchedule() {
+let writeToken = null;      // populated by initWriteToken() on page load
+let authedEmail = null;     // school email of the authenticated user
+
+/**
+ * Fetches the write token from Apps Script.
+ * Apps Script checks the caller's Google session — only school accounts pass.
+ * Updates the auth status badge in the UI.
+ */
+async function initWriteToken() {
+  const badge  = document.getElementById('authBadge');
+  const status = document.getElementById('authStatus');
   try {
-    const res  = await fetch(`${SCRIPT_URL}?action=getSchedule`);
+    const res  = await fetch(SHEET_URL + '?action=getWriteToken');
     const data = await res.json();
-    if (data.success && data.rows) {
-      schedule = data.rows;
-    }
-  } catch (e) {
-    // Schedule tab not yet set up - hub still works, just without module context
-    schedule = [];
-  }
-  updateActiveModule();
-}
-
-/**
- * Finds the active module for the current class from the cached schedule.
- * Updates the module badge in the header and the module banner above resources.
- */
-function updateActiveModule() {
-  const className = CLASS_NAMES[currentClass];
-
-  // Find the active=TRUE row for this class
-  const activeRow = schedule.find(r =>
-    r.class === className &&
-    (r.active === true || r.active === 'TRUE' || r.active === 'true')
-  );
-
-  activeModule = activeRow ? activeRow.module : null;
-
-  // Update header badge
-  const modBadge = document.getElementById('moduleBadge');
-  modBadge.textContent = activeModule
-    ? activeModule
-    : 'No active module';
-
-  // Update module banner above resource list
-  const wrap = document.getElementById('moduleBannerWrap');
-  if (activeModule) {
-    const cls = `mb-${currentClass === '910' ? '910' : currentClass}`;
-    wrap.innerHTML = `<div class="module-banner ${cls}">
-      <span>&#127989;</span>
-      <span>Current module: <strong>${esc(activeModule)}</strong></span>
-    </div>`;
-  } else {
-    wrap.innerHTML = '';
-  }
-}
-
-// =============================================================================
-// RESOURCE LOADING AND RENDERING
-// =============================================================================
-
-/**
- * Fetches all unlocked rows for the current class from the Sheet.
- */
-async function loadResources() {
-  const className = CLASS_NAMES[currentClass];
-  document.getElementById('resList').innerHTML = `
-    <div class="list-empty">
-      <span class="list-empty-icon">&#128193;</span>
-      <div class="list-empty-t">Loading resources...</div>
-      <div class="loading-dots"><span></span><span></span><span></span></div>
-    </div>`;
-
-  try {
-    const res  = await fetch(`${SCRIPT_URL}?action=getRows&class=${encodeURIComponent(className)}`);
-    const data = await res.json();
-    if (data.success && data.rows) {
-      // Normalise legacy type labels from before the rename (June 2025)
-      // Reference -> Guide, Explainer -> Interactive
-      const TYPE_MAP = {'Reference':'Guide','Explainer':'Interactive'};
-      allResources = data.rows.map(r => ({
-        ...r,
-        type: TYPE_MAP[r.type] || r.type
-      }));
-      renderResources();
+    if (data.success && data.token) {
+      writeToken   = data.token;
+      authedEmail  = data.email;
+      if (badge)  badge.className  = 'auth-badge auth-ok';
+      if (status) status.innerHTML = '&#9989; Signed in: ' + data.email;
     } else {
-      showResourceError(data.message || 'Could not load resources');
+      writeToken  = null;
+      if (badge)  badge.className  = 'auth-badge auth-fail';
+      if (status) status.innerHTML = '&#9888; Not signed in &mdash; open converter in Chrome signed into your school Google account (imiller@emmanuel.tas.edu.au)';
     }
   } catch (err) {
-    showResourceError('Connection error - ' + err.message);
+    writeToken = null;
+    if (badge)  badge.className  = 'auth-badge auth-fail';
+    if (status) status.innerHTML = '&#10007; Auth check failed: ' + err.message;
   }
 }
 
-function showResourceError(msg) {
-  document.getElementById('resList').innerHTML = `
-    <div class="list-empty">
-      <span class="list-empty-icon">&#9888;</span>
-      <div class="list-empty-t">Could not load resources</div>
-      <div class="list-empty-s">${esc(msg)}</div>
-    </div>`;
+/**
+ * Column schema - must match the Google Sheet header row exactly.
+ * Used to build ordered CSV rows and to map objects to Sheet rows.
+ *
+ * FIX (id-collision / module bug, June 2026):
+ *   - Added 'module' column. The Apps Script Sheet schema has 20 columns
+ *     including 'module', which is the JOIN KEY between the Resources tab
+ *     and the Schedule tab (see HUB_REFERENCE.md). This converter was
+ *     previously missing it, so every row pushed here wrote an empty
+ *     module value - meaning the AI companion's getModuleChunks() lookup
+ *     in Apps Script never matched these rows. They were visible in the
+ *     resource browser but invisible to the AI's context injection.
+ */
+const COLS = [
+  'id', 'class', 'term', 'week', 'module', 'type', 'title', 'summary',
+  'topics', 'file_format', 'url', 'source', 'print_ready',
+  'onenote_path', 'definitions', 'success_criteria', 'tasks',
+  'key_concepts', 'current', 'locked'
+];
+
+/**
+ * Background colours for file format badges in the queue.
+ * Keyed by lowercase file extension.
+ */
+const FMT_BG  = { html:'#E6F1FB', htm:'#E6F1FB', docx:'#EAF3DE', doc:'#EAF3DE', pdf:'#FCEBEB' };
+const FMT_COL = { html:'#0C447C', htm:'#0C447C', docx:'#27500A', doc:'#27500A', pdf:'#791F1F' };
+
+/**
+ * Canonical list of Drive module folder names.
+ * Must exactly match:
+ *   - the folder names under Modules/ in drive_folder_ids.md
+ *   - the 'module' column values used in the Schedule tab
+ *   - the 'module' field in each lesson's LESSON config block
+ *     (see LESSON_TEMPLATE_REFERENCE.md - "Module name must match Sheet")
+ *
+ * Used to populate the Module dropdown in the review form and to give
+ * the AI extractor a closed list to choose from (so it can't invent a
+ * module name that won't match anything in the Schedule tab).
+ */
+const MODULES = [
+  '3D Printing and Design','AI and Machine Learning','Advanced Cybersecurity',
+  'Binary Numbers and Data Representation','Bit:Bot Automation','Capstone Project',
+  'Creating a Digital Solution','Data Compression','Data Science with Python',
+  'Digital Solution Project','Digital Systems and Hardware','Extension and Enrichment',
+  'File Journeys and Networks','General-purpose Programming','Microsoft Office Suite',
+  'Networks and Cyber Security','Object-oriented Programming','Open Exploration',
+  'Privacy and Ethics','Python and micro:bit','Web Development','Working with Data'
+];
+
+/**
+ * Default values for a blank metadata row.
+ * Used when guessing from filename or when AI extraction is unavailable.
+ *
+ * FIX: added a default 'module' so a fresh BLANK row always has SOME
+ * module value (better than silently writing '' to the Sheet).
+ */
+const BLANK = {
+  id:'', class:'Year 7', term:'2', week:'1', module:'Digital Systems and Hardware', type:'Lesson Outline',
+  title:'', summary:'', topics:'', file_format:'html', url:'', source:'Drive',
+  print_ready:'false', onenote_path:'', definitions:'', success_criteria:'',
+  tasks:'', key_concepts:'', current:'false', locked:'false'
+};
+
+
+// =============================================================================
+// MODULE STATE
+// =============================================================================
+
+/** Ordered list of File objects from drop events */
+let fileList = [];
+
+/**
+ * Processing results keyed by filename.
+ * Shape: { status, data, raw, error, mode, pushed, driveURL, _csv, _html }
+ */
+let results = {};
+
+/** Currently selected filename in the queue */
+let active = null;
+
+/** Whether a file is currently being processed (prevents concurrent runs) */
+let processing = false;
+
+/** Whether the push log panel is visible */
+let pushLogVisible = false;
+
+
+// =============================================================================
+// SHEET CONNECTION
+// Ping and log functions for the connection status bar.
+// =============================================================================
+
+/**
+ * Appends a timestamped message to the push log panel.
+ *
+ * @param {string} msg  - Message text
+ * @param {string} type - One of 'pass', 'fail', 'info', 'warn'
+ */
+function pushLog(msg, type = 'info') {
+  const el  = document.getElementById('pushLog');
+  const t   = new Date().toLocaleTimeString('en-AU', { hour12: false });
+  const cls = { pass:'pl-pass', fail:'pl-fail', info:'pl-info', warn:'pl-warn' }[type] || 'pl-info';
+  el.innerHTML += `<div><span class="pl-time">${t}</span><span class="${cls}">${esc(msg)}</span></div>`;
+  el.scrollTop = el.scrollHeight;
 }
 
-/** Renders filter pills for current class */
-function renderFilters() {
-  const ac = `active-${currentClass === '910' ? '910' : currentClass}`;
-  const termBtns = [{label:'All terms',val:0},{label:'Term 1',val:1},{label:'Term 2',val:2},{label:'Term 3',val:3},{label:'Term 4',val:4}];
-  const typeBtns = ['all','Lesson Outline','Worksheet','Assessment','Rubric','Guide','Interactive'];
-  document.getElementById('filterRow').innerHTML =
-    termBtns.map(b => `<button class="filter-pill ${currentTerm===b.val?ac:''}" onclick="setTermFilter(${b.val})">${b.label}</button>`).join('') +
-    '<span style="width:1px;background:var(--border2);align-self:stretch;margin:2px 3px"></span>' +
-    typeBtns.map(t => `<button class="filter-pill ${currentType===t?ac:''}" onclick="setTypeFilter('${t}')">${t==='all'?'All types':t}</button>`).join('');
+/** Toggles the push log panel visibility */
+function togglePushLog() {
+  pushLogVisible = !pushLogVisible;
+  document.getElementById('pushLog').classList.toggle('show', pushLogVisible);
 }
 
 /**
- * Filters and renders resource cards.
- * Resources matching the active module get a green left border and sort first.
+ * Sends a ping to the Apps Script endpoint and updates the status dot.
+ * Called on page load and when the user clicks the Test button.
  */
-function renderResources() {
-  const search    = (document.getElementById('searchBox')?.value||'').toLowerCase();
-  const className = CLASS_NAMES[currentClass];
+async function pingSheet() {
+  const dot    = document.getElementById('sheetDot');
+  const status = document.getElementById('sheetStatus');
 
-  let filtered = allResources.filter(r => {
-    if (r.class !== className) return false;
-    if (currentTerm !== 0 && String(r.term) !== String(currentTerm)) return false;
-    if (currentType !== 'all' && r.type !== currentType) return false;
-    if (search) {
-      const hay = [r.title,r.summary,r.topics,r.definitions,r.key_concepts,r.module].join(' ').toLowerCase();
-      if (!hay.includes(search)) return false;
+  dot.className = 'sheet-dot checking';
+  status.textContent = 'Testing connection...';
+  pushLog('Pinging Apps Script endpoint...', 'info');
+
+  try {
+    const res  = await fetch(SHEET_URL + '?action=ping');
+    const data = await res.json();
+
+    if (data.success) {
+      dot.className   = 'sheet-dot connected';
+      status.textContent = 'Connected - DigiTech Resources 2026';
+      pushLog('Sheet connected: ' + data.message, 'pass');
+    } else {
+      throw new Error(data.message || 'Unexpected response');
     }
-    return true;
-  });
+  } catch (err) {
+    dot.className   = 'sheet-dot error';
+    status.textContent = 'Connection failed - ' + err.message;
+    pushLog('Sheet connection failed: ' + err.message, 'fail');
+  }
+}
 
-  const list = document.getElementById('resList');
-  if (!filtered.length) {
-    list.innerHTML = `<div class="list-empty"><span class="list-empty-icon">&#128269;</span><div class="list-empty-t">No resources found</div><div class="list-empty-s">Try a different filter or search term</div></div>`;
+/**
+ * Sends a single row to the Sheet via the Apps Script append action.
+ * If a row with the same id already exists AND it's the same lesson
+ * (matched on title/url), the script will update it in place. If the
+ * id exists but belongs to a DIFFERENT lesson, the script now rejects
+ * the push with an "ID collision" message instead of silently
+ * overwriting the other row (see digitech_sheet_script.js appendRow).
+ *
+ * @param {Object} rowData - Metadata object matching the COLS schema
+ * @returns {boolean} true if the push succeeded
+ */
+async function pushRowToSheet(rowData) {
+  if (!writeToken) {
+    pushLog('Auth error: not signed in with a school Google account', 'fail');
+    alert('You need to open this converter in Chrome signed into your school Google account.');
+    return false;
+  }
+  pushLog('Pushing row: ' + rowData.id + '...', 'info');
+  try {
+    const res = await fetch(SHEET_URL, {
+      method  : 'POST',
+      headers : { 'Content-Type': 'text/plain' },
+      body    : JSON.stringify({ action: 'append', token: writeToken, row: rowData })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      pushLog('Pushed to Sheet: ' + rowData.id, 'pass');
+      return true;
+    }
+    pushLog('Sheet error: ' + data.message, 'fail');
+    return false;
+
+  } catch (err) {
+    pushLog('Push failed: ' + err.message, 'fail');
+    return false;
+  }
+}
+
+/**
+ * Pushes all processed (unpushed) files to the Sheet in sequence.
+ * Skips files that have already been pushed to avoid duplicates.
+ */
+async function pushAllToSheet() {
+  const ready = fileList.filter(f => results[f.name].data && results[f.name]._csv);
+  if (!ready.length) { alert('No files ready - process files first'); return; }
+
+  pushLog('Pushing ' + ready.length + ' rows...', 'info');
+  if (!pushLogVisible) togglePushLog();
+
+  for (const f of ready) {
+    if (results[f.name].pushed) continue;
+    const ok = await pushRowToSheet(results[f.name].data);
+    if (ok) {
+      results[f.name].pushed = true;
+      results[f.name].status = 'pushed';
+    }
+    renderQueue();
+  }
+  pushLog('Done', 'pass');
+  updateDLBar();
+}
+
+
+// =============================================================================
+// FILE HANDLING
+// Drag-and-drop events, file reading, and the processing queue.
+// =============================================================================
+
+function dzOver(e)  { e.preventDefault(); document.getElementById('dropzone').classList.add('over'); }
+function dzLeave()  { document.getElementById('dropzone').classList.remove('over'); }
+function dzDrop(e)  { e.preventDefault(); dzLeave(); addFiles([...e.dataTransfer.files]); }
+function onSelect(e){ addFiles([...e.target.files]); }
+
+/**
+ * Converts a filename into a safe, unique, kebab-case id.
+ *
+ * FIX (id-collision bug, June 2026):
+ *   Previously the AI was asked to invent an id (e.g. "y7-t2-w4-worksheet-01"
+ *   or "y7-digital-systems-p2"). Two different "Part 2" lessons with similar
+ *   module names both got the SAME AI-generated id, so the second push
+ *   matched the first row in the Sheet and overwrote it completely - the
+ *   first lesson's data was lost.
+ *
+ *   Filenames, on the other hand, are already unique per lesson (you can't
+ *   have two files called the same thing in the same folder). So we now
+ *   derive the id directly from the filename instead of trusting the AI,
+ *   guaranteeing that two different files always get two different ids.
+ *
+ * Example: "Y7_BinaryImages_P2_LessonPlan.html" -> "y7-binaryimages-p2-lessonplan"
+ *
+ * @param {string} filename - Original filename including extension
+ * @returns {string} kebab-case id with no extension
+ */
+function filenameToId(filename) {
+  return filename
+    .replace(/\.[^.]+$/, '')        // strip the file extension
+    .toLowerCase()                  // normalise case
+    .replace(/[^a-z0-9]+/g, '-')    // collapse any run of non-alphanumeric chars to a single dash
+    .replace(/^-+|-+$/g, '');       // trim leading/trailing dashes
+}
+
+/**
+ * Adds files to the queue, skipping any already present by name.
+ * Triggers sequential processing via processNext().
+ *
+ * @param {File[]} newFiles - Array of File objects from drop or input event
+ */
+function addFiles(newFiles) {
+  newFiles.forEach(f => {
+    if (!fileList.find(x => x.name === f.name)) {
+      fileList.push(f);
+      results[f.name] = {
+        status  : 'pending',
+        data    : null,
+        raw     : null,     // Original HTML string (null for docx/pdf)
+        error   : null,
+        mode    : 'ai',
+        pushed  : false,
+        driveURL: null      // Drive URL extracted from footer meta
+      };
+    }
+  });
+  renderQueue();
+  processNext();
+}
+
+/** Re-renders the queue list from current fileList and results state */
+function renderQueue() {
+  const countEl = document.getElementById('qCount');
+  countEl.textContent = fileList.length + ' file' + (fileList.length !== 1 ? 's' : '');
+
+  const q = document.getElementById('queue');
+  if (!fileList.length) {
+    q.innerHTML = `<div class="empty">
+      <span class="empty-icon">&#128464;</span>
+      <div class="empty-t">No files yet</div>
+      <div class="empty-s">Drop files above</div>
+    </div>`;
     return;
   }
-
-  // Sort: active module first, then by term and week
-  filtered.sort((a,b) => {
-    const aIsActive = activeModule && a.module === activeModule;
-    const bIsActive = activeModule && b.module === activeModule;
-    if (aIsActive && !bIsActive) return -1;
-    if (!aIsActive && bIsActive) return 1;
-    if (Number(a.term) !== Number(b.term)) return Number(a.term) - Number(b.term);
-    return Number(a.week) - Number(b.week);
-  });
-
-  list.innerHTML = filtered.map(r => buildResourceCard(r)).join('');
+  q.innerHTML = fileList.map(f => buildQueueItem(f)).join('');
 }
 
 /**
- * Builds a resource card HTML string.
- * Cards from the active module get the green left border (.current-mod).
+ * Builds the HTML string for a single queue item.
+ *
+ * @param {File} f - File object
+ * @returns {string} HTML string
  */
-function buildResourceCard(r) {
-  const isActive = activeModule && r.module === activeModule;
-  const fmt      = (r.file_format||'html').toLowerCase();
-  const accMap   = {'7':'ract-blue','8':'ract-green','910':'ract-purple','inq':'ract-teal'};
-  const acc      = accMap[currentClass]||'ract-blue';
-  const fmtBg    = {html:'#E6F1FB',htm:'#E6F1FB',docx:'#EAF3DE',doc:'#EAF3DE',pdf:'#FCEBEB',onenote:'#EEEDFE',video:'#FAEEDA'};
-  const fmtCol   = {html:'#0C447C',htm:'#0C447C',docx:'#27500A',doc:'#27500A',pdf:'#791F1F',onenote:'#3C3489',video:'#633806'};
-  const tagCls   = {html:'rt-html',docx:'rt-docx',pdf:'rt-pdf',onenote:'rt-onenote'};
-  const typeCls  = {'Guide':'rt-guide','Interactive':'rt-interactive','Lesson Outline':'rt-type','Worksheet':'rt-type','Assessment':'rt-type','Rubric':'rt-type'};
+function buildQueueItem(f) {
+  const r   = results[f.name];
+  const ext = f.name.split('.').pop().toLowerCase();
 
-  let actions = '';
-  if (fmt==='onenote') {
-    actions = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(r.id)}')">&#128211; How to find this</button>`;
-  } else if (fmt==='html'||fmt==='htm') {
-    const openUrl = r.url ? `window.open('${esc(r.url)}','_blank')` : 'void(0)';
-    if (r.type === 'Interactive') {
-      actions = `<button class="ract ${acc}" onclick="${openUrl}">&#9654; Launch</button>`;
-    } else {
-      actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button><button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#128065; Preview</button>`;
-    }
-  } else if (fmt==='docx'||fmt==='gdoc') {
-    const wordUrl  = r.url?r.url.replace('/view','/edit'):'#';
-    const printUrl = r.url?r.url.replace('/view','/export?format=pdf'):'#';
-    actions = `<button class="ract ${acc}" onclick="window.open('${esc(wordUrl)}','_blank')">&#128196; Open in Word</button>
-      ${r.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(printUrl)}','_blank')">&#128424; Print</button>`:''}`;
-  } else if (fmt==='pdf') {
-    actions = `<button class="ract ${acc}" onclick="window.open('${esc(r.url)}','_blank')">&#8599; Open</button>
-      ${r.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(r.url)}','_blank')">&#128424; Print</button>`:''}`;
-  } else if (fmt==='video') {
-    actions = `<button class="ract ${acc}" onclick="window.open('${esc(r.url)}','_blank')">&#9654; Watch</button>`;
-  }
+  const statusText = {
+    pending   : 'waiting',
+    processing: 'reading...',
+    done      : 'ready &#10003;',
+    pushed    : 'in Sheet &#10003;',
+    manual    : 'manual &#9998;',
+    error     : 'error &#10005;'
+  };
+  const statusCls = {
+    pending:'st-wait', processing:'st-proc', done:'st-done',
+    pushed:'st-pushed', manual:'st-man', error:'st-err'
+  };
+  const borderCls = {
+    pending:'', processing:'qproc', done:'qdone',
+    pushed:'qpushed', manual:'qmanual', error:'qerr'
+  };
 
-  const oneNoteBox = fmt==='onenote'&&r.onenote_path
-    ? `<div id="on-${esc(r.id)}" style="display:none"><div class="onenote-box"><div class="onenote-title">&#128211; How to find this in OneNote</div><div class="onenote-steps">${r.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
-    : '';
+  const isSelected = active === f.name;
 
-  // Parse chunk fields for the collapsible "Key info" section
-  const defs  = (r.definitions || '').split('|').filter(Boolean);
-  const sc    = (r.success_criteria || '').split('|').filter(Boolean);
-  const tasks = (r.tasks || '').split('|').filter(Boolean);
-  const hasExtra = defs.length || sc.length || tasks.length;
-
-  const extraHTML = hasExtra ? `
-    <div class="rcard-toggle">
-      <button class="rcard-toggle-btn" onclick="toggleExtra('${esc(r.id)}')">
-        <span id="rx-arrow-${esc(r.id)}">&#9656;</span> Key info
-      </button>
-    </div>
-    <div class="rcard-extra" id="rx-${esc(r.id)}">
-      ${defs.length ? `
-        <div class="rx-block">
-          <div class="rx-head">&#128218; Definitions</div>
-          ${defs.map(d => {
-            const idx = d.indexOf(':');
-            return idx > 0
-              ? `<div class="rx-item"><span class="rx-def-term">${esc(d.substring(0,idx).trim())}:</span> ${esc(d.substring(idx+1).trim())}</div>`
-              : `<div class="rx-item">${esc(d.trim())}</div>`;
-          }).join('')}
-        </div>` : ''}
-      ${sc.length ? `
-        <div class="rx-block">
-          <div class="rx-head">&#9989; Success criteria</div>
-          ${sc.map(s => `<div class="rx-item">${esc(s.trim())}</div>`).join('')}
-        </div>` : ''}
-      ${tasks.length ? `
-        <div class="rx-block">
-          <div class="rx-head">&#128203; Tasks</div>
-          ${tasks.map(t => `<div class="rx-item">${esc(t.trim())}</div>`).join('')}
-        </div>` : ''}
-    </div>` : '';
-
-  return `<div class="rcard ${isActive?'current-mod':''}" id="rc-${esc(r.id)}">
-    <div class="rcard-head">
-      <div class="rcard-fmt" style="background:${fmtBg[fmt]||'#F1EFE8'};color:${fmtCol[fmt]||'#444441'}">${fmt.toUpperCase()}</div>
-      <div class="rcard-info">
-        <div class="rcard-title" title="${esc(r.title)}">${esc(r.title)}</div>
-        <div class="rcard-meta">${esc(r.module||'')} - T${esc(String(r.term))} Wk${esc(String(r.week))} - ${esc(r.type)}</div>
+  return `<div class="qitem ${borderCls[r.status]} ${isSelected ? 'sel' : ''}"
+    onclick="selectFile('${f.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+    <div class="qi-row">
+      <div class="qi-fmt" style="background:${FMT_BG[ext]||'#F1EFE8'};color:${FMT_COL[ext]||'#444441'}">
+        ${ext.toUpperCase()}
       </div>
+      <div class="qi-name" title="${esc(f.name)}">${esc(f.name)}</div>
+      ${r.status === 'processing' ? '<div class="dots"><span></span><span></span><span></span></div>' : ''}
+      <div class="qi-st ${statusCls[r.status]}">${statusText[r.status]}</div>
     </div>
-    <div class="rcard-tags">
-      ${isActive?'<span class="rtag rt-cur">Current module</span>':''}
-      <span class="rtag ${tagCls[fmt]||'rt-type'}">${fmt.toUpperCase()}</span>
-      <span class="rtag ${typeCls[r.type]||'rt-type'}">${esc(r.type)}</span>
-    </div>
-    <div class="rcard-summary">${esc(r.summary||'')}</div>
-    <div class="rcard-actions">${actions}</div>
-    ${oneNoteBox}
-    ${extraHTML}
   </div>`;
 }
 
-function toggleOneNote(id) {
-  const el=document.getElementById('on-'+id);
-  if(el) el.style.display=el.style.display==='none'?'block':'none';
-}
-
-function toggleExtra(id) {
-  const el = document.getElementById('rx-' + id);
-  const arrow = document.getElementById('rx-arrow-' + id);
-  if (!el) return;
-  const showing = el.classList.toggle('show');
-  if (arrow) arrow.innerHTML = showing ? '&#9662;' : '&#9656;';
-}
-
-// =============================================================================
-// FLASHCARDS
-// Builds a deck of term/definition pairs from the 'definitions' field of
-// resources matching the current class, optionally filtered to one module.
-// =============================================================================
-
-let fcDeck    = [];
-let fcIndex   = 0;
-let fcFlipped = false;
-
 /**
- * Opens the flashcards modal, populates the module dropdown from the
- * current class's resources, and builds the initial deck.
- * Defaults to the active module if one exists.
+ * Processes the next pending file in the queue.
+ * Sequential - only one file processes at a time to avoid overwhelming
+ * the Apps Script proxy with concurrent requests.
+ *
+ * Flow:
+ *   1. Read file content (format-specific extraction)
+ *   2. Try AI extraction via proxy
+ *   3. On AI failure, fall back to manual mode with filename guess
+ *   4. Auto-push to Sheet on successful AI extraction
+ *
+ * FIX (id-collision bug, June 2026):
+ *   After AI extraction, we now OVERRIDE whatever id the AI returned
+ *   with one derived from the filename via filenameToId(). This is the
+ *   single most important line in this fix - it's what stops two
+ *   different lessons from ever being pushed under the same id.
+ *   The page-meta branch also gets the same override, in case an
+ *   authored page-meta block has a stale or duplicate id.
  */
-function openFlashcards() {
-  const className = CLASS_NAMES[currentClass];
-  const modules = [...new Set(
-    allResources.filter(r => r.class === className && (r.definitions||'').trim()).map(r => r.module)
-  )].filter(Boolean).sort();
+async function processNext() {
+  if (processing) return;
 
-  const sel = document.getElementById('fcModuleSelect');
-  let options = `<option value="__all__">All modules</option>`;
-  options += modules.map(m =>
-    `<option value="${esc(m)}" ${m === activeModule ? 'selected' : ''}>${esc(m)}${m === activeModule ? ' (current)' : ''}</option>`
-  ).join('');
-  sel.innerHTML = options;
+  const f = fileList.find(x => results[x.name].status === 'pending');
+  if (!f) return;
 
-  // Default to current module if it has definitions, else all modules
-  sel.value = (activeModule && modules.includes(activeModule)) ? activeModule : '__all__';
+  processing = true;
+  results[f.name].status = 'processing';
+  renderQueue();
 
-  fcRebuildDeck();
-  document.getElementById('fcOverlay').classList.add('show');
-}
-
-function closeFlashcards() {
-  document.getElementById('fcOverlay').classList.remove('show');
-}
-
-/**
- * Rebuilds the flashcard deck from allResources based on the selected
- * module filter. Each definition entry "Term: Definition" becomes one card.
- */
-function fcRebuildDeck() {
-  const className   = CLASS_NAMES[currentClass];
-  const selected    = document.getElementById('fcModuleSelect').value;
-
-  const cards = [];
-  allResources
-    .filter(r => r.class === className && (selected === '__all__' || r.module === selected))
-    .forEach(r => {
-      (r.definitions || '').split('|').filter(Boolean).forEach(item => {
-        const idx = item.indexOf(':');
-        if (idx > 0) {
-          cards.push({
-            term: item.substring(0, idx).trim(),
-            def : item.substring(idx + 1).trim(),
-            module: r.module || ''
-          });
-        }
-      });
-    });
-
-  // De-duplicate by term (case-insensitive) - keep first occurrence
-  const seen = new Set();
-  fcDeck = cards.filter(c => {
-    const key = c.term.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  fcIndex   = 0;
-  fcFlipped = false;
-  fcRender();
-}
-
-/** Shuffles the current deck (Fisher-Yates) and shows the first card */
-function fcShuffle() {
-  for (let i = fcDeck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [fcDeck[i], fcDeck[j]] = [fcDeck[j], fcDeck[i]];
-  }
-  fcIndex   = 0;
-  fcFlipped = false;
-  fcRender();
-}
-
-function fcFlip() {
-  fcFlipped = !fcFlipped;
-  fcRender();
-}
-
-function fcNext() {
-  if (fcIndex < fcDeck.length - 1) {
-    fcIndex++;
-    fcFlipped = false;
-    fcRender();
-  }
-}
-
-function fcPrev() {
-  if (fcIndex > 0) {
-    fcIndex--;
-    fcFlipped = false;
-    fcRender();
-  }
-}
-
-/** Renders the current card, progress counter, and nav buttons */
-function fcRender() {
-  const body = document.getElementById('fcBody');
-
-  if (!fcDeck.length) {
-    body.innerHTML = `<div class="fc-empty">
-      <div style="font-size:28px;margin-bottom:8px;opacity:.35">&#127183;</div>
-      <div style="font-weight:600;color:var(--ink2);margin-bottom:3px">No definitions yet</div>
-      <div style="font-size:12px;line-height:1.5">This module doesn't have any extracted definitions to study from yet.</div>
-    </div>`;
-    return;
-  }
-
-  const card = fcDeck[fcIndex];
-  body.innerHTML = `
-    <div class="fc-progress">Card ${fcIndex + 1} of ${fcDeck.length}${card.module ? ' - ' + esc(card.module) : ''}</div>
-    <div class="fc-card" onclick="fcFlip()">
-      <div>
-        ${fcFlipped
-          ? `<div class="fc-card-def">${esc(card.def)}</div>`
-          : `<div class="fc-card-term">${esc(card.term)}</div>`}
-        <div class="fc-card-hint">Tap to ${fcFlipped ? 'see term' : 'reveal definition'}</div>
-      </div>
-    </div>
-    <div class="fc-nav">
-      <button onclick="fcPrev()" ${fcIndex===0?'disabled':''}>&#8592; Prev</button>
-      <button onclick="fcNext()" ${fcIndex===fcDeck.length-1?'disabled':''}>Next &#8594;</button>
-    </div>`;
-}
-
-
-// =============================================================================
-// QUIZ
-// =============================================================================
-
-function qzTrimWords(text, n) {
-  const words = String(text).trim().split(/\s+/);
-  if (words.length <= n) return words.join(' ');
-  return words.slice(0, n).join(' ') + '\u2026';
-}
-
-function qzBuildOptions(correctText, distractors) {
-  const all = [correctText, ...distractors];
-  let minWords = Math.min(...all.map(t => String(t).trim().split(/\s+/).length));
-  minWords = Math.max(3, Math.min(minWords, QUIZ_OPTION_WORD_CAP));
-  const items = all.map((t, i) => ({ text: qzTrimWords(t, minWords), correct: i === 0 }));
-  for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [items[i], items[j]] = [items[j], items[i]];
-  }
-  return { options: items.map(it => it.text), correctIndex: items.findIndex(it => it.correct) };
-}
-
-function qzBuildDefinitionQuestions() {
-  const className = CLASS_NAMES[currentClass];
-  const pairs = [];
-  allResources
-    .filter(r => r.class === className && (r.definitions || '').trim())
-    .forEach(r => {
-      (r.definitions || '').split('|').filter(Boolean).forEach(item => {
-        const idx = item.indexOf(':');
-        if (idx > 0) pairs.push({ term: item.substring(0, idx).trim(), def: item.substring(idx + 1).trim() });
-      });
-    });
-  const seen = new Set();
-  const deduped = pairs.filter(p => { const k = p.term.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
-  if (deduped.length < 4) return [];
-  return deduped.map((p, i) => {
-    const otherDefs = deduped.filter((_, j) => j !== i).map(o => o.def).sort(() => Math.random() - 0.5).slice(0, 3);
-    const built = qzBuildOptions(p.def, otherDefs);
-    return { question: `What does "${p.term}" mean?`, options: built.options, correctIndex: built.correctIndex, type: 'definition' };
-  });
-}
-
-async function qzBuildGeneralQuestions() {
-  const className = CLASS_NAMES[currentClass];
-  if (qzGeneralPool === null) {
-    try {
-      const res  = await fetch(`${SCRIPT_URL}?action=getQuiz&class=${encodeURIComponent(className)}`);
-      const data = await res.json();
-      qzGeneralPool = (data.success && Array.isArray(data.rows)) ? data.rows : [];
-    } catch (err) { qzGeneralPool = []; }
-  }
-  return qzGeneralPool.filter(r => r.question && r.correct).map(r => {
-    const distractors = [r.wrong1, r.wrong2, r.wrong3].filter(Boolean);
-    if (distractors.length < 3) return null;
-    const built = qzBuildOptions(r.correct, distractors);
-    return { question: r.question, options: built.options, correctIndex: built.correctIndex, type: 'general' };
-  }).filter(Boolean);
-}
-
-function qzShuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-async function openQuiz() {
-  document.getElementById('qzOverlay').classList.add('show');
-  document.getElementById('qzBody').innerHTML = '<div class="qz-empty">Loading quiz...</div>';
-  const defQuestions = qzBuildDefinitionQuestions();
-  const genQuestions = await qzBuildGeneralQuestions();
-  qzDeck = qzShuffleArray([...defQuestions, ...genQuestions]);
-  qzIndex = 0; qzCorrect = 0; qzMisses = 0; qzJustReset = false;
-  qzAnswered = 0; qzAnsweredThisQ = false; qzSelectedIndex = -1;
-  qzRender();
-}
-
-function closeQuiz() { document.getElementById('qzOverlay').classList.remove('show'); }
-function qzSetName(val) { qzName = val; }
-
-function qzSelectAnswer(i) {
-  if (qzAnsweredThisQ || !qzDeck.length) return;
-  qzAnsweredThisQ = true; qzAnswered++; qzSelectedIndex = i;
-  const q = qzDeck[qzIndex];
-  if (i === q.correctIndex) { qzCorrect++; }
-  else { qzMisses++; if (qzMisses >= QUIZ_MAX_MISSES) qzJustReset = true; }
-  qzRender();
-}
-
-function qzNext() {
-  if (!qzAnsweredThisQ) return;
-  if (qzJustReset) { qzCorrect = 0; qzMisses = 0; qzJustReset = false; }
-  qzIndex++;
-  if (qzIndex >= qzDeck.length) { qzDeck = qzShuffleArray([...qzDeck]); qzIndex = 0; }
-  qzAnsweredThisQ = false; qzSelectedIndex = -1;
-  qzRender();
-}
-
-async function qzSubmit() {
-  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
-  const btn   = document.getElementById('qzSubmitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
-
-  let submitOk  = false;
-  let submitErr = '';
   try {
-    const res  = await fetch(SCRIPT_URL, {
-      method : 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body   : JSON.stringify({
-        action : 'emailQuizScore',
-        name   : qzName.trim() || 'Unknown',
-        class  : CLASS_NAMES[currentClass],
-        score,
-        correct: qzCorrect,
-        total  : qzAnswered,
-        date   : new Date().toISOString()
-      })
-    });
-    const data = await res.json();
-    submitOk  = data.success;
-    submitErr = data.message || '';
-  } catch (err) {
-    submitErr = err.message;
-  }
+    const { text, fmt, rawHTML, driveURL } = await readFile(f);
 
-  qzRender(true, submitOk, submitErr);
-}
+    results[f.name].raw           = rawHTML || null;
+    results[f.name].extractedText = text;
 
-function qzRender(submitted, submitOk, submitErr) {
-  const body = document.getElementById('qzBody');
-  if (!qzDeck.length) {
-    body.innerHTML = '<div class="qz-empty"><div style="font-size:28px;margin-bottom:8px;opacity:.35">&#127919;</div><div style="font-weight:600;color:var(--ink2);margin-bottom:3px">No quiz questions yet</div><div style="font-size:12px;line-height:1.5">Not enough definitions or quiz questions loaded yet.</div></div>';
-    return;
-  }
-  const q = qzDeck[qzIndex];
-  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
-  const canSubmit = qzCorrect >= QUIZ_MIN_CORRECT_TO_SUBMIT && qzName.trim().length > 0;
-  let optionsHtml = q.options.map((opt, i) => {
-    let cls = 'qz-opt';
-    if (qzAnsweredThisQ) { if (i === q.correctIndex) cls += ' correct'; else if (i === qzSelectedIndex) cls += ' incorrect'; }
-    return `<button class="${cls}" ${qzAnsweredThisQ ? 'disabled' : ''} onclick="qzSelectAnswer(${i})">${esc(opt)}</button>`;
-  }).join('');
-  let feedbackHtml = '';
-  if (qzAnsweredThisQ) {
-    if (qzSelectedIndex === q.correctIndex) feedbackHtml = '<div class="qz-feedback good">&#10003; Correct!</div>';
-    else if (qzJustReset) feedbackHtml = `<div class="qz-feedback bad">&#10007; That's ${QUIZ_MAX_MISSES} misses - score resets on next question.</div>`;
-    else feedbackHtml = '<div class="qz-feedback bad">&#10007; Not quite - correct answer is highlighted.</div>';
-  }
-  let submitHtml;
-  if (submitted) {
-    submitHtml = submitOk
-      ? '<div class="qz-sent">&#9989; Score sent to Mr Miller for the leaderboard!</div>'
-      : `<div class="qz-sent" style="color:var(--red)">&#10007; Could not send score - ${esc(submitErr || 'connection error')}. Let Mr Miller know your score manually.</div>`;
-  } else {
-    const remaining = Math.max(0, QUIZ_MIN_CORRECT_TO_SUBMIT - qzCorrect);
-    const hint = !qzName.trim() ? 'Enter your name to submit' : remaining > 0 ? `Get ${remaining} more correct to unlock submitting` : 'You can submit your score now';
-    submitHtml = `<div class="qz-submit-row"><button id="qzSubmitBtn" ${canSubmit ? '' : 'disabled'} onclick="qzSubmit()">&#128228; Submit score</button><div class="qz-submit-hint">${esc(hint)}</div></div>`;
-  }
-  body.innerHTML = `
-    <div class="qz-name-row"><input type="text" placeholder="Your name" value="${esc(qzName)}" oninput="qzSetName(this.value)" /></div>
-    <div class="qz-scorebar">
-      <span>Question ${qzIndex + 1} of ${qzDeck.length}</span>
-      <span><strong>${qzCorrect}</strong> correct &bull; <strong>${score}</strong> pts &bull; <strong>${qzMisses}</strong>/${QUIZ_MAX_MISSES} missed</span>
-    </div>
-    <div class="qz-question">${esc(q.question)}</div>
-    <div class="qz-options">${optionsHtml}</div>
-    ${feedbackHtml}
-    <div class="qz-next-row"><button onclick="qzNext()" ${qzAnsweredThisQ ? '' : 'disabled'}>Next question &#8594;</button></div>
-    ${submitHtml}`;
-}
+    // Capture Drive URL from file footer if embedded
+    if (rawHTML)    results[f.name].driveURL = extractDriveURL(rawHTML) || null;
+    if (driveURL)   results[f.name].driveURL = driveURL;
 
-function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
-function setTypeFilter(t){currentType=t;renderFilters();renderResources()}
+    // Check for embedded page-meta block - if found skip AI entirely
+    const pageMeta = rawHTML ? extractPageMeta(rawHTML) : null;
 
-// =============================================================================
-// CLASS AND MODE SWITCHING
-// =============================================================================
+    if (pageMeta) {
+      // page-meta found - authored metadata, no AI needed
+      if (results[f.name].driveURL) pageMeta.url = results[f.name].driveURL;
 
-function setClass(cls) {
-  currentClass = cls;
-  const tabs = {tab7:'7',tab8:'8',tab910:'910',tabinq:'inq'};
-  Object.entries(tabs).forEach(([id,c]) => {
-    document.getElementById(id).className = 'class-tab' + (c===cls?` active-${c===cls?cls:''}`:'');
-  });
-  document.getElementById('tab7').className   = 'class-tab'+(cls==='7'  ?' active-7':'');
-  document.getElementById('tab8').className   = 'class-tab'+(cls==='8'  ?' active-8':'');
-  document.getElementById('tab910').className = 'class-tab'+(cls==='910'?' active-910':'');
-  document.getElementById('tabinq').className = 'class-tab'+(cls==='inq'?' active-inq':'');
-  const sbMap={'7':'sb7','8':'sb8','910':'sb910','inq':'sbinq'};
-  document.getElementById('sendBtn').className='send-btn '+(sbMap[cls]||'sb7');
-  updateActiveModule();
-  renderFilters();
-  renderModePills();
-  loadResources();
-  newChat();
-}
+      // FIX: force id from filename even for authored page-meta, so a
+      // copy/pasted LESSON config block with a leftover id can't collide
+      pageMeta.id = filenameToId(f.name);
 
-function setMode(mode) {
-  currentMode = mode;
-  renderModePills();
-  renderQuickBtns();
-  newChat();
-}
-
-function renderModePills() {
-  const acMap={'7':'active-7','8':'active-8','910':'active-910','inq':'active-inq'};
-  const ac   = acMap[currentClass]||'active-7';
-  const isInq = currentClass==='inq';
-  const modes=[
-    {key:'eli5',   label:'&#129299; ELI5'},
-    {key:'explain',label:'&#128161; Explain it'},
-    {key:'quiz',   label:'🧠 Quiz me'},
-    {key:'debate', label:isInq?'&#128640; Give me ideas':'&#128172; Let\'s debate'},
-    {key:'help',   label:isInq?'&#128736; Help me build':'&#9997; Help me think'}
-  ];
-  document.getElementById('modePills').innerHTML = modes
-    .map(m=>`<button class="mode-pill ${currentMode===m.key?ac:''}" onclick="setMode('${m.key}')">${m.label}</button>`)
-    .join('');
-}
-
-function renderQuickBtns() {
-  const pool      = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
-  const shuffled  = pool.slice().sort(()=>Math.random()-0.5);
-
-  // Budget: ~60 chars of label text fits comfortably on one strip row.
-  // Pick prompts greedily until budget is spent, max 4.
-  const BUDGET = 60;
-  const picked = [];
-  let spent = 0;
-  for (const p of shuffled) {
-    if (picked.length >= 4) break;
-    if (spent + p.length > BUDGET && picked.length >= 2) break;
-    picked.push(p);
-    spent += p.length;
-  }
-
-  document.getElementById('quickStrip').innerHTML =
-    picked.map(p=>`<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`).join('')
-    + `<button class="quick-btn quick-shuffle" title="More suggestions" onclick="renderQuickBtns()">🔀</button>`;
-}
-
-
-// =============================================================================
-// CHAT
-// =============================================================================
-
-function newChat() {
-  messages = [];
-  stopTTS();
-  document.getElementById('chatMsgs').innerHTML = '';
-  const isInqNow = currentClass==='inq';
-  const welcomes = {
-    eli5    :`What do you want explained in the simplest possible way? Drop a word or concept and I\'ll break it down.`,
-    explain :`Hey! Pick a concept from your lessons and I\'ll break it down. What do you want to understand?`,
-    quiz    :`Ready to test yourself? I\'ll go one question at a time and ramp up the difficulty. What topic?`,
-    debate  :isInqNow?`What do you want to make or build? Tell me your interests and I\'ll throw some project ideas at you.`:`I\'m going to push back on whatever position you take - that\'s the point. What topic?`,
-    help    :isInqNow?`What are you trying to build? Tell me where you\'re at and I\'ll help you get it working.`:`Tell me what you\'re working on and what you\'ve tried so far. I won\'t do it for you but I\'ll help you think through it.`
-  };
-  appendAIMsg(welcomes[currentMode]||welcomes.explain);
-  renderQuickBtns();
-}
-
-async function sendQuick(text) {
-  document.getElementById('chatInput').value = text;
-  await sendMsg();
-}
-
-async function sendMsg() {
-  if (aiLoading) return;
-  const input = document.getElementById('chatInput');
-  const text  = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  appendMsg(text,'user');
-  messages.push({role:'user',content:text});
-  aiLoading = true;
-  document.getElementById('sendBtn').disabled = true;
-  const thinkEl = appendMsg('Thinking...','thinking');
-  try {
-    // Send only class, mode and message history.
-    // System prompt is built server-side in Apps Script from live Sheet data.
-    // Write token is NOT sent - chat action is public and token-free.
-    const res = await fetch(SCRIPT_URL,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({action:'chat',class:currentClass,mode:currentMode,messages})
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message||'Proxy error');
-    const reply = data.content?.[0]?.text||'Something went wrong - please try again.';
-    thinkEl.remove();
-    if (reply.startsWith('RESOURCE_REQUEST:')) {
-      handleResourceRequest(reply.replace('RESOURCE_REQUEST:','').trim());
+      results[f.name].data   = pageMeta;
+      results[f.name].status = 'done';
+      results[f.name].mode   = 'meta';
+      buildCSV(f.name, pageMeta);
+      buildMeta(f.name, pageMeta, rawHTML);
+      const pushed = await pushRowToSheet(pageMeta);
+      if (pushed) { results[f.name].pushed = true; results[f.name].status = 'pushed'; }
     } else {
-      appendAIMsg(reply);
-      messages.push({role:'assistant',content:reply});
-      if (ttsEnabled) speakText(reply);
+      try {
+        // No page-meta - use AI extraction proxy
+        const data = await extractWithAI(f.name, text, fmt);
+
+        // FIX: id-collision bug - always derive id from filename rather
+        // than trusting the AI's guess. See filenameToId() for details.
+        data.id = filenameToId(f.name);
+
+        // Inject Drive URL into data before pushing
+        if (results[f.name].driveURL && !data.url) data.url = results[f.name].driveURL;
+        results[f.name].data   = data;
+        results[f.name].status = 'done';
+        results[f.name].mode   = 'ai';
+        buildCSV(f.name, data);
+        buildMeta(f.name, data, rawHTML);
+        const pushed = await pushRowToSheet(data);
+        if (pushed) {
+          results[f.name].pushed = true;
+          results[f.name].status = 'pushed';
+        }
+      } catch (aiErr) {
+        results[f.name].data     = guessFromFilename(f.name, fmt);
+        results[f.name].status   = 'manual';
+        results[f.name].mode     = 'manual';
+        results[f.name].apiError = aiErr.message;
+      }
+    } // end else - no page-meta
+
+  } catch (readErr) {
+    // File read failed - still allow manual entry
+    results[f.name].data     = guessFromFilename(f.name, 'unknown');
+    results[f.name].status   = 'manual';
+    results[f.name].mode     = 'manual';
+    results[f.name].apiError = 'File read error: ' + readErr.message;
+  }
+
+  processing = false;
+  renderQueue();
+  updateDLBar();
+  if (active === f.name) selectFile(f.name);
+  processNext(); // Kick off the next file in the queue
+}
+
+/**
+ * Reads a file and returns extracted text, format, and raw content.
+ * Dispatches to the appropriate extractor based on file extension.
+ *
+ * @param {File} file - File object to read
+ * @returns {Object} { text, fmt, rawHTML, driveURL }
+ */
+async function readFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'html' || ext === 'htm') {
+    const rawHTML = await file.text();
+    return { text: smartExtractHTML(rawHTML), fmt: 'html', rawHTML };
+  }
+
+  if (ext === 'pdf') {
+    const text = await extractPDFText(file);
+    return { text, fmt: 'pdf', rawHTML: null };
+  }
+
+  if (ext === 'docx' || ext === 'doc') {
+    const buf      = await file.arrayBuffer();
+    const text     = await extractDocxText(buf);
+    // Check for DRIVE-URL in the extracted docx text (added to document footer)
+    const urlMatch = text.match(/DRIVE-URL:\s*(https:\/\/\S+)/i);
+    return { text, fmt: 'docx', rawHTML: null, driveURL: urlMatch ? urlMatch[1] : null };
+  }
+
+  return { text: 'Unknown file type: ' + file.name, fmt: 'unknown', rawHTML: null };
+}
+
+/**
+ * Extracts text from a PDF file using PDF.js.
+ * Reads up to 8 pages and concatenates their text content.
+ *
+ * @param {File} file - PDF File object
+ * @returns {string} Concatenated text content (up to 8000 chars)
+ */
+async function extractPDFText(file) {
+  if (typeof pdfjsLib === 'undefined') {
+    return '[PDF.js not loaded - check CDN connection]';
+  }
+  try {
+    const buf  = await file.arrayBuffer();
+    const pdf  = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pages = [];
+
+    for (let i = 1; i <= Math.min(pdf.numPages, 8); i++) {
+      const page    = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      pages.push(content.items.map(item => item.str).join(' '));
     }
-  } catch(err) {
-    thinkEl.remove();
-    appendAIMsg('Connection error - please try again. ('+err.message+')');
+    return pages.join('\n').replace(/\s+/g, ' ').trim().substring(0, 8000) || '[No text extracted]';
+
+  } catch (err) {
+    return '[PDF extraction error: ' + err.message + ']';
   }
-  aiLoading = false;
-  document.getElementById('sendBtn').disabled = false;
 }
 
 /**
- * Handles a resource retrieval request.
- * Scores resources by keyword match against the query.
- * Boosts resources from the current module.
+ * Extracts text from a DOCX file by reading its inner XML.
+ * DOCX files are ZIP archives - we unzip them with JSZip and pull the
+ * <w:t> (word text) elements out of word/document.xml.
+ *
+ * Structure-preserving: splits on paragraph (</w:p>) and table cell
+ * (</w:tc>) boundaries so term/definition pairs and numbered tasks
+ * stay on separate lines instead of being joined into one run-on string.
+ *
+ * @param {ArrayBuffer} buf - File contents as ArrayBuffer
+ * @returns {Promise<string>} Plain text content (up to 8000 chars)
  */
-function handleResourceRequest(query) {
-  const q         = query.toLowerCase();
-  const className = CLASS_NAMES[currentClass];
-  const matches   = allResources
-    .filter(r => r.class===className)
-    .map(r => {
-      let score = 0;
-      const hay = [r.title,r.type,r.topics,r.summary,String(r.week),r.module].join(' ').toLowerCase();
-      q.split(' ').forEach(word => { if(word.length>=3&&hay.includes(word)) score++; });
-      if (activeModule && r.module===activeModule) score += 2;
-      return {r,score};
+async function extractDocxText(buf) {
+  try {
+    const zip = await JSZip.loadAsync(buf);
+    const docFile = zip.file('word/document.xml');
+    if (!docFile) return '[No word/document.xml found in docx]';
+
+    const xml = await docFile.async('string');
+
+    // Split into paragraphs, and within each paragraph split into table
+    // cells, so structure (line breaks, term/definition pairs) survives
+    // into the plain text instead of becoming one run-on string.
+    const paras = xml.split(/<\/w:p>/);
+    const lines = paras.map(p => {
+      const cells = p.split(/<\/w:tc>/);
+      return cells
+        .map(c => [...c.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map(m => m[1]).join(''))
+        .filter(s => s.trim())
+        .join(' | ');
+    }).filter(s => s.trim());
+
+    return lines.join('\n').substring(0, 8000) || '[No text found in document]';
+
+  } catch (err) {
+    return '[DOCX extraction error: ' + err.message + ']';
+  }
+}
+
+/**
+ * Extracts meaningful text from an HTML file without sending raw markup
+ * or JavaScript to the AI. Targets known class names used in DigiTech
+ * resources rather than stripping all tags (which would include script
+ * content and produce noisy, unusable input).
+ *
+ * Extraction targets (in order):
+ *   - Page title and h2 subtitle
+ *   - Drive URL from hidden footer meta div
+ *   - Section labels (section-label class)
+ *   - Scene titles and blurbs (Byte's World explainer format)
+ *   - Word tile definitions (wtile-word / wtile-def)
+ *   - Accordion button labels
+ *   - "I can..." success criteria statements
+ *   - TTS text content paragraphs
+ *   - Task box content
+ *
+ * @param {string} html - Raw HTML string
+ * @returns {string} Structured plain text (up to 8000 chars)
+ */
+function smartExtractHTML(html) {
+  const sections = [];
+
+  const title = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  if (title) sections.push('TITLE: ' + title[1]);
+
+  const driveURL = extractDriveURL(html);
+  if (driveURL) sections.push('DRIVE-URL: ' + driveURL);
+
+  const h2 = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+  if (h2) sections.push('SUBTITLE: ' + h2[1].replace(/<[^>]+>/g, ''));
+
+  const labels = [...html.matchAll(/section-label[^>]*>([^<]+)<\//gi)];
+  if (labels.length) sections.push('SECTIONS: ' + labels.map(m => m[1]).join(' | '));
+
+  const sceneTitles = [...html.matchAll(/scene-title[^>]*>([^<]+)<\//gi)];
+  if (sceneTitles.length) sections.push('SCENE TITLES: ' + sceneTitles.map(m => m[1]).join(' | '));
+
+  const blurbs = [...html.matchAll(/scene-blurb[^>]*>([\s\S]*?)<\/div>/gi)];
+  if (blurbs.length) {
+    sections.push('BLURBS: ' + blurbs.slice(0, 8)
+      .map(m => m[1].replace(/<[^>]+>/g, ' ').trim())
+      .filter(Boolean)
+      .join(' | ')
+    );
+  }
+
+  // Word tiles - definitions in the Byte's World format
+  const wterms = [...html.matchAll(/wtile-word[^>]*>([^<]+)<\/div>/gi)];
+  const wdefs  = [...html.matchAll(/wtile-def[^>]*>([^<]+)<\/div>/gi)];
+  if (wterms.length) {
+    sections.push('DEFINITIONS: ' + wterms
+      .map((t, i) => t[1].trim() + ': ' + (wdefs[i] ? wdefs[i][1].trim() : ''))
+      .join(' | ')
+    );
+  }
+
+  const accBtns = [...html.matchAll(/accordion-btn[^>]*>([^<]+)<\/button>/gi)];
+  if (accBtns.length) sections.push('ACCORDION SECTIONS: ' + accBtns.map(m => m[1]).join(' | '));
+
+  // Deduplicate "I can..." statements across the whole document
+  const iCan = [...new Set(
+    [...html.matchAll(/I can [^<"']{5,80}/gi)]
+      .map(m => m[0].replace(/<[^>]+>/g, '').trim())
+  )];
+  if (iCan.length) sections.push('SUCCESS CRITERIA: ' + iCan.join(' | '));
+
+  const tts = [...html.matchAll(/tts-text[^>]*>([\s\S]*?)<\//gi)];
+  if (tts.length) {
+    sections.push('CONTENT: ' + tts.slice(0, 6)
+      .map(m => m[1].replace(/<[^>]+>/g, ' ').trim())
+      .filter(Boolean)
+      .join(' | ')
+    );
+  }
+
+  const taskboxes = [...html.matchAll(/taskbox[^>]*>([\s\S]*?)<\/div>/gi)];
+  if (taskboxes.length) {
+    sections.push('TASKS: ' + taskboxes.slice(0, 5)
+      .map(m => m[1].replace(/<[^>]+>/g, ' ').trim().substring(0, 100))
+      .filter(Boolean)
+      .join(' | ')
+    );
+  }
+
+  return sections.join('\n\n').substring(0, 8000);
+}
+
+/**
+ * Reads the page-meta JSON block from the file head if present.
+ * When found the converter skips AI extraction and uses this data
+ * directly - faster, cheaper, and exactly correct since the metadata
+ * was authored alongside the content in the LESSON config block.
+ *
+ * @param {string} html - Raw HTML string
+ * @returns {Object|null} Parsed metadata object or null if not found
+ */
+function extractPageMeta(html) {
+  const match = html.match(/<script[^>]+id="page-meta"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1].trim());
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Extracts a Google Drive URL from a hidden footer div in an HTML file.
+ * Checks several locations in priority order:
+ *   1. <div id="drive-meta" data-url="..."> - current format
+ *   2. <div id="drive-meta">DRIVE-URL: ...</div> - legacy text format
+ *   3. <meta name="drive-url" content="..."> - alternative head meta tag
+ *   4. Any bare DRIVE-URL: pattern anywhere in the document
+ *
+ * @param {string} html - Raw HTML string
+ * @returns {string} Drive URL or empty string
+ */
+function extractDriveURL(html) {
+  // Format 1: data-url attribute (current format)
+  // <div id="drive-meta" data-url="https://..."></div>
+  const dataAttr = html.match(/id="drive-meta"[\s\S]*?data-url="([^"]+)"/i);
+  if (dataAttr && dataAttr[1]) return fixDriveURL(dataAttr[1]);
+
+  // Format 2: text content DRIVE-URL: (legacy format)
+  // <div id="drive-meta">DRIVE-URL: https://...</div>
+  const textContent = html.match(/id="drive-meta"[^>]*>[\s\S]*?DRIVE-URL:\s*(\S+)/i);
+  if (textContent && textContent[1] && textContent[1].includes('drive.google')) {
+    return fixDriveURL(textContent[1]);
+  }
+
+  // Format 3: meta tag in head
+  const metaTag = html.match(/<meta[^>]*name="drive-url"[^>]*content="([^"]+)"/i);
+  if (metaTag) return fixDriveURL(metaTag[1]);
+
+  // Format 4: bare DRIVE-URL: anywhere in document
+  const bare = html.match(/DRIVE-URL:\s*(https:\/\/\S+)/i);
+  if (bare) return fixDriveURL(bare[1]);
+
+  return '';
+}
+
+/**
+ * Ensures Drive file links use the correct view mode so HTML renders
+ * in Chrome rather than showing the Drive wrapper page.
+ * Handles /view, /view?usp=sharing, and bare file IDs.
+ *
+ * @param {string} url - Raw Drive URL
+ * @param {string} [fmt] - File format, used to pick /uc?export=view vs /preview
+ * @returns {string} Corrected preview URL
+ */
+function fixDriveURL(url, fmt) {
+  if (!url || !url.includes('drive.google')) return url;
+
+  // Extract the file ID from any Drive URL format
+  const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (!idMatch) return url;
+  const fileId = idMatch[1];
+
+  // HTML files: use /uc?export=view which renders the actual HTML
+  // PDF/DOCX: use /preview which shows the Google viewer
+  if (fmt === 'html' || fmt === 'htm' || (!fmt && !url.includes('.pdf'))) {
+    return 'https://drive.google.com/uc?export=view&id=' + fileId;
+  }
+  return 'https://drive.google.com/file/d/' + fileId + '/preview?usp=sharing';
+}
+
+/**
+ * Makes a best-effort guess at metadata from the filename alone.
+ * Used as the starting point for manual mode when AI extraction fails.
+ * Looks for patterns like Y7, T2, W4, "rubric", "worksheet" in the name.
+ *
+ * FIX (module bug, June 2026):
+ *   Added a 'module' guess based on keywords in the filename, using the
+ *   same MODULES list the AI extractor uses. This is a best-effort match
+ *   only - the teacher should always double check the Module dropdown
+ *   in the review panel before pushing, especially in manual mode.
+ *
+ * FIX (id-collision bug, June 2026):
+ *   Also sets 'id' here via filenameToId(), so manual-mode rows get a
+ *   sensible unique id immediately rather than an empty string.
+ *
+ * @param {string} name - Filename string
+ * @param {string} fmt  - Detected file format
+ * @returns {Object} Partially-filled metadata object
+ */
+function guessFromFilename(name, fmt) {
+  const d = Object.assign({}, BLANK);
+  d.file_format = fmt === 'unknown' ? 'html' : fmt;
+  d.title       = name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  d.id          = filenameToId(name);
+
+  if (name.match(/y7|year.?7/i))          d.class = 'Year 7';
+  if (name.match(/y9|y10|year.?9|year.?10/i)) d.class = 'Year 9/10';
+
+  const wk = name.match(/w(\d+)|week.?(\d+)/i);
+  if (wk) d.week = wk[1] || wk[2];
+
+  if (name.match(/t1|term.?1/i)) d.term = '1';
+  if (name.match(/t2|term.?2/i)) d.term = '2';
+
+  if (name.match(/rubric/i))           d.type = 'Rubric';
+  else if (name.match(/worksheet|activity/i)) d.type = 'Worksheet';
+  else if (name.match(/assessment/i))  d.type = 'Assessment';
+  else if (name.match(/explainer|interactive/i)) d.type = 'Interactive';
+  else if (name.match(/reference|ref|guide/i)) d.type = 'Guide';
+  else if (name.match(/outline|lesson/i)) d.type = 'Lesson Outline';
+
+  // Best-effort module guess from filename keywords.
+  // Checked in order - first match wins. Falls back to BLANK.module
+  // ('Digital Systems and Hardware') if nothing matches.
+  const moduleHints = [
+    [/binary[-_]?image|binary[-_]?numbers|data[-_]?representation/i, 'Binary Numbers and Data Representation'],
+    [/file[-_]?journey|network/i, 'File Journeys and Networks'],
+    [/hardware|digital[-_]?systems/i, 'Digital Systems and Hardware'],
+    [/bitbot|bit-bot|microbit|micro-bit/i, 'Bit:Bot Automation'],
+    [/3d[-_]?print|tinkercad/i, '3D Printing and Design'],
+    [/office|outlook|onedrive|excel|powerpoint|onenote/i, 'Microsoft Office Suite'],
+    [/cyber|security/i, 'Networks and Cyber Security'],
+    [/privacy|ethics/i, 'Privacy and Ethics'],
+    [/python|programming|oop|object-oriented/i, 'General-purpose Programming'],
+    [/web[-_]?dev|html|css|javascript/i, 'Web Development'],
+    [/ai|machine[-_]?learning/i, 'AI and Machine Learning'],
+    [/data[-_]?science/i, 'Data Science with Python'],
+    [/working[-_]?with[-_]?data/i, 'Working with Data'],
+    [/capstone/i, 'Capstone Project'],
+    [/compression/i, 'Data Compression'],
+    [/digital[-_]?solution/i, 'Creating a Digital Solution'],
+  ];
+  for (const [re, mod] of moduleHints) {
+    if (name.match(re)) { d.module = mod; break; }
+  }
+
+  return d;
+}
+
+
+// =============================================================================
+// AI EXTRACTION
+// Sends extracted file content to the Apps Script proxy, which relays it
+// to the Anthropic API. Returns a structured JSON metadata object.
+// =============================================================================
+
+/**
+ * Calls the AI proxy to extract structured metadata from file content.
+ *
+ * The system prompt tells Claude the curriculum context so it can
+ * correctly infer class, term, week, and type from content clues.
+ *
+ * The user message includes the filename, format, and extracted text,
+ * followed by an explicit JSON schema. Claude is instructed to return
+ * only the JSON object with no preamble or markdown fences.
+ *
+ * NOTE on 'id': the schema below still asks for an "id" field for
+ * backwards compatibility / debugging, but processNext() OVERWRITES
+ * whatever id is returned here with filenameToId(filename) - see the
+ * comment on filenameToId() for why. Do not rely on the AI's id.
+ *
+ * FIX (module bug, June 2026): added a "module" field to the schema,
+ * constrained to the MODULES list, so every AI-extracted row now
+ * carries a module value that matches the Schedule tab join key.
+ *
+ * @param {string} filename - Original filename (used as context hint)
+ * @param {string} content  - Extracted text content from the file
+ * @param {string} fmt      - File format: 'html', 'docx', or 'pdf'
+ * @returns {Object} Parsed metadata object matching the COLS schema
+ * @throws {Error} If the proxy call fails or the response is not valid JSON
+ */
+async function extractWithAI(filename, content, fmt) {
+
+  const systemPrompt = `You are a metadata extractor for DigiTech resources at Emmanuel Christian School, Tasmania, Australia.
+
+Curriculum context:
+  Year 7  - Term 1: Microsoft Office Suite (Outlook, OneDrive, Excel, PowerPoint, OneNote)
+  Year 7  - Term 2: Digital Systems, Hardware/Software, Binary, File Journeys, Binary Images, Binary Sound
+  Year 9/10 - Term 1: Tinkercad and 3D Printing
+  Year 9/10 - Term 2: Python, micro:bit, Bit:Bot automation
+
+Return ONLY a valid JSON object. No markdown fences, no preamble, no explanation.`;
+
+  const userMessage = `FILE: ${filename}
+FORMAT: ${fmt}
+CONTENT:
+${content}
+
+Extraction guidance:
+- "definitions": lines formatted "Term | Definition" are glossary entries -
+  convert each to "Term: Definition" and join with " | " in the output field
+- "success_criteria": lines starting with "I can" are learning goals -
+  join them with " | "
+- "tasks": lines starting with "Task N" are tasks - extract the task number
+  and description, join with " | " (e.g. "Task 1: Sort ten everyday items...")
+- Only leave a field as "" if nothing matching these patterns exists in the
+  content - do not leave fields empty just because the exact wording differs
+- "module": must be EXACTLY one of: ${MODULES.join(', ')}
+  Match based on content - e.g. binary/pixels/images -> "Binary Numbers and Data Representation",
+  file journeys/networks/LAN/WAN -> "File Journeys and Networks", hardware/CPU/RAM -> "Digital Systems and Hardware"
+
+Return this exact JSON schema:
+{
+  "id": "kebab-case id e.g. y7-t2-w4-worksheet-01 (this will be overwritten by the converter - any value is fine)",
+  "class": "Year 7 or Year 9/10",
+  "term": "1 or 2",
+  "week": "number 1-10 or range e.g. 1-3",
+  "module": "exact module name from the provided list",
+  "type": "Lesson Outline | Worksheet | Assessment | Rubric | Guide | Interactive | Video",
+  "title": "clean display title",
+  "summary": "1-2 sentence description",
+  "topics": "comma-separated key topics",
+  "file_format": "${fmt}",
+  "url": "",
+  "source": "Drive",
+  "print_ready": "true or false",
+  "onenote_path": "",
+  "definitions": "pipe-separated Term: Definition pairs extracted from content",
+  "success_criteria": "pipe-separated I can... statements",
+  "tasks": "pipe-separated task names",
+  "key_concepts": "comma-separated key concepts",
+  "current": "false",
+  "locked": "false"
+}`;
+  // Route through Apps Script proxy - API key stays server-side
+  const res = await fetch(SHEET_URL, {
+    method  : 'POST',
+    headers : { 'Content-Type': 'text/plain' },
+    body    : JSON.stringify({
+      action    : 'ai',
+      token     : writeToken,
+      system    : systemPrompt,
+      messages  : [{ role: 'user', content: userMessage }],
+      max_tokens: 1200
     })
-    .filter(x=>x.score>0)
-    .sort((a,b)=>b.score-a.score);
+  });
 
-  const msgEl = appendMsgElement('ai');
-  if (!matches.length) {
-    msgEl.textContent = "I couldn't find a matching resource. Try browsing the resource panel or check SEQTA.";
-    messages.push({role:'assistant',content:msgEl.textContent});
-    return;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error('Proxy HTTP ' + res.status + ': ' + text.substring(0, 120));
   }
-  const best = matches[0].r;
-  const fmt  = (best.file_format||'html').toLowerCase();
-  const accMap={'7':'ract-blue','8':'ract-green','910':'ract-purple','inq':'ract-teal'};
-  const ac   = accMap[currentClass]||'ract-blue';
-  let btns = '';
-  if (fmt==='onenote') {
-    btns = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(best.id)}')">&#128211; How to find this</button>`;
-  } else if (fmt==='html'||fmt==='htm') {
-    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>`;
-  } else if (fmt==='docx'||fmt==='gdoc') {
-    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url.replace('/view','/edit'))}','_blank')">&#128196; Open in Word</button>${best.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(best.url.replace('/view','/export?format=pdf'))}','_blank')">&#128424; Print</button>`:''}`;
-  } else if (fmt==='pdf') {
-    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#8599; Open</button>${best.print_ready==='true'?`<button class="ract ract-red" onclick="window.open('${esc(best.url)}','_blank')">&#128424; Print</button>`:''}`;
-  } else if (fmt==='video') {
-    btns = `<button class="ract ${ac}" onclick="window.open('${esc(best.url)}','_blank')">&#9654; Watch</button>`;
+
+  const proxyData = await res.json();
+  if (!proxyData.success) throw new Error('Proxy error: ' + proxyData.message);
+
+  // Strip any markdown fences Claude might have included despite instructions
+  const raw = (proxyData.content?.[0]?.text || '{}')
+    .replace(/^```(?:json)?\s*/, '')
+    .replace(/\s*```$/, '')
+    .trim();
+
+  // Parse - try full string first, then try to extract a JSON object
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) {
+      try { return JSON.parse(match[0]); } catch (e2) { /* fall through */ }
+    }
+    throw new Error('Could not parse AI response as JSON: ' + raw.substring(0, 200));
   }
-  const oneNoteBox = fmt==='onenote'&&best.onenote_path
-    ? `<div id="on-${esc(best.id)}" style="display:none"><div class="onenote-box" style="margin:8px 0 0"><div class="onenote-title">&#128211; How to find this</div><div class="onenote-steps">${best.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
-    : '';
-  msgEl.innerHTML = `Here's the resource I found:
-    <div class="inline-rcard">
-      <div class="inline-rcard-head">
-        <div class="inline-rcard-title">${esc(best.title)}</div>
-        <div class="inline-rcard-sub">${esc(best.module||'')} - Term ${esc(String(best.term))} Wk${esc(String(best.week))} - ${esc(best.type)}</div>
-      </div>
-      <div style="font-size:11px;color:var(--ink2);padding:7px 11px;line-height:1.5">${esc(best.summary||'')}</div>
-      <div class="inline-rcard-btns">${btns}</div>
-      ${oneNoteBox}
-    </div>`;
-  messages.push({role:'assistant',content:'Here is the resource: '+best.title});
 }
 
+
 // =============================================================================
-// MESSAGE RENDERING
+// OUTPUT PANEL
+// File selection, review rendering, CSV and HTML output generation.
 // =============================================================================
 
 /**
- * Formats AI response text into chunked HTML.
- * Converts **bold** and emoji headers into spaced readable blocks.
+ * Selects a file in the queue and renders its output in the right panel.
+ * If the file is not yet done, shows the empty state instead.
+ *
+ * @param {string} name - Filename key in the results object
  */
-function formatAIResponse(text) {
-  let html = esc(text);
-  html = html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-  const chunks = html.split(/\n\n+/);
-  return chunks.map(chunk=>{
-    const trimmed=chunk.trim();
-    if(!trimmed) return '';
-    return `<div class="ai-chunk">${trimmed.replace(/\n/g,'<br>')}</div>`;
-  }).filter(Boolean).join('');
+function selectFile(name) {
+  active = name;
+  renderQueue();
+
+  const r = results[name];
+  document.getElementById('outName').textContent = name;
+
+  const isReady = ['done', 'manual', 'pushed'].includes(r.status);
+  document.getElementById('outEmpty').style.display  = isReady ? 'none'  : 'block';
+  document.getElementById('outContent').style.display = isReady ? 'block' : 'none';
+
+  if (!isReady) return;
+
+  // Auto-fill Drive URL if extracted from footer and not already in data
+  if (r.driveURL && r.data && !r.data.url) r.data.url = r.driveURL;
+
+  renderReview(r.data, r.mode, r.apiError);
+
+  // Build outputs if not already done
+  if (!r._csv)  buildCSV(name, r.data);
+  if (!r._html) buildMeta(name, r.data, r.raw);
 }
 
-function appendAIMsg(text) {
-  const container=document.getElementById('chatMsgs');
-  const el=document.createElement('div');
-  el.className='msg ai';
-  el.innerHTML=formatAIResponse(text);
-  container.appendChild(el);
-  container.scrollTop=container.scrollHeight;
-  return el;
+/**
+ * Resets a file to pending status and re-queues it for processing.
+ * Used by the Re-extract button.
+ *
+ * @param {string} name - Filename to retry
+ */
+function retryFile(name) {
+  if (!results[name]) return;
+  results[name].status = 'pending';
+  results[name].error  = null;
+  results[name].pushed = false;
+  renderQueue();
+  document.getElementById('outEmpty').style.display  = 'block';
+  document.getElementById('outContent').style.display = 'none';
+  processNext();
 }
 
-function appendMsg(text,type) {
-  const el=appendMsgElement(type);
-  el.textContent=text;
-  return el;
+/**
+ * Switches between AI extraction and manual entry modes for a file.
+ * In manual mode the form is pre-filled with filename guesses.
+ *
+ * @param {string} name - Filename to switch mode on
+ * @param {string} mode - 'ai' or 'manual'
+ */
+function switchMode(name, mode) {
+  if (!results[name]) return;
+  results[name].mode = mode;
+  if (mode === 'manual') {
+    results[name].status = 'manual';
+    if (!results[name].data) results[name].data = guessFromFilename(name, 'html');
+  }
+  renderQueue();
+  selectFile(name);
 }
 
-function appendMsgElement(type) {
-  const container=document.getElementById('chatMsgs');
-  const el=document.createElement('div');
-  const uMap={'7':'u7','8':'u8','910':'u910','inq':'uinq'};
-  const userCls=type==='user'?' '+(uMap[currentClass]||'u7'):'';
-  el.className='msg '+type+userCls;
-  container.appendChild(el);
-  container.scrollTop=container.scrollHeight;
-  return el;
+/**
+ * Renders the review and edit form for a processed file.
+ * Shows extracted metadata, stat cards, editable fields, and chunk editors
+ * for definitions, success criteria, and tasks.
+ *
+ * FIX (module bug, June 2026): added a "Module" dropdown right under the
+ * Title field, populated from MODULES. This is the field that joins this
+ * row to the Schedule tab - getting it right is what makes the AI
+ * companion's per-module context actually work for this resource.
+ *
+ * @param {Object} d        - Metadata object
+ * @param {string} mode     - 'ai' or 'manual'
+ * @param {string} apiError - Error message from AI extraction (if any)
+ */
+function renderReview(d, mode, apiError) {
+  const isManual = mode === 'manual';
+  const isPushed = results[active] && results[active].pushed;
+  const isY7     = d.class === 'Year 7';
+  const col      = isY7 ? 'var(--y7)' : 'var(--y910)';
+
+  document.getElementById('reviewBody').innerHTML = `
+    <div style="padding:12px 14px">
+
+      ${isPushed
+        ? `<div class="notice n-purple">&#10003; This row is in your Google Sheet. Edit and re-push to update it.</div>`
+        : ''
+      }
+
+      <!-- Mode toggle - switch between AI extraction and manual entry -->
+      <div class="mode-toggle">
+        <button class="mode-btn ${!isManual ? 'on-ai' : ''}"
+          onclick="switchMode('${esc(active)}', 'ai')">
+          &#9889; AI extraction${apiError ? ' (retry)' : ''}
+        </button>
+        <button class="mode-btn ${isManual ? 'on-manual' : ''}"
+          onclick="switchMode('${esc(active)}', 'manual')">
+          &#9998; Fill in manually
+        </button>
+      </div>
+
+      ${isManual && apiError
+        ? `<div class="manual-banner"><span>&#9998;</span>
+            <div><strong>Manual mode</strong> - ${esc(apiError.substring(0, 100))}</div>
+           </div>`
+        : ''
+      }
+
+      <!-- Summary stat cards -->
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-n" style="color:${col};font-size:11px;padding-top:5px">${esc(d.class || '?')}</div>
+          <div class="stat-l">Class</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">T${esc(String(d.term || '?'))}</div>
+          <div class="stat-l">Term</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">Wk ${esc(String(d.week || '?'))}</div>
+          <div class="stat-l">Week</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n" style="font-size:10px;line-height:1.3;padding-top:5px">${esc(d.type || '?')}</div>
+          <div class="stat-l">Type</div>
+        </div>
+      </div>
+
+      <!-- Editable metadata fields -->
+      <div class="field">
+        <label>Title</label>
+        <input value="${esc(d.title || '')}" oninput="upd('title', this.value)" />
+      </div>
+
+      <!-- Module - join key to the Schedule tab. Must exactly match a
+           folder name in drive_folder_ids.md and a 'module' value in
+           the Schedule tab, or the AI companion won't find this resource. -->
+      <div class="field">
+        <label>Module</label>
+        <select onchange="upd('module', this.value)">
+          ${MODULES.map(m => `<option ${d.module === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="grid3">
+        <div class="field">
+          <label>Class</label>
+          <select onchange="upd('class', this.value)">
+            <option ${d.class === 'Year 7'    ? 'selected' : ''}>Year 7</option>
+            <option ${d.class === 'Year 9/10' ? 'selected' : ''}>Year 9/10</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Term</label>
+          <input value="${esc(String(d.term || ''))}" oninput="upd('term', this.value)" />
+        </div>
+        <div class="field">
+          <label>Week</label>
+          <input value="${esc(String(d.week || ''))}" placeholder="e.g. 4 or 1-3"
+            oninput="upd('week', this.value)" />
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Type</label>
+          <select onchange="upd('type', this.value)">
+            ${['Lesson Outline','Worksheet','Assessment','Rubric','Guide','Interactive','Video']
+              .map(t => `<option ${d.type === t ? 'selected' : ''}>${t}</option>`)
+              .join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Format</label>
+          <select onchange="upd('file_format', this.value)">
+            ${['html','docx','pdf','gdoc','onenote','video']
+              .map(t => `<option ${d.file_format === t ? 'selected' : ''}>${t}</option>`)
+              .join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Summary</label>
+        <textarea oninput="upd('summary', this.value)">${esc(d.summary || '')}</textarea>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Print ready</label>
+          <select onchange="upd('print_ready', this.value)">
+            <option value="false" ${!d.print_ready || d.print_ready === 'false' ? 'selected' : ''}>No</option>
+            <option value="true"  ${d.print_ready === 'true' ? 'selected' : ''}>Yes</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Current week</label>
+          <select onchange="upd('current', this.value)">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Google Drive URL</label>
+        <input value="${esc(d.url || '')}" placeholder="https://drive.google.com/..."
+          oninput="upd('url', this.value)" />
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Chunk editors - pipe-separated lists of definitions, criteria, tasks -->
+
+      <div class="chunk-sec">
+        <div class="chunk-lbl">&#128218; Definitions</div>
+        <div id="ch-defs">${chunkList(d.definitions, 'defs')}</div>
+        <div class="chunk-add">
+          <input id="in-defs" placeholder="Term: Definition"
+            onkeydown="if(event.key==='Enter') addChunk('defs')" />
+          <button onclick="addChunk('defs')">+ Add</button>
+        </div>
+      </div>
+
+      <div class="chunk-sec">
+        <div class="chunk-lbl">&#9989; Success criteria</div>
+        <div id="ch-sc">${chunkList(d.success_criteria, 'sc')}</div>
+        <div class="chunk-add">
+          <input id="in-sc" placeholder="I can..."
+            onkeydown="if(event.key==='Enter') addChunk('sc')" />
+          <button onclick="addChunk('sc')">+ Add</button>
+        </div>
+      </div>
+
+      <div class="chunk-sec">
+        <div class="chunk-lbl">&#128203; Tasks</div>
+        <div id="ch-tasks">${chunkList(d.tasks, 'tasks')}</div>
+        <div class="chunk-add">
+          <input id="in-tasks" placeholder="Task name"
+            onkeydown="if(event.key==='Enter') addChunk('tasks')" />
+          <button onclick="addChunk('tasks')">+ Add</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="generateAndPush()">
+          &#8679; Generate and push to Sheet
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="retryFile('${esc(active)}')">
+          &#8635; Re-extract with AI
+        </button>
+      </div>
+
+    </div>`;
 }
+
+/**
+ * Renders a pipe-separated chunk string as an editable list of items.
+ * Each item has a delete button. Edits update the results[active].data object.
+ *
+ * @param {string} pipeStr - Pipe-separated values e.g. "Term: Def|Term2: Def2"
+ * @param {string} key     - Chunk key: 'defs', 'sc', or 'tasks'
+ * @returns {string} HTML string
+ */
+function chunkList(pipeStr, key) {
+  const items = (pipeStr || '').split('|').filter(Boolean);
+  if (!items.length) {
+    return `<div style="font-size:11px;color:var(--ink3);padding:3px 0">
+      Nothing extracted - add manually below
+    </div>`;
+  }
+  return items.map((item, i) => `
+    <div class="ci">
+      <div class="ci-t">${esc(item)}</div>
+      <button class="ci-del" onclick="delChunk('${key}', ${i})" aria-label="Remove">&#215;</button>
+    </div>`
+  ).join('');
+}
+
+/** Maps chunk editor keys to their corresponding metadata field names */
+const CHUNK_FIELDS = { defs: 'definitions', sc: 'success_criteria', tasks: 'tasks' };
+
+/**
+ * Removes an item from a chunk list by index and re-renders the list.
+ *
+ * @param {string} key   - Chunk key: 'defs', 'sc', or 'tasks'
+ * @param {number} index - 0-indexed item to remove
+ */
+function delChunk(key, index) {
+  if (!active) return;
+  const field = CHUNK_FIELDS[key];
+  const items = (results[active].data[field] || '').split('|').filter(Boolean);
+  items.splice(index, 1);
+  results[active].data[field] = items.join('|');
+  document.getElementById('ch-' + key).innerHTML = chunkList(results[active].data[field], key);
+}
+
+/**
+ * Adds a new item to a chunk list from its input field and re-renders.
+ *
+ * @param {string} key - Chunk key: 'defs', 'sc', or 'tasks'
+ */
+function addChunk(key) {
+  if (!active) return;
+  const field = CHUNK_FIELDS[key];
+  const inp   = document.getElementById('in-' + key);
+  const val   = inp.value.trim();
+  if (!val) return;
+  const items = (results[active].data[field] || '').split('|').filter(Boolean);
+  items.push(val);
+  results[active].data[field] = items.join('|');
+  inp.value = '';
+  document.getElementById('ch-' + key).innerHTML = chunkList(results[active].data[field], key);
+}
+
+/**
+ * Updates a single field in the active file's metadata object.
+ * Called by form field oninput handlers.
+ *
+ * @param {string} field - COLS key to update
+ * @param {string} value - New value
+ */
+function upd(field, value) {
+  if (!active) return;
+  results[active].data[field] = value;
+}
+
+/**
+ * Generates the CSV row and updated HTML, then pushes to the Sheet.
+ * Called by the "Generate and push to Sheet" button.
+ */
+async function generateAndPush() {
+  if (!active) return;
+  const d = results[active].data;
+
+  buildCSV(active, d);
+  buildMeta(active, d, results[active].raw);
+  renderQueue();
+  updateDLBar();
+  showTab('csv');
+
+  if (!pushLogVisible) togglePushLog();
+
+  const ok = await pushRowToSheet(d);
+  if (ok) {
+    results[active].pushed = true;
+    results[active].status = 'pushed';
+    renderQueue();
+    // Re-render the review panel to show the "pushed" notice
+    renderReview(d, results[active].mode, results[active].apiError);
+  }
+}
+
 
 // =============================================================================
-// TTS
+// OUTPUT BUILDERS
+// Build the CSV row and the updated HTML file with page-meta injected.
 // =============================================================================
 
-function initTTS() {
-  if(!('speechSynthesis' in window)) return;
-  document.getElementById('ttsBar').style.display='flex';
+/**
+ * Builds and stores the CSV row for a processed file.
+ * Values are quoted and internal quotes are escaped (RFC 4180).
+ * Also populates the CSV table in the UI if this is the active file.
+ *
+ * @param {string} name - Filename key
+ * @param {Object} d    - Metadata object
+ */
+function buildCSV(name, d) {
+  const row = COLS
+    .map(col => '"' + String(d[col] || '').replace(/"/g, '""') + '"')
+    .join(',');
+
+  results[name]._csv       = row;
+  results[name]._csvHeader = COLS.join(',');
+
+  // Update the table if this is the file currently shown in the output panel
+  if (name === active) {
+    document.getElementById('csvTable').innerHTML = `
+      <thead><tr>${COLS.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+      <tbody><tr>${COLS.map(c => {
+        const v = String(d[c] || '');
+        return `<td title="${esc(v)}">${esc(v.length > 35 ? v.substring(0, 35) + '...' : v)}</td>`;
+      }).join('')}</tr></tbody>`;
+  }
 }
 
-function toggleTTS() {
-  ttsEnabled=!ttsEnabled;
-  const btn=document.getElementById('ttsToggle');
-  btn.textContent=ttsEnabled?'On':'Off';
-  btn.classList.toggle('active',ttsEnabled);
-  if(!ttsEnabled) stopTTS();
+/**
+ * Builds the page-meta JSON block and injects it into the HTML file.
+ *
+ * The page-meta block is a <script type="application/json"> tag containing
+ * structured metadata that the student hub can extract without loading the
+ * full HTML file. It includes chunked content (definitions, criteria, tasks)
+ * in a machine-readable format.
+ *
+ * Injection strategy:
+ *   1. If a page-meta block already exists - replace it (idempotent)
+ *   2. If a <head> tag exists - insert after the opening tag
+ *   3. Otherwise - prepend to the document
+ *
+ * @param {string} name    - Filename key
+ * @param {Object} d       - Metadata object
+ * @param {string} rawHTML - Original HTML string (null for non-HTML files)
+ */
+function buildMeta(name, d, rawHTML) {
+
+  // Build the structured metadata object for the JSON block
+  const meta = {
+    id      : d.id      || '',
+    class   : d.class   || '',
+    term    : d.term    || '',
+    week    : d.week    || '',
+    module  : d.module  || '',
+    type    : d.type    || '',
+    title   : d.title   || '',
+    summary : d.summary || '',
+    topics  : (d.topics || '').split(',').map(t => t.trim()).filter(Boolean),
+    chunks  : {
+      definitions: (d.definitions || '').split('|').filter(Boolean).map(item => {
+        const idx = item.indexOf(':');
+        return idx > 0
+          ? { term: item.substring(0, idx).trim(), def: item.substring(idx + 1).trim() }
+          : { term: item.trim(), def: '' };
+      }),
+      success_criteria : (d.success_criteria || '').split('|').filter(Boolean),
+      tasks            : (d.tasks || '').split('|').filter(Boolean),
+      key_concepts     : (d.key_concepts || '').split(',').map(t => t.trim()).filter(Boolean)
+    }
+  };
+
+  // Build the script tag - note: <\/script> escapes the closing tag in a JS string
+  const metaTag = `<script type="application/json" id="page-meta">\n${JSON.stringify(meta, null, 2)}\n<\/script>`;
+
+  let updated = rawHTML || '';
+
+  if (updated) {
+    // Replace existing block if present - makes this operation idempotent
+    const existing = updated.match(/<script[^>]+id="page-meta"[^>]*>[\s\S]*?<\/script>/);
+    if (existing) {
+      updated = updated.replace(existing[0], metaTag);
+    } else if (updated.match(/<head[^>]*>/i)) {
+      updated = updated.replace(/(<head[^>]*>)/i, '$1\n' + metaTag);
+    } else {
+      updated = metaTag + '\n' + updated;
+    }
+  } else {
+    // Non-HTML files - just output the meta block
+    updated = metaTag;
+  }
+
+  results[name]._html = updated;
+
+  // Update the code preview if this is the active file
+  if (name === active) {
+    const preview = updated.substring(0, 2500) + (updated.length > 2500 ? '\n\n[... truncated - full file on download]' : '');
+    document.getElementById('metaOut').textContent = preview;
+  }
 }
 
-function speakText(text) {
-  if(!ttsEnabled||!('speechSynthesis' in window)) return;
-  stopTTS();
-  const clean=text.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').replace(/`/g,'');
-  currentUtterance=new SpeechSynthesisUtterance(clean);
-  currentUtterance.rate=0.95;currentUtterance.pitch=1;currentUtterance.lang='en-AU';
-  window.speechSynthesis.speak(currentUtterance);
-}
-
-function stopTTS() {
-  if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  currentUtterance=null;
-}
 
 // =============================================================================
-// UTILITIES
+// UI HELPERS
+// Tab switching, copy/download, empty state and log utilities.
 // =============================================================================
 
+/**
+ * Switches the visible output tab.
+ *
+ * @param {string} id - Tab id: 'review', 'csv', or 'meta'
+ */
+function showTab(id) {
+  document.querySelectorAll('.opanel').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.otab').forEach(t => t.classList.remove('on'));
+  document.getElementById('tab-' + id).classList.add('show');
+  document.querySelectorAll('.otab')[{ review: 0, csv: 1, meta: 2 }[id]].classList.add('on');
+}
+
+function copyCSV()  { if (!active || !results[active]._csv)  return; navigator.clipboard.writeText(results[active]._csv).then(() => alert('CSV row copied')); }
+function copyMeta() { if (!active || !results[active]._html) return; navigator.clipboard.writeText(results[active]._html).then(() => alert('HTML copied')); }
+function dlCSV()    { if (!active || !results[active]._csv)  return; dl(results[active]._csvHeader + '\n' + results[active]._csv, active.replace(/\.[^.]+$/, '') + '_row.csv', 'text/csv'); }
+function dlMeta()   { if (!active || !results[active]._html) return; dl(results[active]._html, active.replace(/\.[^.]+$/, '') + '_updated.html', 'text/html'); }
+
+/** Downloads all generated CSV rows as a single file */
+function downloadAllCSV() {
+  const done = fileList.filter(f => results[f.name]._csv);
+  if (!done.length) { alert('Click Generate on each file first'); return; }
+  dl(COLS.join(',') + '\n' + done.map(f => results[f.name]._csv).join('\n'), 'digitech_sheet_rows.csv', 'text/csv');
+}
+
+/** Downloads all updated HTML files (one per processed HTML file) */
+function downloadAllHTML() {
+  const done = fileList.filter(f => results[f.name]._html && (f.name.endsWith('.html') || f.name.endsWith('.htm')));
+  if (!done.length) { alert('No HTML files processed yet'); return; }
+  done.forEach((f, i) => setTimeout(() =>
+    dl(results[f.name]._html, f.name.replace(/\.[^.]+$/, '') + '_updated.html', 'text/html'),
+    i * 200  // Stagger downloads to avoid browser popup blocking
+  ));
+}
+
+/**
+ * Creates and clicks a temporary anchor element to trigger a file download.
+ *
+ * @param {string} content  - File content as a string
+ * @param {string} filename - Suggested filename for the download
+ * @param {string} mime     - MIME type e.g. 'text/html', 'text/csv'
+ */
+function dl(content, filename, mime) {
+  const a  = document.createElement('a');
+  a.href   = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Updates the batch download bar with current processed/pushed counts */
+function updateDLBar() {
+  const total  = fileList.filter(f => results[f.name]._csv).length;
+  const pushed = fileList.filter(f => results[f.name].pushed).length;
+  if (total > 0) {
+    document.getElementById('dlBar').style.display = 'flex';
+    document.getElementById('dlBarSub').textContent =
+      pushed + ' pushed to Sheet, ' + total + ' rows total';
+  }
+}
+
+/**
+ * HTML-escapes a string for safe insertion into innerHTML.
+ * Prevents XSS from filenames or AI-extracted content being
+ * interpreted as markup.
+ *
+ * @param {*} s - Value to escape
+ * @returns {string} HTML-safe string
+ */
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // =============================================================================
 // INITIALISATION
-// Check URL params for pre-selected class (from homepage class cards)
 // =============================================================================
 
-window.addEventListener('load', () => {
-  // Read ?class= param from URL for direct linking from homepage
-  const params = new URLSearchParams(window.location.search);
-  const urlClass = params.get('class');
-  if (urlClass && ['7','8','910','inq'].includes(urlClass)) {
-    currentClass = urlClass;
-  }
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
 
-  document.getElementById('weekBadge').innerHTML = '&#128197; Week ' + CURRENT_WEEK;
-
-  initTTS();
-  renderFilters();
-  renderModePills();
-  renderQuickBtns();
-  newChat();
-
-  // Update class tab visual state
-  document.getElementById('tab7').className   = 'class-tab'+(currentClass==='7'  ?' active-7':'');
-  document.getElementById('tab8').className   = 'class-tab'+(currentClass==='8'  ?' active-8':'');
-  document.getElementById('tab910').className = 'class-tab'+(currentClass==='910'?' active-910':'');
-  document.getElementById('tabinq').className = 'class-tab'+(currentClass==='inq'?' active-inq':'');
-  document.getElementById('sendBtn').className='send-btn sb'+currentClass;
-
-  // Load schedule first, then resources
-  loadSchedule().then(() => loadResources());
+window.addEventListener('load', async () => {
+  await initWriteToken();
+  pingSheet();
 });
 </script>
 </body>
