@@ -171,6 +171,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .quick-strip::-webkit-scrollbar{display:none}
 .quick-btn{padding:4px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;font-size:11px;font-weight:600;color:var(--ink3);white-space:nowrap;transition:all .13s;flex-shrink:0;font-family:var(--sans)}
 .quick-btn:hover{background:var(--surface);color:var(--ink)}
+.quick-shuffle{opacity:.55;padding:4px 8px}.quick-shuffle:hover{opacity:1}
 .chat-input{display:flex;gap:7px;padding:9px 11px;border-top:1px solid var(--border);flex-shrink:0}
 .chat-input input{flex:1;padding:9px 13px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .13s}
 .chat-input input:focus{border-color:var(--border2);background:var(--surface)}
@@ -222,34 +223,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .fc-nav button:hover{background:var(--surface)}
 .fc-nav button:disabled{opacity:.4;cursor:not-allowed}
 .fc-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
-
-/* Quiz */
-.qz-body{padding:16px;display:flex;flex-direction:column;gap:12px}
-.qz-name-row{display:flex;gap:6px}
-.qz-name-row input{flex:1;padding:8px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none}
-.qz-name-row input:focus{border-color:var(--border2);background:var(--surface)}
-.qz-scorebar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink3);font-family:var(--mono)}
-.qz-scorebar strong{color:var(--ink);font-family:var(--sans)}
-.qz-question{font-size:15px;font-weight:700;color:var(--ink);line-height:1.5;padding:14px;border-radius:var(--radiuslg);background:var(--surface2);border:1.5px solid var(--border2);min-height:70px;display:flex;align-items:center}
-.qz-options{display:flex;flex-direction:column;gap:8px}
-.qz-opt{padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border2);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);text-align:left;font-family:var(--sans);transition:all .13s}
-.qz-opt:hover:not(:disabled){border-color:var(--y7);background:var(--y7l)}
-.qz-opt:disabled{cursor:default}
-.qz-opt.correct{border-color:var(--green);background:var(--greenl);color:var(--green)}
-.qz-opt.incorrect{border-color:var(--red);background:var(--redl);color:var(--red)}
-.qz-feedback{font-size:12px;font-weight:700;text-align:center;min-height:18px}
-.qz-feedback.good{color:var(--green)}
-.qz-feedback.bad{color:var(--red)}
-.qz-next-row{display:flex;gap:8px}
-.qz-next-row button{flex:1;padding:10px 12px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y7)}
-.qz-next-row button:hover{opacity:.88}
-.qz-next-row button:disabled{opacity:.4;cursor:not-allowed}
-.qz-submit-row{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
-.qz-submit-row button{padding:10px 18px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y8)}
-.qz-submit-row button:disabled{opacity:.4;cursor:not-allowed}
-.qz-submit-hint{font-size:11px;color:var(--ink3)}
-.qz-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
-.qz-sent{font-size:13px;font-weight:700;color:var(--green);text-align:center;padding:8px}
 </style>
 </head>
 <body>
@@ -294,7 +267,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
         <span class="panel-head-icon">&#128193;</span>
         <div class="panel-head-title">Resources</div>
         <div class="panel-head-action">
-          <button class="fc-btn" onclick="openQuiz()">&#127919; Quiz</button>
           <button class="fc-btn" onclick="openFlashcards()">&#127183; Flashcards</button>
         </div>
       </div>
@@ -354,17 +326,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
     </div>
   </div>
 
-  <!-- Quiz modal -->
-  <div class="fc-overlay" id="qzOverlay" onclick="if(event.target===this) closeQuiz()">
-    <div class="fc-modal">
-      <div class="fc-head">
-        <div class="fc-head-title">&#127919; Quiz</div>
-        <button class="fc-close" onclick="closeQuiz()">&#10005;</button>
-      </div>
-      <div class="qz-body" id="qzBody"></div>
-    </div>
-  </div>
-
 </div>
 <script>
 /**
@@ -400,27 +361,7 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQm
  * Chat action is public - no token needed. This is intentionally
  * NOT used in the hub so it does not appear in browser network traffic.
  */
-const CURRENT_WEEK = 7;
-
-/**
- * Quiz configuration.
- * QUIZ_POINTS_PER_CORRECT - points awarded for each correct answer.
- * QUIZ_MIN_CORRECT_TO_SUBMIT - minimum correct answers needed before the
- *   "Submit score" button unlocks (prevents inbox spam from low-effort runs).
- * QUIZ_OPTION_WORD_CAP - max words shown per answer option. All options
- *   are trimmed to the same word count (the shortest option's length,
- *   capped at this value) so option length doesn't give away the answer.
- */
-const QUIZ_POINTS_PER_CORRECT = 5;
-const QUIZ_MIN_CORRECT_TO_SUBMIT = 30;
-const QUIZ_OPTION_WORD_CAP = 10;
-
-/**
- * QUIZ_MAX_MISSES - if a student gets this many questions wrong in a
- * session, their score resets to zero and they start over. Encourages
- * a clean run rather than spamming guesses to grind points.
- */
-const QUIZ_MAX_MISSES = 3;
+const CURRENT_WEEK = 6;
 
 /**
  * Column schema - must match Sheet header row exactly.
@@ -440,32 +381,32 @@ const CLASS_NAMES = {'7':'Year 7','8':'Year 8','910':'Year 9/10','inq':'Inquiry'
  */
 const QUICK_PROMPTS = {
   '7':{
-    eli5    :['RAM please','What is binary?','What is a CPU?','What is the internet?'],
-    explain :['What is RAM?','Explain binary','Hardware vs software','How does a file travel?'],
-    quiz    :['Quiz me on binary','Test me on hardware','File journey quiz','Test everything'],
-    debate  :['Should schools track devices?','Who owns your data?','Should AI mark work?','Is the digital divide fair?'],
-    help    :['Help with my system diagram','Stuck on the assessment','Check my binary','Help me start the file journey task']
+    eli5    :['RAM please','What is binary?','What is a CPU?','What is the internet?','What is a pixel?','What does a GPU do?','What is an operating system?','What is a file?','What is a network?','What is storage?'],
+    explain :['What is RAM?','Explain binary','Hardware vs software','How does a file travel?','What is an IP address?','How does a CPU work?','Explain file naming conventions','What is cloud storage?','How does WiFi work?','What is metadata?'],
+    quiz    :['Quiz me on binary','Test me on hardware','File journey quiz','Test everything','Quiz me on storage types','Test me on input and output devices','Binary to decimal quiz','Quiz me on file types','Hardware components quiz','Network basics quiz'],
+    debate  :['Should schools track devices?','Who owns your data?','Should AI mark work?','Is the digital divide fair?','Should phones be banned in schools?','Does technology make us less creative?','Should kids have online privacy from parents?','Is it okay to use AI for homework?'],
+    help    :['Help with my system diagram','Stuck on the assessment','Check my binary','Help me start the file journey task','Help me name my files correctly','How do I set up my OneDrive folder?','Help me write my reflection','Check my hardware list']
   },
   '8':{
-    eli5    :['What is WiFi?','What is hacking?','What is a spreadsheet?','What is encryption?'],
-    explain :['What is a network?','Explain cybersecurity','What is a database?','How does the internet work?'],
-    quiz    :['Quiz me on networks','Test me on cyber threats','Spreadsheet formulas quiz','Data and binary quiz'],
-    debate  :['Should governments monitor internet traffic?','Is personal data ever truly private?','Should schools block social media?','Who is responsible for cybercrime?'],
-    help    :['Help with my spreadsheet','Stuck on my data project','Help with my digital solution','Check my network diagram']
+    eli5    :['What is WiFi?','What is hacking?','What is a spreadsheet?','What is encryption?','What is a firewall?','What is phishing?','What is a protocol?','What is two-factor auth?','What is a packet?','What is malware?'],
+    explain :['What is a network?','Explain cybersecurity','What is a database?','How does the internet work?','Explain TCP/IP','What is a VPN?','How does encryption work?','What is a LAN vs WAN?','Explain social engineering','What is data integrity?'],
+    quiz    :['Quiz me on networks','Test me on cyber threats','Spreadsheet formulas quiz','Data and binary quiz','Network topology quiz','Cybersecurity terms quiz','Quiz me on spreadsheet functions','Test me on data types','Protocol quiz','Quiz me on everything'],
+    debate  :['Should governments monitor internet traffic?','Is personal data ever truly private?','Should schools block social media?','Who is responsible for cybercrime?','Should hackers who expose flaws be punished?','Is free WiFi a human right?','Should companies profit from your data?','Can AI ever be truly secure?'],
+    help    :['Help with my spreadsheet','Stuck on my data project','Help with my digital solution','Check my network diagram','Help me write my cybersecurity report','My formula is not working','Help plan my solution','Check my network topology']
   },
   '910':{
-    eli5    :['PWM in simple words','What does def do?','Why use functions?','What is duty cycle?'],
-    explain :['Explain PWM','What is a function?','Bit:Bot XL wiring','Tolerance in 3D printing'],
-    quiz    :['Quiz me on Python','Test micro:bit sensors','3D printing quiz','Mix both terms'],
-    debate  :['Robots replacing workers?','Who owns a 3D design?','AI in schools?','Autonomous vehicles and blame'],
-    help    :['My Bit:Bot code is wrong','Help plan my portfolio','Stuck on a function','Assessment help']
+    eli5    :['PWM in simple words','What does def do?','Why use functions?','What is duty cycle?','What is a loop?','What is a variable?','What does return do?','What is a list in Python?','What is a sensor?','What is iteration?'],
+    explain :['Explain PWM','What is a function?','Bit:Bot XL wiring','Tolerance in 3D printing','Explain for loops in Python','What is a parameter vs argument?','How does a servo work?','Explain boolean logic','What is object-oriented programming?','How does the micro:bit read sensors?'],
+    quiz    :['Quiz me on Python','Test micro:bit sensors','3D printing quiz','Mix both terms','Python syntax quiz','Quiz me on functions','Bit:Bot wiring quiz','Test me on loops','Quiz me on data types','Test me on everything'],
+    debate  :['Robots replacing workers?','Who owns a 3D design?','AI in schools?','Autonomous vehicles and blame','Should Python be taught in primary school?','Is automation fair to workers?','Who is responsible when AI makes a mistake?','Should 3D printed weapons be illegal?'],
+    help    :['My Bit:Bot code is wrong','Help plan my portfolio','Stuck on a function','Assessment help','My loop is not working','Help me debug this','Help me plan my 3D design','Check my Python logic']
   },
   'inq':{
-    eli5    :['What is coding?','What is AI?','How does WiFi work?','What is an algorithm?'],
-    explain :['How does AI work?','What can I make with a micro:bit?','How does 3D printing work?','What is game design?'],
-    quiz    :['Quiz me on anything tech','Test me on AI','What do I know about coding?','Tech trivia'],
-    debate  :['Will AI take over all jobs?','Should kids learn to code?','Is social media good or bad?','Should robots have rights?'],
-    help    :["I want to build something - where do I start?",'Help me with my project idea','I am stuck on my creation','What should I make next?']
+    eli5    :['What is coding?','What is AI?','How does WiFi work?','What is an algorithm?','What is a robot?','What is the cloud?','What is an app?','What is virtual reality?','What is open source?','What is a database?'],
+    explain :['How does AI work?','What can I make with a micro:bit?','How does 3D printing work?','What is game design?','How do recommendation algorithms work?','What is machine learning?','How does a search engine work?','Explain how apps are made','What is cybersecurity?','How does GPS work?'],
+    quiz    :['Quiz me on anything tech','Test me on AI','What do I know about coding?','Tech trivia','Quiz me on the internet','Test me on robots','AI and machine learning quiz','What do I know about apps?','Quiz me on digital safety','Random tech quiz'],
+    debate  :['Will AI take over all jobs?','Should kids learn to code?','Is social media good or bad?','Should robots have rights?','Should AI be used in art?','Is screen time really harmful?','Should the internet be free for everyone?','Can technology solve climate change?'],
+    help    :["I want to build something - where do I start?",'Help me with my project idea','I am stuck on my creation','What should I make next?','Help me pick a project','I want to learn Python - where do I start?','Help me design my project','How do I present my work?']
   }
 };
 
@@ -484,18 +425,6 @@ let messages     = [];
 let aiLoading    = false;
 let ttsEnabled   = false;
 let currentUtterance = null;
-
-// Quiz state
-let qzDeck       = [];   // pool of {question, options:[...], correctIndex, type}
-let qzIndex      = 0;
-let qzCorrect    = 0;
-let qzMisses     = 0;
-let qzAnswered   = 0;
-let qzAnsweredThisQ = false;
-let qzName       = '';
-let qzGeneralPool = null; // cached general-knowledge questions from Quiz tab
-let qzSelectedIndex = -1;
-let qzJustReset = false;
 
 // =============================================================================
 // SCHEDULE TAB
@@ -598,7 +527,7 @@ function showResourceError(msg) {
 function renderFilters() {
   const ac = `active-${currentClass === '910' ? '910' : currentClass}`;
   const termBtns = [{label:'All terms',val:0},{label:'Term 1',val:1},{label:'Term 2',val:2},{label:'Term 3',val:3},{label:'Term 4',val:4}];
-  const typeBtns = ['all','Lesson Outline','Worksheet','Assessment','Rubric','Reference','Explainer'];
+  const typeBtns = ['all','Lesson Outline','Worksheet','Assessment','Rubric','Guide','Interactive'];
   document.getElementById('filterRow').innerHTML =
     termBtns.map(b => `<button class="filter-pill ${currentTerm===b.val?ac:''}" onclick="setTermFilter(${b.val})">${b.label}</button>`).join('') +
     '<span style="width:1px;background:var(--border2);align-self:stretch;margin:2px 3px"></span>' +
@@ -885,316 +814,6 @@ function fcRender() {
     </div>`;
 }
 
-// =============================================================================
-// QUIZ
-// One question at a time, 3-4 multiple choice options. Pool combines:
-//   - Auto-generated "what does X mean?" questions from definitions
-//   - General knowledge questions from the optional 'Quiz' Sheet tab
-// Options are trimmed to equal word length and shuffled into a random
-// position each time, so option length/position can't be used to guess.
-// Score is kept for the session; students enter a name and can submit
-// once they pass QUIZ_MIN_CORRECT_TO_SUBMIT correct answers - this emails
-// the teacher via the Apps Script emailQuizScore action.
-// =============================================================================
-
-/** Trims text to at most n words, adding an ellipsis if shortened. */
-function qzTrimWords(text, n) {
-  const words = String(text).trim().split(/\s+/);
-  if (words.length <= n) return words.join(' ');
-  return words.slice(0, n).join(' ') + '…';
-}
-
-/**
- * Builds a 4-option set from a correct answer and 3 distractors.
- * All options are trimmed to the same word count (the shortest option's
- * word count, capped at QUIZ_OPTION_WORD_CAP, floor of 3) and shuffled.
- * Returns {options:[4 strings], correctIndex}.
- */
-function qzBuildOptions(correctText, distractors) {
-  const all = [correctText, ...distractors];
-  let minWords = Math.min(...all.map(t => String(t).trim().split(/\s+/).length));
-  minWords = Math.max(3, Math.min(minWords, QUIZ_OPTION_WORD_CAP));
-
-  const items = all.map((t, i) => ({ text: qzTrimWords(t, minWords), correct: i === 0 }));
-
-  // Fisher-Yates shuffle
-  for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [items[i], items[j]] = [items[j], items[i]];
-  }
-
-  return {
-    options: items.map(it => it.text),
-    correctIndex: items.findIndex(it => it.correct)
-  };
-}
-
-/**
- * Builds definition-based questions: "What does X mean?" with the correct
- * definition plus 3 distractor definitions drawn from other terms in the
- * same class. Skips terms if there aren't enough distractors available.
- */
-function qzBuildDefinitionQuestions() {
-  const className = CLASS_NAMES[currentClass];
-  const pairs = [];
-
-  allResources
-    .filter(r => r.class === className && (r.definitions || '').trim())
-    .forEach(r => {
-      (r.definitions || '').split('|').filter(Boolean).forEach(item => {
-        const idx = item.indexOf(':');
-        if (idx > 0) {
-          pairs.push({
-            term: item.substring(0, idx).trim(),
-            def : item.substring(idx + 1).trim()
-          });
-        }
-      });
-    });
-
-  // De-duplicate by term
-  const seen = new Set();
-  const deduped = pairs.filter(p => {
-    const key = p.term.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  if (deduped.length < 4) return [];
-
-  return deduped.map((p, i) => {
-    const otherDefs = deduped
-      .filter((_, j) => j !== i)
-      .map(o => o.def)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3);
-
-    const built = qzBuildOptions(p.def, otherDefs);
-    return {
-      question: `What does "${p.term}" mean?`,
-      options: built.options,
-      correctIndex: built.correctIndex,
-      type: 'definition'
-    };
-  });
-}
-
-/**
- * Fetches general-knowledge questions from the 'Quiz' Sheet tab
- * (cached after first load) and builds question objects from them.
- */
-async function qzBuildGeneralQuestions() {
-  const className = CLASS_NAMES[currentClass];
-
-  if (qzGeneralPool === null) {
-    try {
-      const res  = await fetch(`${SCRIPT_URL}?action=getQuiz&class=${encodeURIComponent(className)}`);
-      const data = await res.json();
-      qzGeneralPool = (data.success && Array.isArray(data.rows)) ? data.rows : [];
-    } catch (err) {
-      qzGeneralPool = [];
-    }
-  }
-
-  return qzGeneralPool
-    .filter(r => r.question && r.correct)
-    .map(r => {
-      const distractors = [r.wrong1, r.wrong2, r.wrong3].filter(Boolean);
-      if (distractors.length < 3) return null;
-      const built = qzBuildOptions(r.correct, distractors);
-      return {
-        question: r.question,
-        options: built.options,
-        correctIndex: built.correctIndex,
-        type: 'general'
-      };
-    })
-    .filter(Boolean);
-}
-
-/** Shuffles an array in place (Fisher-Yates) and returns it. */
-function qzShuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-/** Opens the quiz modal and builds a fresh deck for the current class. */
-async function openQuiz() {
-  document.getElementById('qzOverlay').classList.add('show');
-  document.getElementById('qzBody').innerHTML = `<div class="qz-empty">Loading quiz...</div>`;
-
-  const defQuestions = qzBuildDefinitionQuestions();
-  const genQuestions = await qzBuildGeneralQuestions();
-
-  qzDeck = qzShuffleArray([...defQuestions, ...genQuestions]);
-  qzIndex = 0;
-  qzCorrect = 0;
-  qzMisses = 0;
-  qzJustReset = false;
-  qzAnswered = 0;
-  qzAnsweredThisQ = false;
-  qzSelectedIndex = -1;
-
-  qzRender();
-}
-
-function closeQuiz() {
-  document.getElementById('qzOverlay').classList.remove('show');
-}
-
-/** Updates the stored student name as they type. */
-function qzSetName(val) {
-  qzName = val;
-}
-
-/**
- * Handles selecting an answer: locks in the choice, scores it,
- * colours the correct/incorrect options, and shows feedback.
- */
-function qzSelectAnswer(i) {
-  if (qzAnsweredThisQ || !qzDeck.length) return;
-  qzAnsweredThisQ = true;
-  qzAnswered++;
-  qzSelectedIndex = i;
-
-  const q = qzDeck[qzIndex];
-  if (i === q.correctIndex) {
-    qzCorrect++;
-  } else {
-    qzMisses++;
-    if (qzMisses >= QUIZ_MAX_MISSES) {
-      qzJustReset = true;
-    }
-  }
-
-  qzRender();
-}
-
-/** Advances to the next question, looping and reshuffling if the deck ends. */
-function qzNext() {
-  if (!qzAnsweredThisQ) return;
-
-  if (qzJustReset) {
-    qzCorrect = 0;
-    qzMisses = 0;
-    qzJustReset = false;
-  }
-
-  qzIndex++;
-  if (qzIndex >= qzDeck.length) {
-    qzDeck = qzShuffleArray([...qzDeck]);
-    qzIndex = 0;
-  }
-  qzAnsweredThisQ = false;
-  qzSelectedIndex = -1;
-  qzRender();
-}
-
-/**
- * Submits the current session score to the teacher via the Apps Script
- * emailQuizScore action. Only enabled once QUIZ_MIN_CORRECT_TO_SUBMIT is met.
- */
-async function qzSubmit() {
-  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
-  const btn = document.getElementById('qzSubmitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
-
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action : 'emailQuizScore',
-        name   : qzName.trim() || 'Unknown',
-        class  : CLASS_NAMES[currentClass],
-        score  : score,
-        correct: qzCorrect,
-        total  : qzAnswered,
-        date   : new Date().toISOString()
-      })
-    });
-  } catch (err) {
-    // Silent fail - student doesn't need to see network errors here
-  }
-
-  qzRender(true);
-}
-
-/** Renders the quiz modal body: name entry, score bar, question and controls. */
-function qzRender(submitted) {
-  const body = document.getElementById('qzBody');
-
-  if (!qzDeck.length) {
-    body.innerHTML = `<div class="qz-empty">
-      <div style="font-size:28px;margin-bottom:8px;opacity:.35">&#127919;</div>
-      <div style="font-weight:600;color:var(--ink2);margin-bottom:3px">No quiz questions yet</div>
-      <div style="font-size:12px;line-height:1.5">This class doesn't have enough definitions or general knowledge questions loaded yet.</div>
-    </div>`;
-    return;
-  }
-
-  const q = qzDeck[qzIndex];
-  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
-  const canSubmit = qzCorrect >= QUIZ_MIN_CORRECT_TO_SUBMIT && qzName.trim().length > 0;
-
-  let optionsHtml = q.options.map((opt, i) => {
-    let cls = 'qz-opt';
-    if (qzAnsweredThisQ) {
-      if (i === q.correctIndex) cls += ' correct';
-      else if (i === qzSelectedIndex) cls += ' incorrect';
-    }
-    return `<button class="${cls}" ${qzAnsweredThisQ ? 'disabled' : ''} onclick="qzSelectAnswer(${i})">${esc(opt)}</button>`;
-  }).join('');
-
-  let feedbackHtml = '';
-  if (qzAnsweredThisQ) {
-    if (qzSelectedIndex === q.correctIndex) {
-      feedbackHtml = `<div class="qz-feedback good">&#10003; Correct!</div>`;
-    } else if (qzJustReset) {
-      feedbackHtml = `<div class="qz-feedback bad">&#10007; That's ${QUIZ_MAX_MISSES} misses - score resets to 0 on the next question.</div>`;
-    } else {
-      feedbackHtml = `<div class="qz-feedback bad">&#10007; Not quite - the correct answer is highlighted.</div>`;
-    }
-  }
-
-  let submitHtml;
-  if (submitted) {
-    submitHtml = `<div class="qz-sent">&#9989; Score sent for the leaderboard!</div>`;
-  } else {
-    const remaining = Math.max(0, QUIZ_MIN_CORRECT_TO_SUBMIT - qzCorrect);
-    const hint = !qzName.trim()
-      ? 'Enter your name to submit'
-      : remaining > 0
-        ? `Get ${remaining} more correct to unlock submitting`
-        : 'You can submit your score now';
-    submitHtml = `
-      <div class="qz-submit-row">
-        <button id="qzSubmitBtn" ${canSubmit ? '' : 'disabled'} onclick="qzSubmit()">&#128228; Submit score</button>
-        <div class="qz-submit-hint">${esc(hint)}</div>
-      </div>`;
-  }
-
-  body.innerHTML = `
-    <div class="qz-name-row">
-      <input type="text" placeholder="Your name" value="${esc(qzName)}" oninput="qzSetName(this.value)" />
-    </div>
-    <div class="qz-scorebar">
-      <span>Question ${qzIndex + 1} of ${qzDeck.length}</span>
-      <span><strong>${qzCorrect}</strong> correct &bull; <strong>${score}</strong> pts &bull; <strong>${qzMisses}</strong>/${QUIZ_MAX_MISSES} missed</span>
-    </div>
-    <div class="qz-question">${esc(q.question)}</div>
-    <div class="qz-options">${optionsHtml}</div>
-    ${feedbackHtml}
-    <div class="qz-next-row">
-      <button onclick="qzNext()" ${qzAnsweredThisQ ? '' : 'disabled'}>Next question &#8594;</button>
-    </div>
-    ${submitHtml}
-  `;
-}
-
 function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
 function setTypeFilter(t){currentType=t;renderFilters();renderResources()}
 
@@ -1235,7 +854,7 @@ function renderModePills() {
   const modes=[
     {key:'eli5',   label:'&#129299; ELI5'},
     {key:'explain',label:'&#128161; Explain it'},
-    {key:'quiz',   label:'&#10067; Quiz me'},
+    {key:'quiz',   label:'🧠 Quiz me'},
     {key:'debate', label:isInq?'&#128640; Give me ideas':'&#128172; Let\'s debate'},
     {key:'help',   label:isInq?'&#128736; Help me build':'&#9997; Help me think'}
   ];
@@ -1245,10 +864,11 @@ function renderModePills() {
 }
 
 function renderQuickBtns() {
-  const prompts = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
-  document.getElementById('quickStrip').innerHTML = prompts
-    .map(p=>`<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`)
-    .join('');
+  const pool   = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
+  const picked = pool.slice().sort(()=>Math.random()-0.5).slice(0,4);
+  document.getElementById('quickStrip').innerHTML =
+    picked.map(p=>`<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`).join('')
+    + `<button class="quick-btn quick-shuffle" title="More suggestions" onclick="renderQuickBtns()">🔀</button>`;
 }
 
 
