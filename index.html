@@ -485,16 +485,16 @@ async function initWriteToken() {
       writeToken   = data.token;
       authedEmail  = data.email;
       if (badge)  badge.className  = 'auth-badge auth-ok';
-      if (status) status.textContent = '&#9989; Signed in: ' + data.email;
+      if (status) status.innerHTML = '&#9989; Signed in: ' + data.email;
     } else {
       writeToken  = null;
       if (badge)  badge.className  = 'auth-badge auth-fail';
-      if (status) status.textContent = '&#9888; Not signed in - open converter in Chrome signed into your school account';
+      if (status) status.innerHTML = '&#9888; Not signed in &mdash; open converter in Chrome signed into your school Google account (imiller@emmanuel.tas.edu.au)';
     }
   } catch (err) {
     writeToken = null;
     if (badge)  badge.className  = 'auth-badge auth-fail';
-    if (status) status.textContent = '&#10007; Auth check failed: ' + err.message;
+    if (status) status.innerHTML = '&#10007; Auth check failed: ' + err.message;
   }
 }
 
