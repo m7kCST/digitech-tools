@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="application/json" id="page-meta">
+{
+  "id": "y7-office-onedrive-explainer",
+  "class": "Year 7",
+  "term": "1",
+  "week": "2",
+  "module": "Microsoft Office Suite",
+  "type": "Reference",
+  "title": "OneDrive Setup Guide - Year 7",
+  "summary": "Visual guide to OneDrive - cloud vs local storage, folder structure, sharing permissions and version history.",
+  "topics": "AC9TDI8P11, AC9TDI8P12",
+  "file_format": "html",
+  "url": "https://m7kcst.github.io/digitech-tools/lessons/y7/office-suite/y7_office_onedrive_explainer.html",
+  "source": "Drive",
+  "print_ready": "FALSE",
+  "onenote_path": "Digitech7a > References > OneDrive Setup",
+  "definitions": "",
+  "success_criteria": "",
+  "tasks": "",
+  "key_concepts": "cloud storage, sync, folder structure, sharing permissions, version history",
+  "current": "FALSE",
+  "locked": "FALSE"
+}
+</script>
+<meta charset="UTF-8">
+<title>OneDrive Setup Guide — Year 7</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Oswald:wght@700&family=Space+Mono:wght@700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#f0f0f0;padding:1.5rem;min-height:100vh}
+  .page{max-width:820px;margin:0 auto}
+
+  /* Hero */
+  .hero{background:linear-gradient(135deg,#0369a1 0%,#4f6ef7 60%,#7c3aed 100%);border-radius:20px;padding:2.5rem 2rem 2rem;margin-bottom:1.75rem;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.05)}
+  .hero::after{content:'';position:absolute;bottom:-40px;left:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.04)}
+  .hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.6rem}
+  .hero h1{font-family:'Oswald',sans-serif;font-size:2.8rem;font-weight:700;color:#fff;line-height:1;margin-bottom:.5rem}
+  .hero h1 span{color:#67e8f9}
+  .hero .tagline{font-size:1rem;color:rgba(255,255,255,.75);max-width:520px;line-height:1.5;margin-bottom:1.25rem}
+  .pill-row{display:flex;flex-wrap:wrap;gap:.5rem}
+  .pill{background:rgba(255,255,255,.14);color:#fff;border-radius:999px;padding:.28rem .85rem;font-size:.78rem;font-weight:600}
+
+  /* Section label */
+  .sec-label{display:flex;align-items:center;gap:.75rem;margin:2rem 0 1rem}
+  .sec-label .bar{width:6px;height:30px;border-radius:3px;flex-shrink:0}
+  .sec-label h2{font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+
+  /* Meme card shell */
+  .meme-card{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;overflow:hidden;margin-bottom:1.25rem}
+  .meme-header{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem .75rem;border-bottom:1px solid #2d2d4e}
+  .meme-emoji{font-size:1.6rem;line-height:1}
+  .meme-title{font-family:'Oswald',sans-serif;font-size:1.15rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+  .meme-title span{color:#67e8f9}
+  .meme-body{padding:1rem 1.25rem}
+
+  /* Why box */
+  .why-box{background:#1e1b4b;border:2px solid #3730a3;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:.9rem;color:#c7d2fe;line-height:1.65}
+  .why-box strong{color:#93c5fd}
+
+  /* Naming formula */
+  .naming-box{background:linear-gradient(135deg,#0369a1,#4f6ef7,#7c3aed);border-radius:16px;padding:1.5rem;margin-bottom:1.25rem}
+  .naming-label{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.65rem}
+  .naming-formula{font-family:'Space Mono',monospace;font-size:.95rem;background:rgba(0,0,0,.3);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:.9rem;line-height:1.8;word-break:break-all}
+  .n-date{color:#fde68a}
+  .n-subject{color:#a5f3fc}
+  .n-type{color:#bbf7d0}
+  .n-title{color:#f5d0fe}
+  .n-ext{color:#fed7aa}
+  .n-sep{opacity:.45}
+  .legend{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem;margin-bottom:.85rem}
+  .legend-item{display:flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:700;color:rgba(255,255,255,.85)}
+  .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .examples-box{background:rgba(0,0,0,.25);border-radius:10px;padding:.85rem 1.1rem;font-family:'Space Mono',monospace;font-size:.78rem;color:rgba(255,255,255,.8);line-height:1.9}
+
+  /* Folder tree */
+  .tree-box{background:#12122a;border:1px solid #2d2d4e;border-radius:14px;padding:1.1rem 1.25rem;margin-bottom:1.1rem;font-family:'Space Mono',monospace;font-size:.82rem}
+  .tree-root{color:#67e8f9;font-weight:700;margin-bottom:.5rem;font-size:.9rem}
+  .tree-l1{margin-left:1rem;border-left:2px solid #1e3a5f;padding-left:.85rem;margin-bottom:.3rem}
+  .tree-l2{margin-left:1rem;border-left:2px solid #1e293b;padding-left:.85rem;margin-top:.15rem;margin-bottom:.15rem}
+  .tree-subject{color:#e2e8f0;font-weight:700;padding:.2rem 0;display:flex;align-items:center;gap:.5rem}
+  .tree-folder{color:#64748b;padding:.15rem 0;display:flex;align-items:center;gap:.5rem}
+  .fpill{font-family:'Inter',sans-serif;font-size:.66rem;font-weight:700;padding:.1rem .5rem;border-radius:999px;white-space:nowrap}
+  .fpill.blue{background:#1e3a5f;color:#67e8f9}
+  .fpill.green{background:#052e16;color:#86efac}
+  .fpill.orange{background:#431407;color:#fb923c}
+
+  /* Steps */
+  .steps{display:flex;flex-direction:column;gap:.6rem}
+  .step{display:flex;align-items:flex-start;gap:.85rem;background:#12122a;border-radius:10px;padding:.85rem 1rem}
+  .step-num{min-width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0;margin-top:1px;color:#fff}
+  .step-num.blue{background:#0369a1}
+  .step-num.teal{background:#0891b2}
+  .step-num.purple{background:#7c3aed}
+  .step-text{flex:1}
+  .step-title{font-size:.92rem;font-weight:700;color:#e2e8f0;margin-bottom:.2rem}
+  .step-desc{font-size:.83rem;color:#64748b;line-height:1.55}
+  .step-code{margin-top:.55rem;background:#0f0f1a;border:1px solid #1e3a5f;border-radius:8px;padding:.55rem .8rem;font-family:'Space Mono',monospace;font-size:.78rem;color:#7dd3fc;line-height:1.75}
+  .arrow{color:#4f6ef7;font-weight:700}
+  .kbd{display:inline-block;background:#1e1e35;color:#e2e8f0;font-size:.72rem;padding:.1rem .45rem;border-radius:5px;font-family:'Space Mono',monospace;font-weight:700;border:1px solid #2d2d4e}
+
+  /* Checklist */
+  .checklist{background:#052e16;border:2px solid #22c55e;border-radius:16px;padding:1.25rem;margin-bottom:1.25rem}
+  .checklist-title{font-size:.85rem;font-weight:700;color:#86efac;margin-bottom:.85rem}
+  .check-item{display:flex;align-items:flex-start;gap:.75rem;font-size:.88rem;font-weight:700;color:#dcfce7;padding:.55rem 0;border-bottom:1px dashed rgba(34,197,94,.2);line-height:1.5}
+  .check-item:last-child{border-bottom:none}
+  .check-box{width:20px;height:20px;border:2px solid #22c55e;border-radius:5px;background:transparent;flex-shrink:0;margin-top:1px}
+
+  /* Do / Don't */
+  .dos-donts{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1.25rem}
+  @media(max-width:560px){.dos-donts{grid-template-columns:1fr}}
+  .dont-box{background:#200000;border:2px solid #ef4444;border-radius:14px;padding:1rem 1.1rem}
+  .do-box{background:#052e16;border:2px solid #22c55e;border-radius:14px;padding:1rem 1.1rem}
+  .dd-title{font-size:.75rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-bottom:.65rem}
+  .dont-box .dd-title{color:#f87171}
+  .do-box .dd-title{color:#86efac}
+  .dd-list{list-style:none;display:flex;flex-direction:column;gap:.42rem}
+  .dd-list li{font-size:.83rem;font-weight:700;color:#e2e8f0;padding-left:1.1rem;position:relative;line-height:1.4}
+  .dd-list li::before{position:absolute;left:0;font-size:.78rem}
+  .dont-box .dd-list li::before{content:'✕';color:#f87171}
+  .do-box .dd-list li::before{content:'✓';color:#86efac}
+
+  /* Callout */
+  .callout{border-radius:12px;padding:.9rem 1.1rem;margin:1rem 0;border-left:4px solid}
+  .callout.info{background:#1e1b4b;border-color:#818cf8;color:#c7d2fe}
+  .callout.warn{background:#2d1a00;border-color:#f59e0b;color:#fcd34d}
+  .callout.success{background:#052e16;border-color:#22c55e;color:#86efac}
+  .callout-label{font-size:.72rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-bottom:.25rem;opacity:.75}
+  .callout p{font-size:.88rem;line-height:1.55}
+
+  /* Golden rules */
+  .golden-rules{background:#1a1a2e;border:2px solid #f59e0b;border-radius:16px;padding:1.4rem;margin-bottom:1.1rem}
+  .golden-rules h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem}
+  .rule-row{display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.75rem}
+  .rule-num{min-width:30px;height:30px;border-radius:50%;background:#f59e0b;color:#000;font-weight:700;font-size:.88rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .rule-row p{font-size:.88rem;color:#e2e8f0;line-height:1.55}
+  .rule-row p code{background:#2d2d4e;color:#67e8f9;padding:.1rem .35rem;border-radius:4px;font-family:'Space Mono',monospace;font-size:.82rem}
+
+  .footer{text-align:center;padding:1rem 0 .5rem;font-size:.78rem;color:rgba(255,255,255,.2)}
+
+  @media print{
+    body{background:#fff;color:#111;padding:0}
+    .hero{background:#0369a1 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .meme-card,.step,.tree-box,.checklist,.naming-box,.dos-donts{background:#f9f9f9 !important;border-color:#ccc !important}
+    .step-desc,.tree-folder,.dd-list li,.rule-row p,.callout p{color:#111 !important}
+    .no-print{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <button class="pill no-print" style="border:none;cursor:pointer;margin-bottom:1rem;background:rgba(255,255,255,.14);color:#fff;font-family:'Inter',sans-serif;font-size:.82rem;font-weight:700;padding:.45rem 1rem;border-radius:999px" onclick="window.print()">🖨️ Print this guide</button>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="eyebrow">Year 7 DigiTech &nbsp;·&nbsp; Week 5</div>
+    <h1>OneDrive<br><span>Setup Guide</span></h1>
+    <p class="tagline">Do this once. Stay organised all year. Takes about 5 minutes.</p>
+    <div class="pill-row">
+      <span class="pill">☁️ OneDrive folders</span>
+      <span class="pill">📛 File naming</span>
+      <span class="pill">🗂️ Folder structure</span>
+      <span class="pill">⚡ Do it once, sorted forever</span>
+    </div>
+  </div>
+
+  <!-- WHY -->
+  <div class="why-box">
+    <strong>Why does this matter?</strong> When your files are named correctly and saved in the right folder, you can find them instantly, your teacher can see your work, and you never lose anything. This guide shows you how to set up your OneDrive <em>once</em> so it works every time for the rest of the year.
+  </div>
+
+  <!-- SECTION 1 — Naming rule -->
+  <div class="sec-label"><div class="bar" style="background:#fbbf24"></div><h2>The Naming Rule — Every File, Every Time 📛</h2></div>
+
+  <div class="naming-box">
+    <div class="naming-label">Every filename follows this exact format:</div>
+    <div class="naming-formula">
+      <span class="n-date">2026-03-04</span><span class="n-sep">_</span><span class="n-subject">DigiTech</span><span class="n-sep">_</span><span class="n-type">Classwork</span><span class="n-sep">_</span><span class="n-title">My-Document</span><span class="n-sep">.</span><span class="n-ext">docx</span>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="swatch" style="background:#fde68a"></div>Today's date (YYYY-MM-DD)</div>
+      <div class="legend-item"><div class="swatch" style="background:#a5f3fc"></div>Subject name</div>
+      <div class="legend-item"><div class="swatch" style="background:#bbf7d0"></div>Type of work</div>
+      <div class="legend-item"><div class="swatch" style="background:#f5d0fe"></div>Short title (no spaces — use hyphens)</div>
+      <div class="legend-item"><div class="swatch" style="background:#fed7aa"></div>File extension</div>
+    </div>
+    <div class="examples-box">
+      2026-03-04_Science_Notes_Cells-and-Organisms.docx<br>
+      2026-03-04_English_Assessment_Short-Story-Draft.docx<br>
+      2026-03-04_HASS_Presentation_Ancient-Egypt.pptx<br>
+      2026-03-04_DigiTech_Classwork_Budget-Spreadsheet.xlsx
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-label">💡 Use the File Name Wizard</div>
+    <p>Go to the class site and use the <strong>File Name Wizard</strong> — it generates the correct filename for you automatically. Just fill in the subject, type and title, then copy and paste.</p>
+  </div>
+
+  <!-- SECTION 2 — Folder structure -->
+  <div class="sec-label"><div class="bar" style="background:#0891b2"></div><h2>Set Up Your OneDrive Folders Like This 🗂️</h2></div>
+
+  <div class="meme-card">
+    <div class="meme-header">
+      <span class="meme-emoji">☁️</span>
+      <div>
+        <div class="meme-title">Your Folder <span>Structure</span></div>
+        <div style="font-size:.8rem;color:#64748b;margin-top:.1rem">Build this once — use it all year</div>
+      </div>
+    </div>
+    <div class="meme-body">
+      <div class="tree-box">
+        <div class="tree-root">☁️ OneDrive</div>
+        <div class="tree-l1">
+          <div class="tree-subject">📂 Year 7</div>
+          <div class="tree-l2">
+            <div class="tree-subject">📁 DigiTech</div>
+            <div class="tree-l2">
+              <div class="tree-folder">📁 Classwork <span class="fpill blue">most of your work goes here</span></div>
+              <div class="tree-folder">📁 Assessments <span class="fpill green">tests & assignments</span></div>
+              <div class="tree-folder">📁 Resources <span class="fpill orange">sheets from your teacher</span></div>
+            </div>
+            <div class="tree-subject">📁 English</div>
+            <div class="tree-l2">
+              <div class="tree-folder">📁 Classwork &nbsp;·&nbsp; 📁 Assessments &nbsp;·&nbsp; 📁 Resources</div>
+            </div>
+            <div class="tree-subject">📁 Maths &nbsp;·&nbsp; 📁 Science &nbsp;·&nbsp; 📁 HASS &nbsp;·&nbsp; 📁 Health-PE</div>
+            <div class="tree-subject">📁 Food-Tech &nbsp;·&nbsp; 📁 Art &nbsp;·&nbsp; 📁 Music &nbsp;·&nbsp; 📁 Religion</div>
+            <div class="tree-l2">
+              <div class="tree-folder" style="font-style:italic;color:#374151">↑ Every subject gets the same 3 folders inside</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3 — How to create folders -->
+  <div class="sec-label"><div class="bar" style="background:#7c3aed"></div><h2>How to Create the Folders 🛠️</h2></div>
+
+  <div class="meme-card">
+    <div class="meme-header">
+      <span class="meme-emoji">📁</span>
+      <div>
+        <div class="meme-title">Step by Step — <span>Do This Once</span></div>
+        <div style="font-size:.8rem;color:#64748b;margin-top:.1rem">Takes about 5 minutes. Never have to do it again.</div>
+      </div>
+    </div>
+    <div class="meme-body">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num blue">1</div>
+          <div class="step-text">
+            <div class="step-title">Open OneDrive in File Explorer</div>
+            <div class="step-desc">Click the cloud icon ☁️ in your taskbar — or open File Explorer and find OneDrive on the left sidebar.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num teal">2</div>
+          <div class="step-text">
+            <div class="step-title">Create a folder called "Year 7"</div>
+            <div class="step-desc">Right-click in an empty space → <strong>New → Folder</strong> → type <strong>Year 7</strong> → press <span class="kbd">Enter</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num blue">3</div>
+          <div class="step-text">
+            <div class="step-title">Open Year 7 — create a folder for each subject</div>
+            <div class="step-desc">Double-click Year 7. Right-click → New → Folder for each subject: DigiTech, English, Maths, Science, HASS, Health-PE, Food-Tech, Art, Music, Religion.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num teal">4</div>
+          <div class="step-text">
+            <div class="step-title">Inside each subject — create 3 folders</div>
+            <div class="step-desc">Open each subject folder and create: <strong>Classwork</strong>, <strong>Assessments</strong>, <strong>Resources</strong>. Repeat for every subject.</div>
+            <div class="step-code">
+              OneDrive <span class="arrow">→</span> Year 7 <span class="arrow">→</span> Maths <span class="arrow">→</span> 📁 Classwork<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ 📁 Assessments<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ 📁 Resources
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num purple">5</div>
+          <div class="step-text">
+            <div class="step-title">Pin "Year 7" to Quick Access</div>
+            <div class="step-desc">Right-click the <strong>Year 7</strong> folder → <strong>Pin to Quick Access</strong>. Now it appears in the left sidebar every time you open File Explorer — one click to get there.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4 — Checklist -->
+  <div class="sec-label"><div class="bar" style="background:#22c55e"></div><h2>Setup Checklist — Tick These Off ✅</h2></div>
+
+  <div class="checklist">
+    <div class="checklist-title">✅ Before you start saving files, make sure you've done all of these:</div>
+    <div class="check-item"><div class="check-box"></div>I've opened OneDrive on my laptop</div>
+    <div class="check-item"><div class="check-box"></div>I've created a folder called "Year 7" inside OneDrive</div>
+    <div class="check-item"><div class="check-box"></div>I've created a folder for every subject inside "Year 7"</div>
+    <div class="check-item"><div class="check-box"></div>Inside each subject I have: Classwork, Assessments, Resources</div>
+    <div class="check-item"><div class="check-box"></div>I've pinned "Year 7" to Quick Access so I can find it fast</div>
+    <div class="check-item"><div class="check-box"></div>I know how to use the File Name Wizard to generate filenames</div>
+  </div>
+
+  <!-- SECTION 5 — Do / Don't -->
+  <div class="sec-label"><div class="bar" style="background:#ef4444"></div><h2>Do This / Never Do This 🚦</h2></div>
+
+  <div class="dos-donts">
+    <div class="dont-box">
+      <div class="dd-title">❌ Never do this</div>
+      <ul class="dd-list">
+        <li>Leave files on your Desktop</li>
+        <li>Use spaces in filenames</li>
+        <li>Use emojis in filenames</li>
+        <li>Name files "Untitled" or "Document1"</li>
+        <li>Save everything to Downloads</li>
+        <li>Skip renaming files from your teacher</li>
+      </ul>
+    </div>
+    <div class="do-box">
+      <div class="dd-title">✅ Always do this</div>
+      <ul class="dd-list">
+        <li>Name the file before you open it</li>
+        <li>Use hyphens - instead of spaces</li>
+        <li>Keep titles short (2-4 words)</li>
+        <li>Save in the right subject folder</li>
+        <li>Use the File Name Wizard if unsure</li>
+        <li>Rename files your teacher gives you</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Golden rules -->
+  <div class="sec-label"><div class="bar" style="background:#f59e0b"></div><h2>The Rules That Actually Matter ⭐</h2></div>
+
+  <div class="golden-rules">
+    <h2>⭐ Golden Rules</h2>
+    <div class="rule-row"><div class="rule-num">1</div><p>Always use the <strong>File Name Wizard</strong> before opening any app. Name first, save correctly, then start working. Never rename files after the fact.</p></div>
+    <div class="rule-row"><div class="rule-num">2</div><p>No spaces in filenames. Use hyphens (<code>-</code>) between words in the title section. Spaces break file links and cause problems in some apps.</p></div>
+    <div class="rule-row"><div class="rule-num">3</div><p>Save to the <strong>correct subject folder</strong> every time. A Maths file in the DigiTech folder is just as lost as a file on the Desktop.</p></div>
+    <div class="rule-row"><div class="rule-num">4</div><p>The date goes first — in the format <code>YYYY-MM-DD</code>. This keeps files sorted in date order automatically when you browse your folder.</p></div>
+    <div class="rule-row" style="margin-bottom:0"><div class="rule-num">5</div><p>If your teacher gives you a file, <strong>rename it</strong> using the naming convention before you start editing it. Don't leave it as whatever they called it.</p></div>
+  </div>
+
+  <div class="footer">Year 7 DigiTech &nbsp;·&nbsp; Week 5 &nbsp;·&nbsp; OneDrive Setup Guide &nbsp;·&nbsp; Emmanuel Christian School</div>
+</div>
+</body>
+</html>
