@@ -117,6 +117,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .rt-html{background:var(--y7l);color:var(--y7d)}.rt-pdf{background:var(--redl);color:var(--red)}
 .rt-docx{background:var(--greenl);color:var(--green)}.rt-onenote{background:var(--y910l);color:var(--y910d)}
 .rt-cur{background:var(--greenl);color:var(--green)}.rt-type{background:var(--surface2);color:var(--ink3)}
+.rt-guide{background:var(--amberl);color:var(--amber);border:1px solid rgba(133,79,11,.15)}
+.rt-interactive{background:var(--y910l);color:var(--y910d);border:1px solid rgba(83,74,183,.15)}
 .rcard-summary{font-size:12px;color:var(--ink2);padding:0 13px 10px;line-height:1.6}
 .rcard-actions{display:flex;gap:5px;padding:0 13px 11px;flex-wrap:wrap}
 .ract{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:opacity .13s}
@@ -225,6 +227,34 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .fc-nav button:hover{background:var(--surface)}
 .fc-nav button:disabled{opacity:.4;cursor:not-allowed}
 .fc-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
+
+/* Quiz */
+.qz-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.qz-name-row{display:flex;gap:6px}
+.qz-name-row input{flex:1;padding:8px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--ink);font-size:13px;font-family:var(--sans);outline:none}
+.qz-name-row input:focus{border-color:var(--border2);background:var(--surface)}
+.qz-scorebar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink3);font-family:var(--mono)}
+.qz-scorebar strong{color:var(--ink);font-family:var(--sans)}
+.qz-question{font-size:15px;font-weight:700;color:var(--ink);line-height:1.5;padding:14px;border-radius:var(--radiuslg);background:var(--surface2);border:1.5px solid var(--border2);min-height:70px;display:flex;align-items:center}
+.qz-options{display:flex;flex-direction:column;gap:8px}
+.qz-opt{padding:11px 14px;border-radius:var(--radius);border:1.5px solid var(--border2);background:var(--surface);cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);text-align:left;font-family:var(--sans);transition:all .13s}
+.qz-opt:hover:not(:disabled){border-color:var(--y7);background:var(--y7l)}
+.qz-opt:disabled{cursor:default}
+.qz-opt.correct{border-color:var(--green);background:var(--greenl);color:var(--green)}
+.qz-opt.incorrect{border-color:var(--red);background:var(--redl);color:var(--red)}
+.qz-feedback{font-size:12px;font-weight:700;text-align:center;min-height:18px}
+.qz-feedback.good{color:var(--green)}
+.qz-feedback.bad{color:var(--red)}
+.qz-next-row{display:flex;gap:8px}
+.qz-next-row button{flex:1;padding:10px 12px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y7)}
+.qz-next-row button:hover{opacity:.88}
+.qz-next-row button:disabled{opacity:.4;cursor:not-allowed}
+.qz-submit-row{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+.qz-submit-row button{padding:10px 18px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--sans);color:white;background:var(--y8)}
+.qz-submit-row button:disabled{opacity:.4;cursor:not-allowed}
+.qz-submit-hint{font-size:11px;color:var(--ink3)}
+.qz-empty{text-align:center;padding:28px 16px;color:var(--ink3)}
+.qz-sent{font-size:13px;font-weight:700;color:var(--green);text-align:center;padding:8px}
 </style>
 </head>
 <body>
@@ -269,6 +299,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
         <span class="panel-head-icon">&#128193;</span>
         <div class="panel-head-title">Resources</div>
         <div class="panel-head-action">
+          <button class="fc-btn" onclick="openQuiz()">&#127919; Quiz</button>
           <button class="fc-btn" onclick="openFlashcards()">&#127183; Flashcards</button>
         </div>
       </div>
@@ -328,6 +359,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
     </div>
   </div>
 
+  <!-- Quiz modal -->
+  <div class="fc-overlay" id="qzOverlay" onclick="if(event.target===this) closeQuiz()">
+    <div class="fc-modal">
+      <div class="fc-head">
+        <div class="fc-head-title">&#127919; Quiz</div>
+        <button class="fc-close" onclick="closeQuiz()">&#10005;</button>
+      </div>
+      <div class="qz-body" id="qzBody"></div>
+    </div>
+  </div>
+
 </div>
 <script>
 /**
@@ -364,6 +406,19 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjoh9CabUxzZ3caSGQm
  * NOT used in the hub so it does not appear in browser network traffic.
  */
 const CURRENT_WEEK = 6;
+
+
+/**
+ * Quiz configuration.
+ * QUIZ_POINTS_PER_CORRECT - points per correct answer.
+ * QUIZ_MIN_CORRECT_TO_SUBMIT - minimum correct before Submit unlocks.
+ * QUIZ_OPTION_WORD_CAP - max words per answer option (trims to shortest).
+ * QUIZ_MAX_MISSES - misses before score resets to zero.
+ */
+const QUIZ_POINTS_PER_CORRECT    = 10;
+const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
+const QUIZ_OPTION_WORD_CAP       = 8;
+const QUIZ_MAX_MISSES            = 3;
 
 /**
  * Column schema - must match Sheet header row exactly.
@@ -427,6 +482,19 @@ let messages     = [];
 let aiLoading    = false;
 let ttsEnabled   = false;
 let currentUtterance = null;
+
+
+// Quiz state
+let qzDeck          = [];
+let qzIndex         = 0;
+let qzCorrect       = 0;
+let qzMisses        = 0;
+let qzAnswered      = 0;
+let qzAnsweredThisQ = false;
+let qzName          = '';
+let qzGeneralPool   = null;
+let qzSelectedIndex = -1;
+let qzJustReset     = false;
 
 // =============================================================================
 // SCHEDULE TAB
@@ -506,7 +574,13 @@ async function loadResources() {
     const res  = await fetch(`${SCRIPT_URL}?action=getRows&class=${encodeURIComponent(className)}`);
     const data = await res.json();
     if (data.success && data.rows) {
-      allResources = data.rows;
+      // Normalise legacy type labels from before the rename (June 2025)
+      // Reference -> Guide, Explainer -> Interactive
+      const TYPE_MAP = {'Reference':'Guide','Explainer':'Interactive'};
+      allResources = data.rows.map(r => ({
+        ...r,
+        type: TYPE_MAP[r.type] || r.type
+      }));
       renderResources();
     } else {
       showResourceError(data.message || 'Could not load resources');
@@ -586,13 +660,18 @@ function buildResourceCard(r) {
   const fmtBg    = {html:'#E6F1FB',htm:'#E6F1FB',docx:'#EAF3DE',doc:'#EAF3DE',pdf:'#FCEBEB',onenote:'#EEEDFE',video:'#FAEEDA'};
   const fmtCol   = {html:'#0C447C',htm:'#0C447C',docx:'#27500A',doc:'#27500A',pdf:'#791F1F',onenote:'#3C3489',video:'#633806'};
   const tagCls   = {html:'rt-html',docx:'rt-docx',pdf:'rt-pdf',onenote:'rt-onenote'};
+  const typeCls  = {'Guide':'rt-guide','Interactive':'rt-interactive','Lesson Outline':'rt-type','Worksheet':'rt-type','Assessment':'rt-type','Rubric':'rt-type'};
 
   let actions = '';
   if (fmt==='onenote') {
     actions = `<button class="ract ract-ghost" onclick="toggleOneNote('${esc(r.id)}')">&#128211; How to find this</button>`;
   } else if (fmt==='html'||fmt==='htm') {
     const openUrl = r.url ? `window.open('${esc(r.url)}','_blank')` : 'void(0)';
-    actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button><button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#128065; Preview</button>`;
+    if (r.type === 'Interactive') {
+      actions = `<button class="ract ${acc}" onclick="${openUrl}">&#9654; Launch</button>`;
+    } else {
+      actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button><button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#128065; Preview</button>`;
+    }
   } else if (fmt==='docx'||fmt==='gdoc') {
     const wordUrl  = r.url?r.url.replace('/view','/edit'):'#';
     const printUrl = r.url?r.url.replace('/view','/export?format=pdf'):'#';
@@ -655,7 +734,7 @@ function buildResourceCard(r) {
     <div class="rcard-tags">
       ${isActive?'<span class="rtag rt-cur">Current module</span>':''}
       <span class="rtag ${tagCls[fmt]||'rt-type'}">${fmt.toUpperCase()}</span>
-      <span class="rtag rt-type">${esc(r.type)}</span>
+      <span class="rtag ${typeCls[r.type]||'rt-type'}">${esc(r.type)}</span>
     </div>
     <div class="rcard-summary">${esc(r.summary||'')}</div>
     <div class="rcard-actions">${actions}</div>
@@ -814,6 +893,163 @@ function fcRender() {
       <button onclick="fcPrev()" ${fcIndex===0?'disabled':''}>&#8592; Prev</button>
       <button onclick="fcNext()" ${fcIndex===fcDeck.length-1?'disabled':''}>Next &#8594;</button>
     </div>`;
+}
+
+
+// =============================================================================
+// QUIZ
+// =============================================================================
+
+function qzTrimWords(text, n) {
+  const words = String(text).trim().split(/\s+/);
+  if (words.length <= n) return words.join(' ');
+  return words.slice(0, n).join(' ') + '\u2026';
+}
+
+function qzBuildOptions(correctText, distractors) {
+  const all = [correctText, ...distractors];
+  let minWords = Math.min(...all.map(t => String(t).trim().split(/\s+/).length));
+  minWords = Math.max(3, Math.min(minWords, QUIZ_OPTION_WORD_CAP));
+  const items = all.map((t, i) => ({ text: qzTrimWords(t, minWords), correct: i === 0 }));
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return { options: items.map(it => it.text), correctIndex: items.findIndex(it => it.correct) };
+}
+
+function qzBuildDefinitionQuestions() {
+  const className = CLASS_NAMES[currentClass];
+  const pairs = [];
+  allResources
+    .filter(r => r.class === className && (r.definitions || '').trim())
+    .forEach(r => {
+      (r.definitions || '').split('|').filter(Boolean).forEach(item => {
+        const idx = item.indexOf(':');
+        if (idx > 0) pairs.push({ term: item.substring(0, idx).trim(), def: item.substring(idx + 1).trim() });
+      });
+    });
+  const seen = new Set();
+  const deduped = pairs.filter(p => { const k = p.term.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  if (deduped.length < 4) return [];
+  return deduped.map((p, i) => {
+    const otherDefs = deduped.filter((_, j) => j !== i).map(o => o.def).sort(() => Math.random() - 0.5).slice(0, 3);
+    const built = qzBuildOptions(p.def, otherDefs);
+    return { question: `What does "${p.term}" mean?`, options: built.options, correctIndex: built.correctIndex, type: 'definition' };
+  });
+}
+
+async function qzBuildGeneralQuestions() {
+  const className = CLASS_NAMES[currentClass];
+  if (qzGeneralPool === null) {
+    try {
+      const res  = await fetch(`${SCRIPT_URL}?action=getQuiz&class=${encodeURIComponent(className)}`);
+      const data = await res.json();
+      qzGeneralPool = (data.success && Array.isArray(data.rows)) ? data.rows : [];
+    } catch (err) { qzGeneralPool = []; }
+  }
+  return qzGeneralPool.filter(r => r.question && r.correct).map(r => {
+    const distractors = [r.wrong1, r.wrong2, r.wrong3].filter(Boolean);
+    if (distractors.length < 3) return null;
+    const built = qzBuildOptions(r.correct, distractors);
+    return { question: r.question, options: built.options, correctIndex: built.correctIndex, type: 'general' };
+  }).filter(Boolean);
+}
+
+function qzShuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+async function openQuiz() {
+  document.getElementById('qzOverlay').classList.add('show');
+  document.getElementById('qzBody').innerHTML = '<div class="qz-empty">Loading quiz...</div>';
+  const defQuestions = qzBuildDefinitionQuestions();
+  const genQuestions = await qzBuildGeneralQuestions();
+  qzDeck = qzShuffleArray([...defQuestions, ...genQuestions]);
+  qzIndex = 0; qzCorrect = 0; qzMisses = 0; qzJustReset = false;
+  qzAnswered = 0; qzAnsweredThisQ = false; qzSelectedIndex = -1;
+  qzRender();
+}
+
+function closeQuiz() { document.getElementById('qzOverlay').classList.remove('show'); }
+function qzSetName(val) { qzName = val; }
+
+function qzSelectAnswer(i) {
+  if (qzAnsweredThisQ || !qzDeck.length) return;
+  qzAnsweredThisQ = true; qzAnswered++; qzSelectedIndex = i;
+  const q = qzDeck[qzIndex];
+  if (i === q.correctIndex) { qzCorrect++; }
+  else { qzMisses++; if (qzMisses >= QUIZ_MAX_MISSES) qzJustReset = true; }
+  qzRender();
+}
+
+function qzNext() {
+  if (!qzAnsweredThisQ) return;
+  if (qzJustReset) { qzCorrect = 0; qzMisses = 0; qzJustReset = false; }
+  qzIndex++;
+  if (qzIndex >= qzDeck.length) { qzDeck = qzShuffleArray([...qzDeck]); qzIndex = 0; }
+  qzAnsweredThisQ = false; qzSelectedIndex = -1;
+  qzRender();
+}
+
+async function qzSubmit() {
+  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
+  const btn = document.getElementById('qzSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'emailQuizScore', name: qzName.trim() || 'Unknown',
+        class: CLASS_NAMES[currentClass], score, correct: qzCorrect, total: qzAnswered,
+        date: new Date().toISOString() })
+    });
+  } catch (err) {}
+  qzRender(true);
+}
+
+function qzRender(submitted) {
+  const body = document.getElementById('qzBody');
+  if (!qzDeck.length) {
+    body.innerHTML = '<div class="qz-empty"><div style="font-size:28px;margin-bottom:8px;opacity:.35">&#127919;</div><div style="font-weight:600;color:var(--ink2);margin-bottom:3px">No quiz questions yet</div><div style="font-size:12px;line-height:1.5">Not enough definitions or quiz questions loaded yet.</div></div>';
+    return;
+  }
+  const q = qzDeck[qzIndex];
+  const score = qzCorrect * QUIZ_POINTS_PER_CORRECT;
+  const canSubmit = qzCorrect >= QUIZ_MIN_CORRECT_TO_SUBMIT && qzName.trim().length > 0;
+  let optionsHtml = q.options.map((opt, i) => {
+    let cls = 'qz-opt';
+    if (qzAnsweredThisQ) { if (i === q.correctIndex) cls += ' correct'; else if (i === qzSelectedIndex) cls += ' incorrect'; }
+    return `<button class="${cls}" ${qzAnsweredThisQ ? 'disabled' : ''} onclick="qzSelectAnswer(${i})">${esc(opt)}</button>`;
+  }).join('');
+  let feedbackHtml = '';
+  if (qzAnsweredThisQ) {
+    if (qzSelectedIndex === q.correctIndex) feedbackHtml = '<div class="qz-feedback good">&#10003; Correct!</div>';
+    else if (qzJustReset) feedbackHtml = `<div class="qz-feedback bad">&#10007; That's ${QUIZ_MAX_MISSES} misses - score resets on next question.</div>`;
+    else feedbackHtml = '<div class="qz-feedback bad">&#10007; Not quite - correct answer is highlighted.</div>';
+  }
+  let submitHtml;
+  if (submitted) {
+    submitHtml = '<div class="qz-sent">&#9989; Score sent for the leaderboard!</div>';
+  } else {
+    const remaining = Math.max(0, QUIZ_MIN_CORRECT_TO_SUBMIT - qzCorrect);
+    const hint = !qzName.trim() ? 'Enter your name to submit' : remaining > 0 ? `Get ${remaining} more correct to unlock submitting` : 'You can submit your score now';
+    submitHtml = `<div class="qz-submit-row"><button id="qzSubmitBtn" ${canSubmit ? '' : 'disabled'} onclick="qzSubmit()">&#128228; Submit score</button><div class="qz-submit-hint">${esc(hint)}</div></div>`;
+  }
+  body.innerHTML = `
+    <div class="qz-name-row"><input type="text" placeholder="Your name" value="${esc(qzName)}" oninput="qzSetName(this.value)" /></div>
+    <div class="qz-scorebar">
+      <span>Question ${qzIndex + 1} of ${qzDeck.length}</span>
+      <span><strong>${qzCorrect}</strong> correct &bull; <strong>${score}</strong> pts &bull; <strong>${qzMisses}</strong>/${QUIZ_MAX_MISSES} missed</span>
+    </div>
+    <div class="qz-question">${esc(q.question)}</div>
+    <div class="qz-options">${optionsHtml}</div>
+    ${feedbackHtml}
+    <div class="qz-next-row"><button onclick="qzNext()" ${qzAnsweredThisQ ? '' : 'disabled'}>Next question &#8594;</button></div>
+    ${submitHtml}`;
 }
 
 function setTermFilter(t){currentTerm=t;renderFilters();renderResources()}
