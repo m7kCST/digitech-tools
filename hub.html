@@ -866,8 +866,21 @@ function renderModePills() {
 }
 
 function renderQuickBtns() {
-  const pool   = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
-  const picked = pool.slice().sort(()=>Math.random()-0.5).slice(0,4);
+  const pool      = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
+  const shuffled  = pool.slice().sort(()=>Math.random()-0.5);
+
+  // Budget: ~60 chars of label text fits comfortably on one strip row.
+  // Pick prompts greedily until budget is spent, max 4.
+  const BUDGET = 60;
+  const picked = [];
+  let spent = 0;
+  for (const p of shuffled) {
+    if (picked.length >= 4) break;
+    if (spent + p.length > BUDGET && picked.length >= 2) break;
+    picked.push(p);
+    spent += p.length;
+  }
+
   document.getElementById('quickStrip').innerHTML =
     picked.map(p=>`<button class="quick-btn" onclick="sendQuick('${p.replace(/'/g,"&#39;")}')">${p}</button>`).join('')
     + `<button class="quick-btn quick-shuffle" title="More suggestions" onclick="renderQuickBtns()">🔀</button>`;
