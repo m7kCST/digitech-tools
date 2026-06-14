@@ -279,9 +279,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
       <button class="btn btn-ghost btn-sm" onclick="togglePushLog()">&#9776; Log</button>
     </div>
   </div>
-  <div style="padding:6px 14px 8px;font-size:11px;color:var(--ink3)">
-    <span class="auth-badge auth-fail" id="authBadge">&#9203; Checking auth...</span>
-    <span id="authStatus" style="margin-left:8px;font-family:var(--mono);font-size:11px"></span>
+  <div style="padding:6px 14px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span class="auth-badge auth-fail" id="authBadge">&#128274; Locked</span>
+    <span id="authStatus" style="font-family:var(--mono);font-size:11px;color:var(--ink3)">Enter teacher password to unlock write access</span>
+    <div style="display:flex;gap:6px;align-items:center" id="authInputRow">
+      <input type="password" id="authPwInput" placeholder="Teacher password"
+        style="padding:4px 9px;border-radius:var(--radius);border:1px solid var(--border);font-size:12px;font-family:var(--mono);outline:none;width:180px"
+        onkeydown="if(event.key==='Enter') doAuth()" />
+      <button class="btn btn-ghost btn-sm" onclick="doAuth()">Unlock</button>
+    </div>
   </div>
   <div class="push-log" id="pushLog"></div>
 
@@ -475,28 +481,46 @@ let authedEmail = null;     // school email of the authenticated user
  * Apps Script checks the caller's Google session — only school accounts pass.
  * Updates the auth status badge in the UI.
  */
-async function initWriteToken() {
-  const badge  = document.getElementById('authBadge');
-  const status = document.getElementById('authStatus');
+/**
+ * Called when the teacher clicks Unlock or presses Enter.
+ * Sends the password to Apps Script which checks it server-side
+ * and returns the write token if correct. The password is never
+ * stored - only the returned token is kept in memory.
+ */
+async function doAuth() {
+  const badge    = document.getElementById('authBadge');
+  const status   = document.getElementById('authStatus');
+  const inputRow = document.getElementById('authInputRow');
+  const pw       = (document.getElementById('authPwInput').value || '').trim();
+
+  if (!pw) return;
+
+  if (badge)  { badge.className = 'auth-badge checking'; badge.textContent = '⏳'; }
+  if (status) status.textContent = 'Checking...';
+
   try {
-    const res  = await fetch(SHEET_URL + '?action=getWriteToken');
+    const res  = await fetch(SHEET_URL + '?action=getWriteToken&password=' + encodeURIComponent(pw));
     const data = await res.json();
     if (data.success && data.token) {
-      writeToken   = data.token;
-      authedEmail  = data.email;
-      if (badge)  badge.className  = 'auth-badge auth-ok';
-      if (status) status.innerHTML = '&#9989; Signed in: ' + data.email;
+      writeToken = data.token;
+      if (badge)    { badge.className = 'auth-badge auth-ok'; badge.innerHTML = '&#128275; Unlocked'; }
+      if (status)   status.innerHTML  = '&#9989; Write access granted';
+      if (inputRow) inputRow.style.display = 'none';
+      document.getElementById('authPwInput').value = '';
     } else {
-      writeToken  = null;
-      if (badge)  badge.className  = 'auth-badge auth-fail';
-      if (status) status.innerHTML = '&#9888; Not signed in &mdash; open converter in Chrome signed into your school Google account (imiller@emmanuel.tas.edu.au)';
+      writeToken = null;
+      if (badge)  { badge.className = 'auth-badge auth-fail'; badge.innerHTML = '&#128274; Locked'; }
+      if (status) status.innerHTML = '&#10007; Wrong password';
     }
   } catch (err) {
     writeToken = null;
-    if (badge)  badge.className  = 'auth-badge auth-fail';
-    if (status) status.innerHTML = '&#10007; Auth check failed: ' + err.message;
+    if (badge)  { badge.className = 'auth-badge auth-fail'; badge.innerHTML = '&#128274; Locked'; }
+    if (status) status.innerHTML = '&#10007; Connection error: ' + err.message;
   }
 }
+
+// initWriteToken kept as no-op for compatibility - auth is now manual via doAuth()
+async function initWriteToken() {}
 
 /**
  * Column schema - must match the Google Sheet header row exactly.
