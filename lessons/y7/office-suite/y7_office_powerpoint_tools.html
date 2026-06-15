@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="application/json" id="page-meta">
+{
+  "id": "y7-office-powerpoint-tools",
+  "class": "Year 7",
+  "term": "",
+  "week": "8",
+  "module": "Microsoft Office Suite",
+  "type": "Interactive",
+  "title": "PowerPoint Tools",
+  "summary": "Four-in-one interactive tool for Year 7 PowerPoint presentations: slide design checker with scoring, countdown presentation timer, random topic picker with category filters, and font pairing guide.",
+  "topics": "AC9TDI8P11",
+  "file_format": "html",
+  "url": "https://m7kcst.github.io/digitech-tools/lessons/y7/office-suite/y7_office_powerpoint_tools.html",
+  "source": "GitHub",
+  "print_ready": "FALSE",
+  "onenote_path": "Digitech7a > References > PowerPoint Tools",
+  "definitions": "",
+  "success_criteria": "",
+  "tasks": "",
+  "key_concepts": "PowerPoint, slide design, presentation, fonts, timer, 6x6 rule, transitions, OneDrive",
+  "current": "FALSE",
+  "locked": "FALSE"
+}
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PowerPoint Tools</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Oswald:wght@700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#f0f0f0;padding:1.25rem;min-height:100vh}
+  .page{max-width:860px;margin:0 auto}
+
+  /* Hero */
+  .hero{background:linear-gradient(135deg,#be185d,#7c3aed);border-radius:18px;padding:1.75rem 2rem 1.5rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+  .hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
+  .hero .ey{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.4rem}
+  .hero h1{font-family:'Oswald',sans-serif;font-size:2rem;font-weight:700;color:#fff;margin-bottom:.3rem}
+  .hero h1 span{color:#f9a8d4}
+  .hero p{font-size:.88rem;color:rgba(255,255,255,.75);line-height:1.5}
+
+  /* Tab nav */
+  .tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.25rem}
+  .tab{padding:.45rem 1rem;border-radius:10px;font-size:.82rem;font-weight:700;cursor:pointer;border:2px solid transparent;color:#94a3b8;background:#1a1a2e;transition:all .15s}
+  .tab.on{background:#be185d;color:#fff;border-color:#be185d}
+  .tab:hover:not(.on){border-color:#2d2d4e;color:#f0f0f0}
+  .panel{display:none}.panel.on{display:block}
+
+  /* Tool card shell */
+  .tool{background:#1a1a2e;border:2px solid #2d2d4e;border-radius:16px;padding:1.35rem;margin-bottom:1rem}
+  .tool-hdr{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+  .tool-icon{font-size:1.6rem;line-height:1}
+  .tool-hdr h2{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.06em}
+  .tool-hdr h2 span{color:#f9a8d4}
+  .tool-sub{font-size:.8rem;color:#94a3b8;margin-top:.1rem}
+
+  /* ── DESIGN CHECKER ── */
+  .check-list{display:flex;flex-direction:column;gap:.55rem}
+  .check-item{display:flex;align-items:flex-start;gap:.75rem;background:#12122a;border-radius:10px;padding:.85rem 1rem;cursor:pointer;transition:all .15s;border:2px solid transparent;user-select:none}
+  .check-item:hover{border-color:#2d2d4e}
+  .check-item.yes{border-color:#22c55e;background:#052e16}
+  .check-item.no{border-color:#ef4444;background:#200000}
+  .check-item.na{border-color:#64748b;background:#12122a;opacity:.6}
+  .ci-btn{min-width:32px;height:32px;border-radius:8px;border:2px solid #2d2d4e;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;transition:all .15s;background:#1a1a2e}
+  .check-item.yes .ci-btn{background:#052e16;border-color:#22c55e;color:#86efac}
+  .check-item.no  .ci-btn{background:#200000;border-color:#ef4444;color:#fca5a5}
+  .ci-text{flex:1}
+  .ci-title{font-size:.9rem;font-weight:700;color:#e2e8f0;line-height:1.3}
+  .ci-hint{font-size:.77rem;color:#64748b;margin-top:.2rem;line-height:1.4}
+  .check-item.yes .ci-hint{color:#4ade80}
+  .check-item.no  .ci-hint{color:#f87171}
+  .score-bar-wrap{background:#12122a;border-radius:999px;height:10px;margin:1rem 0 .5rem;overflow:hidden}
+  .score-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e);transition:width .4s ease}
+  .score-label{font-size:.85rem;font-weight:700;color:#e2e8f0;text-align:center}
+  .reset-btn{width:100%;margin-top:.75rem;padding:.55rem;background:transparent;border:1.5px solid #2d2d4e;border-radius:9px;color:#94a3b8;font-family:'Inter',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .15s}
+  .reset-btn:hover{border-color:#be185d;color:#f9a8d4}
+
+  /* ── TIMER ── */
+  .timer-display{text-align:center;padding:1.5rem 0 1rem}
+  .timer-face{font-family:'Oswald',sans-serif;font-size:5rem;font-weight:700;color:#fff;line-height:1;letter-spacing:.04em;transition:color .3s}
+  .timer-face.warn{color:#f59e0b}
+  .timer-face.done{color:#22c55e}
+  .timer-label{font-size:.82rem;color:#64748b;margin-top:.4rem;font-weight:600}
+  .timer-btns{display:flex;gap:.6rem;justify-content:center;margin-bottom:1rem}
+  .tbtn{padding:.65rem 1.5rem;border-radius:10px;font-family:'Inter',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
+  .tbtn.start{background:#22c55e;color:#000}
+  .tbtn.start:hover{background:#4ade80}
+  .tbtn.pause{background:#f59e0b;color:#000}
+  .tbtn.pause:hover{background:#fbbf24}
+  .tbtn.reset{background:#2d2d4e;color:#e2e8f0}
+  .tbtn.reset:hover{background:#3d3d5e}
+  .preset-row{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+  .preset{padding:.38rem .9rem;border-radius:999px;font-size:.8rem;font-weight:700;cursor:pointer;background:#12122a;border:1.5px solid #2d2d4e;color:#94a3b8;transition:all .15s}
+  .preset:hover{border-color:#be185d;color:#f9a8d4}
+  .preset.on{background:#be185d;border-color:#be185d;color:#fff}
+  .progress-ring-wrap{display:flex;justify-content:center;margin-bottom:.75rem}
+  svg.ring{transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:#1a1a2e}
+  .ring-fill{fill:none;stroke:#be185d;stroke-linecap:round;transition:stroke-dashoffset .5s ease,stroke .3s}
+
+  /* ── TOPIC PICKER ── */
+  .topic-display{background:#12122a;border-radius:14px;padding:1.5rem;text-align:center;margin-bottom:1rem;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #2d2d4e;transition:border-color .3s}
+  .topic-display.popped{border-color:#be185d}
+  .topic-emoji{font-size:2.2rem;margin-bottom:.4rem;display:block}
+  .topic-name{font-family:'Oswald',sans-serif;font-size:1.5rem;font-weight:700;color:#fff}
+  .topic-hint{font-size:.82rem;color:#64748b;margin-top:.3rem}
+  .spin-btn{width:100%;padding:.8rem;background:linear-gradient(135deg,#be185d,#7c3aed);color:#fff;border:none;border-radius:11px;font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:opacity .15s;margin-bottom:.85rem}
+  .spin-btn:hover{opacity:.87}
+  .spin-btn:active{transform:scale(.98)}
+  .cat-grid{display:flex;flex-wrap:wrap;gap:.4rem;justify-content:center;margin-bottom:.75rem}
+  .cat-pill{padding:.28rem .75rem;border-radius:999px;font-size:.75rem;font-weight:700;cursor:pointer;border:1.5px solid #2d2d4e;color:#94a3b8;background:transparent;transition:all .15s}
+  .cat-pill.on{border-color:#be185d;background:#2d0a1e;color:#f9a8d4}
+  .cat-pill:hover:not(.on){border-color:#3d3d5e;color:#e2e8f0}
+  .recent-list{font-size:.78rem;color:#64748b;text-align:center;line-height:1.8}
+
+  /* ── FONT PAIRING ── */
+  .font-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.85rem}
+  @media(max-width:500px){.font-grid{grid-template-columns:1fr}}
+  .font-card{background:#12122a;border:2px solid #2d2d4e;border-radius:12px;padding:1rem;cursor:pointer;transition:all .15s;position:relative}
+  .font-card:hover{border-color:#be185d}
+  .font-card.sel{border-color:#f9a8d4;background:#1e0d1e}
+  .font-card .fc-label{font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#64748b;margin-bottom:.5rem}
+  .font-card .fc-heading{font-size:1.35rem;font-weight:700;color:#fff;line-height:1.2;margin-bottom:.25rem}
+  .font-card .fc-body{font-size:.85rem;color:#94a3b8;line-height:1.5}
+  .font-card .fc-names{font-size:.72rem;color:#be185d;font-weight:700;margin-top:.5rem}
+  .font-card .fc-badge{position:absolute;top:.6rem;right:.6rem;font-size:.65rem;font-weight:800;padding:.2rem .5rem;border-radius:999px;text-transform:uppercase;letter-spacing:.05em}
+  .font-card .fc-badge.pro{background:#1e1b4b;color:#a78bfa}
+  .font-card .fc-badge.safe{background:#052e16;color:#86efac}
+  .font-preview{background:#12122a;border-radius:12px;padding:1.25rem;border:2px solid #2d2d4e;margin-bottom:.75rem;display:none}
+  .font-preview.show{display:block}
+  .fp-slide{background:linear-gradient(135deg,#1e1b4b,#2d1f4e);border-radius:9px;padding:1.25rem;text-align:center;margin-bottom:.75rem}
+  .fp-title{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:.3rem}
+  .fp-sub{font-size:.85rem;color:#c4b5fd;line-height:1.5}
+  .fp-why{font-size:.82rem;color:#94a3b8;line-height:1.6}
+  .fp-why strong{color:#e2e8f0}
+  .copy-btn{width:100%;padding:.5rem;background:transparent;border:1.5px solid #2d2d4e;border-radius:8px;color:#94a3b8;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .15s}
+  .copy-btn:hover{border-color:#be185d;color:#f9a8d4}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#052e16;color:#86efac;border:1.5px solid #22c55e;border-radius:9px;padding:.6rem 1rem;font-size:.84rem;font-weight:700;z-index:999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+  .toast.on{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hero">
+    <div class="ey">Year 7 DigiTech &nbsp;·&nbsp; Week 8</div>
+    <h1>PowerPoint <span>Tools</span> 🛠️</h1>
+    <p>Design checker, presentation timer, topic picker and font suggester - all in one place.</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on"  onclick="goTab('checker')">✅ Design Checker</div>
+    <div class="tab"     onclick="goTab('timer')">⏱️ Presenter Timer</div>
+    <div class="tab"     onclick="goTab('topics')">🎲 Topic Picker</div>
+    <div class="tab"     onclick="goTab('fonts')">🔤 Font Pairing</div>
+  </div>
+
+  <!-- PANEL 1 - DESIGN CHECKER -->
+  <div class="panel on" id="panel-checker">
+    <div class="tool">
+      <div class="tool-hdr">
+        <span class="tool-icon">✅</span>
+        <div><h2>Slide Design <span>Checker</span></h2><div class="tool-sub">Click each rule - green = done, red = needs fixing. Aim for all green before you present.</div></div>
+      </div>
+      <div class="score-bar-wrap"><div class="score-bar" id="score-bar" style="width:0%"></div></div>
+      <div class="score-label" id="score-label">Tap each rule to check your slides ↓</div>
+      <div class="check-list" id="check-list" style="margin-top:.85rem"></div>
+      <button class="reset-btn" onclick="resetChecker()">↺ Reset all</button>
+    </div>
+  </div>
+
+  <!-- PANEL 2 - TIMER -->
+  <div class="panel" id="panel-timer">
+    <div class="tool">
+      <div class="tool-hdr">
+        <span class="tool-icon">⏱️</span>
+        <div><h2>Presenter <span>Timer</span></h2><div class="tool-sub">Set a target time, hit Start, and present. The ring turns amber at 75% and green when done.</div></div>
+      </div>
+      <div class="progress-ring-wrap">
+        <svg class="ring" width="160" height="160" viewBox="0 0 160 160">
+          <circle class="ring-bg"   cx="80" cy="80" r="68" stroke-width="10"/>
+          <circle class="ring-fill" cx="80" cy="80" r="68" stroke-width="10" id="ring-fill"
+            stroke-dasharray="427" stroke-dashoffset="427"/>
+        </svg>
+      </div>
+      <div class="timer-display">
+        <div class="timer-face" id="timer-face">0:00</div>
+        <div class="timer-label" id="timer-label">Choose a time and press Start</div>
+      </div>
+      <div class="preset-row" style="margin-bottom:.85rem">
+        <div class="preset on" onclick="setPreset(this,60)"  data-s="60">60 sec</div>
+        <div class="preset"    onclick="setPreset(this,90)"  data-s="90">90 sec</div>
+        <div class="preset"    onclick="setPreset(this,120)" data-s="120">2 min</div>
+        <div class="preset"    onclick="setPreset(this,180)" data-s="180">3 min</div>
+        <div class="preset"    onclick="setPreset(this,300)" data-s="300">5 min</div>
+      </div>
+      <div class="timer-btns">
+        <button class="tbtn start" id="start-btn" onclick="startTimer()">▶ Start</button>
+        <button class="tbtn pause" id="pause-btn" onclick="pauseTimer()" style="display:none">⏸ Pause</button>
+        <button class="tbtn reset" onclick="resetTimer()">↺ Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL 3 - TOPIC PICKER -->
+  <div class="panel" id="panel-topics">
+    <div class="tool">
+      <div class="tool-hdr">
+        <span class="tool-icon">🎲</span>
+        <div><h2>Topic <span>Picker</span></h2><div class="tool-sub">Can't decide what to present about? Spin it. Filter by category first if you want.</div></div>
+      </div>
+      <div class="cat-grid" id="cat-grid">
+        <div class="cat-pill on" onclick="toggleCat(this,'all')">All</div>
+        <div class="cat-pill" onclick="toggleCat(this,'sport')">🏅 Sport</div>
+        <div class="cat-pill" onclick="toggleCat(this,'animals')">🐾 Animals</div>
+        <div class="cat-pill" onclick="toggleCat(this,'tech')">💻 Tech</div>
+        <div class="cat-pill" onclick="toggleCat(this,'food')">🍕 Food</div>
+        <div class="cat-pill" onclick="toggleCat(this,'games')">🎮 Games</div>
+        <div class="cat-pill" onclick="toggleCat(this,'places')">🌏 Places</div>
+        <div class="cat-pill" onclick="toggleCat(this,'music')">🎵 Music</div>
+        <div class="cat-pill" onclick="toggleCat(this,'science')">🔬 Science</div>
+        <div class="cat-pill" onclick="toggleCat(this,'space')">🚀 Space</div>
+        <div class="cat-pill" onclick="toggleCat(this,'history')">🏺 History</div>
+        <div class="cat-pill" onclick="toggleCat(this,'environment')">🌿 Environment</div>
+        <div class="cat-pill" onclick="toggleCat(this,'art')">🎨 Art &amp; Design</div>
+        <div class="cat-pill" onclick="toggleCat(this,'health')">💪 Health</div>
+        <div class="cat-pill" onclick="toggleCat(this,'careers')">👩‍💻 Careers</div>
+        <div class="cat-pill" onclick="toggleCat(this,'transport')">🚗 Transport</div>
+        <div class="cat-pill" onclick="toggleCat(this,'hobbies')">🎣 Hobbies</div>
+        <div class="cat-pill" onclick="toggleCat(this,'weird')">🌀 Weird &amp; Wonderful</div>
+      </div>
+      <div class="topic-display" id="topic-display">
+        <span class="topic-emoji" id="topic-emoji">🎲</span>
+        <div class="topic-name" id="topic-name">Press Spin to get a topic!</div>
+        <div class="topic-hint" id="topic-hint">Choose a category filter above first if you want</div>
+      </div>
+      <button class="spin-btn" onclick="spinTopic()">🎲 Spin!</button>
+      <div class="recent-list" id="recent-list"></div>
+    </div>
+  </div>
+
+  <!-- PANEL 4 - FONT PAIRING -->
+  <div class="panel" id="panel-fonts">
+    <div class="tool">
+      <div class="tool-hdr">
+        <span class="tool-icon">🔤</span>
+        <div><h2>Font <span>Pairing</span></h2><div class="tool-sub">Click a pairing to see a slide preview. All these fonts are built into PowerPoint - no downloads needed.</div></div>
+      </div>
+      <div class="font-grid" id="font-grid"></div>
+      <div class="font-preview" id="font-preview">
+        <div class="fp-slide" id="fp-slide">
+          <div class="fp-title" id="fp-title">Slide Title Here</div>
+          <div class="fp-sub"  id="fp-sub">Subtitle or dot point text goes here</div>
+        </div>
+        <div class="fp-why" id="fp-why"></div>
+      </div>
+      <button class="copy-btn" id="copy-btn" style="display:none" onclick="copyFonts()">📋 Copy font names to clipboard</button>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+function goTab(id) {
+  document.querySelectorAll('.tab').forEach(function(t,i){
+    t.classList.toggle('on', ['checker','timer','topics','fonts'][i] === id);
+  });
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});
+  document.getElementById('panel-'+id).classList.add('on');
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, 2500);
+}
+
+// ── DESIGN CHECKER ──
+var CHECKS = [
+  { title:"One idea per slide",             hint:"Each slide has one main point - not multiple unrelated ideas crammed together." },
+  { title:"6×6 rule applied",               hint:"Max 6 dot points per slide, max 6 words per dot point." },
+  { title:"Consistent theme on all slides", hint:"Same colours and fonts across every slide - not a different theme on each one." },
+  { title:"Text is large enough to read",   hint:"Body text at least 24pt, headings at least 36pt." },
+  { title:"High contrast text",             hint:"Dark text on light background (or vice versa) - no yellow on white or dark on dark." },
+  { title:"Max 2 fonts used",               hint:"One heading font, one body font. Not four different fonts." },
+  { title:"Images are relevant",            hint:"Every image relates to the slide content - no random clip art." },
+  { title:"Images are not stretched",       hint:"Images maintain their aspect ratio - not squished or pixelated." },
+  { title:"One transition applied to all",  hint:"Same simple transition (Fade or Push) on every slide - not a different one each time." },
+  { title:"No animation overload",          hint:"Animations used sparingly - max 1 element per slide if any." },
+  { title:"Speaker notes written",          hint:"Each slide has at least 1-2 sentences in the Notes panel." },
+  { title:"File saved to OneDrive",         hint:"Saved to OneDrive → Year 7 → DigiTech → Classwork with correct filename." },
+];
+
+var checkState = CHECKS.map(function(){ return null; });
+
+function buildChecker() {
+  var el = document.getElementById('check-list');
+  el.innerHTML = '';
+  CHECKS.forEach(function(c, i) {
+    var state = checkState[i];
+    var cls   = state === true ? 'yes' : state === false ? 'no' : '';
+    var icon  = state === true ? '✓'  : state === false ? '✕'  : '?';
+    el.innerHTML +=
+      '<div class="check-item '+cls+'" onclick="toggleCheck('+i+')" id="ci-'+i+'">'+
+        '<div class="ci-btn">'+icon+'</div>'+
+        '<div class="ci-text">'+
+          '<div class="ci-title">'+c.title+'</div>'+
+          '<div class="ci-hint">'+c.hint+'</div>'+
+        '</div>'+
+      '</div>';
+  });
+  updateScore();
+}
+
+function toggleCheck(i) {
+  checkState[i] = checkState[i] === true ? false : checkState[i] === false ? null : true;
+  buildChecker();
+}
+
+function updateScore() {
+  var done    = checkState.filter(function(s){ return s === true; }).length;
+  var checked = checkState.filter(function(s){ return s !== null; }).length;
+  var pct     = CHECKS.length > 0 ? Math.round((done / CHECKS.length) * 100) : 0;
+  document.getElementById('score-bar').style.width = pct + '%';
+  var msgs = [
+    [100, '🏆 Perfect - all rules ticked! You\'re ready to present.'],
+    [80,  '🔥 Almost there - fix the red ones and you\'re set.'],
+    [50,  '💪 Good progress - keep going through the list.'],
+    [0,   checked === 0 ? 'Tap each rule - green = done ✓, red = needs fixing ✕' : '🚧 Quite a few to fix - work through the red ones first.'],
+  ];
+  for (var j = 0; j < msgs.length; j++) {
+    if (pct >= msgs[j][0]) { document.getElementById('score-label').textContent = msgs[j][1]; break; }
+  }
+}
+
+function resetChecker() {
+  checkState = CHECKS.map(function(){ return null; });
+  buildChecker();
+}
+
+buildChecker();
+
+// ── TIMER ──
+var TARGET = 60, elapsed = 0, running = false, timerInt = null;
+var CIRC = 2 * Math.PI * 68;
+
+function setPreset(el, secs) {
+  document.querySelectorAll('.preset').forEach(function(p){ p.classList.remove('on'); });
+  el.classList.add('on');
+  TARGET = secs;
+  resetTimer();
+}
+
+function fmtTime(s) {
+  var m = Math.floor(s / 60), sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+function updateTimerUI() {
+  var face  = document.getElementById('timer-face');
+  var label = document.getElementById('timer-label');
+  var ring  = document.getElementById('ring-fill');
+  var pct   = Math.min(elapsed / TARGET, 1);
+  ring.style.strokeDashoffset = CIRC * (1 - pct);
+  face.textContent = fmtTime(elapsed);
+  if (elapsed >= TARGET) {
+    face.className = 'timer-face done'; ring.style.stroke = '#22c55e'; label.textContent = '✅ Time\'s up!';
+  } else if (pct >= 0.75) {
+    face.className = 'timer-face warn'; ring.style.stroke = '#f59e0b'; label.textContent = 'Wrap it up…';
+  } else {
+    face.className = 'timer-face'; ring.style.stroke = '#be185d'; label.textContent = 'Presenting - ' + fmtTime(TARGET - elapsed) + ' remaining';
+  }
+}
+
+function startTimer() {
+  if (running) return;
+  running = true;
+  document.getElementById('start-btn').style.display = 'none';
+  document.getElementById('pause-btn').style.display = '';
+  timerInt = setInterval(function() {
+    elapsed++;
+    updateTimerUI();
+    if (elapsed >= TARGET) { clearInterval(timerInt); running = false; document.getElementById('start-btn').style.display=''; document.getElementById('pause-btn').style.display='none'; }
+  }, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(timerInt); running = false;
+  document.getElementById('start-btn').style.display = '';
+  document.getElementById('pause-btn').style.display = 'none';
+  document.getElementById('timer-label').textContent = 'Paused';
+}
+
+function resetTimer() {
+  clearInterval(timerInt); running = false; elapsed = 0;
+  document.getElementById('start-btn').style.display = '';
+  document.getElementById('pause-btn').style.display = 'none';
+  document.getElementById('timer-face').className = 'timer-face';
+  document.getElementById('ring-fill').style.stroke = '#be185d';
+  document.getElementById('ring-fill').style.strokeDashoffset = CIRC;
+  document.getElementById('timer-label').textContent = 'Choose a time and press Start';
+  document.getElementById('timer-face').textContent  = '0:00';
+}
+
+// ── TOPIC PICKER ──
+var TOPICS = [
+  {emoji:'⚽',name:"Football (Soccer)",cat:'sport'},{emoji:'🏀',name:"Basketball",cat:'sport'},{emoji:'🏊',name:"Swimming",cat:'sport'},{emoji:'🎾',name:"Tennis",cat:'sport'},{emoji:'🏉',name:"AFL / Rugby",cat:'sport'},{emoji:'🚴',name:"Cycling",cat:'sport'},{emoji:'🏋️',name:"Weightlifting",cat:'sport'},{emoji:'🥊',name:"Boxing",cat:'sport'},{emoji:'🏄',name:"Surfing",cat:'sport'},{emoji:'⛷️',name:"Skiing & Snowboarding",cat:'sport'},{emoji:'🏓',name:"Table Tennis",cat:'sport'},{emoji:'🎯',name:"Archery",cat:'sport'},{emoji:'🚣',name:"Rowing",cat:'sport'},{emoji:'🥋',name:"Martial Arts",cat:'sport'},
+  {emoji:'🐕',name:"Dogs",cat:'animals'},{emoji:'🐱',name:"Cats",cat:'animals'},{emoji:'🦈',name:"Sharks",cat:'animals'},{emoji:'🐨',name:"Koalas",cat:'animals'},{emoji:'🦁',name:"Lions",cat:'animals'},{emoji:'🐙',name:"Octopuses",cat:'animals'},{emoji:'🦅',name:"Eagles",cat:'animals'},{emoji:'🐘',name:"Elephants",cat:'animals'},{emoji:'🐧',name:"Penguins",cat:'animals'},{emoji:'🦋',name:"Butterflies",cat:'animals'},{emoji:'🐺',name:"Wolves",cat:'animals'},{emoji:'🦊',name:"Foxes",cat:'animals'},{emoji:'🐊',name:"Crocodiles",cat:'animals'},{emoji:'🦑',name:"Giant Squid",cat:'animals'},{emoji:'🦜',name:"Parrots",cat:'animals'},{emoji:'🐝',name:"Bees",cat:'animals'},
+  {emoji:'💻',name:"How AI works",cat:'tech'},{emoji:'📱',name:"Smartphones",cat:'tech'},{emoji:'🎮',name:"How video games work",cat:'tech'},{emoji:'🤖',name:"Robots",cat:'tech'},{emoji:'🌐',name:"How the internet works",cat:'tech'},{emoji:'🔋',name:"Electric vehicles",cat:'tech'},{emoji:'🖨️',name:"3D Printing",cat:'tech'},{emoji:'🕶️',name:"Virtual Reality",cat:'tech'},{emoji:'🛰️',name:"Satellites",cat:'tech'},{emoji:'🔐',name:"Cybersecurity",cat:'tech'},{emoji:'📡',name:"5G Networks",cat:'tech'},{emoji:'🧠',name:"How computers think",cat:'tech'},
+  {emoji:'🍕',name:"Pizza",cat:'food'},{emoji:'🍣',name:"Sushi",cat:'food'},{emoji:'🍫',name:"Chocolate",cat:'food'},{emoji:'🌮',name:"Tacos",cat:'food'},{emoji:'☕',name:"Coffee",cat:'food'},{emoji:'🍦',name:"Ice cream",cat:'food'},{emoji:'🍜',name:"Ramen",cat:'food'},{emoji:'🥐',name:"Croissants",cat:'food'},{emoji:'🍔',name:"Burgers",cat:'food'},{emoji:'🍰',name:"Cake baking",cat:'food'},{emoji:'🌶️',name:"Spicy food science",cat:'food'},{emoji:'🧀',name:"Cheese making",cat:'food'},{emoji:'🍵',name:"Tea culture",cat:'food'},
+  {emoji:'🧱',name:"Minecraft",cat:'games'},{emoji:'🏝️',name:"Roblox",cat:'games'},{emoji:'🃏',name:"Card games",cat:'games'},{emoji:'♟️',name:"Chess",cat:'games'},{emoji:'🎲',name:"Board games",cat:'games'},{emoji:'🎪',name:"Fortnite",cat:'games'},{emoji:'👾',name:"History of video games",cat:'games'},{emoji:'🕹️',name:"Retro gaming",cat:'games'},{emoji:'🧩',name:"Puzzle games",cat:'games'},
+  {emoji:'🗼',name:"Paris",cat:'places'},{emoji:'🏝️',name:"The Maldives",cat:'places'},{emoji:'🗽',name:"New York City",cat:'places'},{emoji:'🏔️',name:"Mount Everest",cat:'places'},{emoji:'🇯🇵',name:"Japan",cat:'places'},{emoji:'🏜️',name:"The Sahara Desert",cat:'places'},{emoji:'🌊',name:"The Great Barrier Reef",cat:'places'},{emoji:'🏛️',name:"Ancient Rome",cat:'places'},{emoji:'🌃',name:"Tokyo at night",cat:'places'},{emoji:'🇦🇺',name:"Tasmania",cat:'places'},{emoji:'🏔️',name:"The Amazon Rainforest",cat:'places'},{emoji:'🌉',name:"San Francisco",cat:'places'},
+  {emoji:'🎸',name:"Guitar",cat:'music'},{emoji:'🥁',name:"Drums",cat:'music'},{emoji:'🎤',name:"Singing",cat:'music'},{emoji:'🎹',name:"Piano",cat:'music'},{emoji:'🎧',name:"How music streaming works",cat:'music'},{emoji:'🎺',name:"Trumpet",cat:'music'},{emoji:'🎻',name:"Violin",cat:'music'},{emoji:'🎙️',name:"Podcasting",cat:'music'},{emoji:'🎵',name:"History of hip hop",cat:'music'},{emoji:'🔊',name:"How speakers work",cat:'music'},
+  {emoji:'🌋',name:"Volcanoes",cat:'science'},{emoji:'⚡',name:"Lightning",cat:'science'},{emoji:'🧬',name:"DNA",cat:'science'},{emoji:'🌊',name:"Ocean currents",cat:'science'},{emoji:'🌙',name:"The Moon",cat:'science'},{emoji:'🦕',name:"Dinosaurs",cat:'science'},{emoji:'🧪',name:"Chemical reactions",cat:'science'},{emoji:'🌡️',name:"Climate change",cat:'science'},{emoji:'🔭',name:"Black holes",cat:'science'},{emoji:'💧',name:"The water cycle",cat:'science'},{emoji:'🧲',name:"Magnetism",cat:'science'},{emoji:'🌪️',name:"Tornadoes & Hurricanes",cat:'science'},
+  {emoji:'🚀',name:"Space exploration",cat:'space'},{emoji:'🪐',name:"Saturn's rings",cat:'space'},{emoji:'☀️',name:"The Sun",cat:'space'},{emoji:'🌌',name:"The Milky Way",cat:'space'},{emoji:'👨‍🚀',name:"Astronauts",cat:'space'},{emoji:'🛸',name:"Is there alien life?",cat:'space'},{emoji:'🌠',name:"Shooting stars & meteors",cat:'space'},{emoji:'🔭',name:"The James Webb Telescope",cat:'space'},{emoji:'🌍',name:"Earth from space",cat:'space'},{emoji:'🪨',name:"Asteroids",cat:'space'},{emoji:'💫',name:"Neutron stars",cat:'space'},{emoji:'🛰️',name:"The ISS",cat:'space'},
+  {emoji:'🏺',name:"Ancient Egypt",cat:'history'},{emoji:'⚔️',name:"The Vikings",cat:'history'},{emoji:'🏰',name:"Medieval castles",cat:'history'},{emoji:'🌍',name:"The Silk Road",cat:'history'},{emoji:'🧭',name:"Age of exploration",cat:'history'},{emoji:'⚙️',name:"The Industrial Revolution",cat:'history'},{emoji:'🗿',name:"Easter Island",cat:'history'},{emoji:'🏛️',name:"Ancient Greece",cat:'history'},{emoji:'📜',name:"The printing press",cat:'history'},{emoji:'🌊',name:"The Titanic",cat:'history'},{emoji:'🧱',name:"The Great Wall of China",cat:'history'},{emoji:'🪖',name:"World War II",cat:'history'},
+  {emoji:'🌳',name:"Rainforests",cat:'environment'},{emoji:'🐋',name:"Whale migration",cat:'environment'},{emoji:'♻️',name:"Recycling & waste",cat:'environment'},{emoji:'🌊',name:"Plastic in the ocean",cat:'environment'},{emoji:'🌿',name:"Renewable energy",cat:'environment'},{emoji:'🐝',name:"Why bees matter",cat:'environment'},{emoji:'🌡️',name:"Global warming",cat:'environment'},{emoji:'🦁',name:"Endangered animals",cat:'environment'},{emoji:'🌱',name:"Urban farming",cat:'environment'},{emoji:'💧',name:"Clean water access",cat:'environment'},{emoji:'🏔️',name:"Glaciers melting",cat:'environment'},
+  {emoji:'🎨',name:"Street art & graffiti",cat:'art'},{emoji:'📸',name:"Photography",cat:'art'},{emoji:'✏️',name:"Manga & comics",cat:'art'},{emoji:'🖼️',name:"Famous paintings",cat:'art'},{emoji:'🏗️',name:"Architecture",cat:'art'},{emoji:'🎭',name:"Theatre & drama",cat:'art'},{emoji:'💃',name:"Dance styles",cat:'art'},{emoji:'👗',name:"Fashion design",cat:'art'},{emoji:'🎬',name:"How animation works",cat:'art'},{emoji:'🖌️',name:"Graphic design",cat:'art'},
+  {emoji:'🧘',name:"Meditation & mindfulness",cat:'health'},{emoji:'💪',name:"How muscles work",cat:'health'},{emoji:'🥗',name:"Nutrition & diet",cat:'health'},{emoji:'😴',name:"Why sleep matters",cat:'health'},{emoji:'🧠',name:"Mental health",cat:'health'},{emoji:'🏃',name:"Running & cardio",cat:'health'},{emoji:'🦷',name:"Dental health",cat:'health'},{emoji:'👁️',name:"How your eyes work",cat:'health'},{emoji:'🫀',name:"The human heart",cat:'health'},{emoji:'🤸',name:"Flexibility & stretching",cat:'health'},
+  {emoji:'👨‍⚕️',name:"Being a doctor",cat:'careers'},{emoji:'👩‍💻',name:"Software engineering",cat:'careers'},{emoji:'🎮',name:"Game design as a career",cat:'careers'},{emoji:'🍳',name:"Professional chef",cat:'careers'},{emoji:'🚒',name:"Firefighting",cat:'careers'},{emoji:'🎬',name:"Film directing",cat:'careers'},{emoji:'🏗️',name:"Civil engineering",cat:'careers'},{emoji:'🌿',name:"Environmental science",cat:'careers'},{emoji:'✈️',name:"Becoming a pilot",cat:'careers'},{emoji:'🎨',name:"Graphic design career",cat:'careers'},
+  {emoji:'🚗',name:"Electric cars",cat:'transport'},{emoji:'🏎️',name:"Formula 1",cat:'transport'},{emoji:'🚂',name:"High-speed trains",cat:'transport'},{emoji:'✈️',name:"How planes fly",cat:'transport'},{emoji:'🚢',name:"Cruise ships",cat:'transport'},{emoji:'🚲',name:"Cycling as transport",cat:'transport'},{emoji:'🛵',name:"Motorcycles",cat:'transport'},{emoji:'🚁',name:"Helicopters",cat:'transport'},{emoji:'🛺',name:"Future of transport",cat:'transport'},{emoji:'🚀',name:"Hyperloop",cat:'transport'},
+  {emoji:'📷',name:"Photography as a hobby",cat:'hobbies'},{emoji:'🎣',name:"Fishing",cat:'hobbies'},{emoji:'🧶',name:"Knitting & crochet",cat:'hobbies'},{emoji:'🪴',name:"Gardening",cat:'hobbies'},{emoji:'🎨',name:"Painting & drawing",cat:'hobbies'},{emoji:'🧱',name:"LEGO building",cat:'hobbies'},{emoji:'🎭',name:"Cosplay",cat:'hobbies'},{emoji:'🪚',name:"Woodworking",cat:'hobbies'},{emoji:'🎲',name:"Dungeons & Dragons",cat:'hobbies'},{emoji:'🎸',name:"Learning an instrument",cat:'hobbies'},{emoji:'🍳',name:"Home cooking",cat:'hobbies'},
+  {emoji:'🌀',name:"The Bermuda Triangle",cat:'weird'},{emoji:'🦠',name:"How viruses work",cat:'weird'},{emoji:'😴',name:"Why do we dream?",cat:'weird'},{emoji:'🎆',name:"How fireworks work",cat:'weird'},{emoji:'🧊',name:"How ice forms",cat:'weird'},{emoji:'🌈',name:"Why rainbows exist",cat:'weird'},{emoji:'🕳️',name:"Quicksand - fact vs fiction",cat:'weird'},{emoji:'🦎',name:"Animals that regrow limbs",cat:'weird'},{emoji:'🧲',name:"How magnets really work",cat:'weird'},{emoji:'🫧',name:"Why soap makes bubbles",cat:'weird'},{emoji:'🌊',name:"Rogue waves",cat:'weird'},{emoji:'🔥',name:"What is fire?",cat:'weird'},
+];
+
+var activeCat = 'all';
+var recentTopics = [];
+
+function toggleCat(el, cat) {
+  document.querySelectorAll('.cat-pill').forEach(function(p){ p.classList.remove('on'); });
+  el.classList.add('on');
+  activeCat = cat;
+}
+
+function spinTopic() {
+  var pool = activeCat === 'all' ? TOPICS : TOPICS.filter(function(t){ return t.cat === activeCat; });
+  if (!pool.length) return;
+  var pick = pool[Math.floor(Math.random() * pool.length)];
+  document.getElementById('topic-emoji').textContent = pick.emoji;
+  document.getElementById('topic-name').textContent  = pick.name;
+  document.getElementById('topic-hint').textContent  = 'Category: ' + pick.cat;
+  document.getElementById('topic-display').classList.add('popped');
+  setTimeout(function(){ document.getElementById('topic-display').classList.remove('popped'); }, 300);
+  recentTopics.unshift(pick.emoji + ' ' + pick.name);
+  if (recentTopics.length > 4) recentTopics.pop();
+  document.getElementById('recent-list').innerHTML =
+    recentTopics.length > 1
+      ? '<strong style="color:#64748b">Recent spins:</strong> ' + recentTopics.slice(1).join('  ·  ')
+      : '';
+}
+
+// ── FONT PAIRING ──
+var PAIRINGS = [
+  {heading:'Calibri',body:'Calibri Light',headW:'700',bodyW:'400',headCSS:"font-family:'Calibri',sans-serif",bodyCSS:"font-family:'Calibri Light','Calibri',sans-serif",badge:'safe',badgeTxt:'Built-in default',why:'<strong>Why it works:</strong> Calibri is PowerPoint\'s default - it looks clean on every device. Pair bold Calibri for headings with Calibri Light for body text for a polished, professional feel.'},
+  {heading:'Oswald',body:'Lato',headW:'700',bodyW:'400',headCSS:"font-family:'Oswald',sans-serif",bodyCSS:"font-family:'Lato',sans-serif",badge:'pro',badgeTxt:'Modern & punchy',why:'<strong>Why it works:</strong> Oswald\'s condensed weight makes headings bold and impactful. Lato\'s humanist style keeps body text warm and readable. Great for sports, tech or science topics.'},
+  {heading:'Georgia',body:'Arial',headW:'700',bodyW:'400',headCSS:"font-family:'Georgia',serif",bodyCSS:"font-family:'Arial',sans-serif",badge:'safe',badgeTxt:'Classic combo',why:'<strong>Why it works:</strong> Serif heading with a sans-serif body is a classic design rule. Georgia\'s elegant curves give authority; Arial keeps things clear and clean. Works for any topic.'},
+  {heading:'Trebuchet MS',body:'Trebuchet MS',headW:'700',bodyW:'400',headCSS:"font-family:'Trebuchet MS',sans-serif",bodyCSS:"font-family:'Trebuchet MS',sans-serif",badge:'safe',badgeTxt:'Simple & consistent',why:'<strong>Why it works:</strong> Using one font family with different weights keeps things consistent and simple. Trebuchet MS is friendly and readable - good for presentations aimed at a general audience.'},
+  {heading:'Impact',body:'Arial',headW:'900',bodyW:'400',headCSS:"font-family:'Impact',sans-serif",bodyCSS:"font-family:'Arial',sans-serif",badge:'pro',badgeTxt:'High impact',why:'<strong>Why it works:</strong> Impact is designed to grab attention - perfect for title slides or one-word slides. Pair with plain Arial for body text so the contrast isn\'t overwhelming. Use sparingly.'},
+  {heading:'Century Gothic',body:'Garamond',headW:'700',bodyW:'400',headCSS:"font-family:'Century Gothic',sans-serif",bodyCSS:"font-family:'Garamond','Georgia',serif",badge:'pro',badgeTxt:'Elegant & creative',why:'<strong>Why it works:</strong> Century Gothic\'s geometric circles give headings a modern, creative feel. Garamond is one of the most readable serif fonts ever designed - perfect for longer body text.'},
+];
+
+var selFont = null;
+
+function buildFontGrid() {
+  var el = document.getElementById('font-grid');
+  el.innerHTML = '';
+  PAIRINGS.forEach(function(p, i) {
+    el.innerHTML +=
+      '<div class="font-card" onclick="selectFont('+i+')" id="fc-'+i+'">'+
+        '<span class="fc-badge '+p.badge+'">'+p.badgeTxt+'</span>'+
+        '<div class="fc-label">Heading font</div>'+
+        '<div class="fc-heading" style="'+p.headCSS+';font-weight:'+p.headW+'">'+p.heading+'</div>'+
+        '<div class="fc-label" style="margin-top:.45rem">Body font</div>'+
+        '<div class="fc-body" style="'+p.bodyCSS+';font-weight:'+p.bodyW+'">'+p.body+' - The quick brown fox</div>'+
+        '<div class="fc-names">'+p.heading+' + '+p.body+'</div>'+
+      '</div>';
+  });
+}
+
+function selectFont(i) {
+  selFont = i;
+  document.querySelectorAll('.font-card').forEach(function(c){ c.classList.remove('sel'); });
+  document.getElementById('fc-'+i).classList.add('sel');
+  var p = PAIRINGS[i];
+  var preview = document.getElementById('font-preview');
+  preview.classList.add('show');
+  document.getElementById('fp-title').style.cssText = p.headCSS+';font-weight:'+p.headW+';font-size:1.4rem;color:#fff;margin-bottom:.3rem';
+  document.getElementById('fp-title').textContent   = 'Slide Title Here';
+  document.getElementById('fp-sub').style.cssText   = p.bodyCSS+';font-weight:'+p.bodyW+';font-size:.85rem;color:#c4b5fd;line-height:1.5';
+  document.getElementById('fp-sub').textContent     = 'This is what your body text looks like on a slide.';
+  document.getElementById('fp-why').innerHTML       = p.why;
+  document.getElementById('copy-btn').style.display = '';
+}
+
+function copyFonts() {
+  if (selFont === null) return;
+  var p = PAIRINGS[selFont];
+  var text = 'Heading: ' + p.heading + '\nBody: ' + p.body;
+  navigator.clipboard.writeText(text).then(function(){ toast('Copied: ' + p.heading + ' + ' + p.body); }).catch(function(){
+    var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); toast('Copied!');
+  });
+}
+
+buildFontGrid();
+</script>
+</body>
+</html>
