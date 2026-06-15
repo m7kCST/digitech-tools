@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>File Name Wizard – DigiTech Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1d23;--ink2:#4a5060;--ink3:#8a8f9e;
+  --bg:#f4f6f9;--surface:#fff;--surface2:#f0f2f5;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --y7:#185FA5;--y7l:#E6F1FB;--y7d:#0C447C;--y7m:#378ADD;
+  --y8:#2E7D32;--y8l:#E8F5E9;--y8d:#1B5E20;
+  --y910:#534AB7;--y910l:#EEEDFE;--y910d:#3C3489;
+  --inq:#00695C;--inql:#E0F2F1;--inqd:#004D40;
+  --green:#3B6D11;--greenl:#EAF3DE;
+  --amber:#854F0B;--amberl:#FAEEDA;
+  --red:#A32D2D;--redl:#FCEBEB;
+  --radius:10px;--radiuslg:14px;
+  --shadow:0 1px 3px rgba(0,0,0,0.07),0 4px 12px rgba(0,0,0,0.05);
+  --mono:'DM Mono',monospace;--sans:'Nunito',sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6;padding:16px 14px 60px}
+
+/* ── Header ── */
+.site-header{display:flex;align-items:center;gap:12px;padding:14px 18px;margin-bottom:14px;background:var(--surface);border-radius:var(--radiuslg);border:1px solid var(--border);box-shadow:var(--shadow);max-width:680px;margin-left:auto;margin-right:auto}
+.header-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--y7),var(--y910));display:flex;align-items:center;justify-content:center;color:white;font-size:17px;flex-shrink:0}
+.header-title{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.header-sub{font-size:11px;color:var(--ink3);margin-top:1px}
+.header-badges{margin-left:auto;display:flex;gap:6px;align-items:center}
+.hbadge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.hb-tool{background:var(--y7l);color:var(--y7d);border:1px solid rgba(24,95,165,.2)}
+.hb-y7{background:var(--y7l);color:var(--y7d);border:1px solid rgba(24,95,165,.2)}
+
+/* ── Tabs ── */
+.tab-bar{max-width:680px;margin:0 auto 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tab{padding:11px 12px;border-radius:var(--radiuslg);border:1.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:var(--sans);font-size:13px;font-weight:700;color:var(--ink2);transition:all .18s;box-shadow:var(--shadow)}
+.tab:hover{border-color:var(--border2)}
+.tab.active{border-color:var(--y7);background:var(--y7l);color:var(--y7d)}
+.panel{display:none}.panel.active{display:block}
+
+/* ── Progress bar ── */
+.prog{max-width:680px;margin:0 auto 14px;display:flex;align-items:center}
+.ps{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;position:relative}
+.ps:not(:last-child)::after{content:'';position:absolute;top:16px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;background:var(--border2);border-radius:99px;transition:background .4s}
+.ps.done:not(:last-child)::after{background:var(--green)}
+.pd{width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--border2);color:var(--ink3);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;transition:all .3s;font-family:var(--mono)}
+.ps.active .pd{background:var(--y7);border-color:var(--y7);color:white;box-shadow:0 0 0 4px rgba(24,95,165,.15)}
+.ps.done .pd{background:var(--green);border-color:var(--green);color:white}
+.pl{font-size:10px;font-weight:700;color:var(--ink3);text-align:center}
+.ps.active .pl{color:var(--y7d)}.ps.done .pl{color:var(--green)}
+
+/* ── Cards ── */
+.card{max-width:680px;margin:0 auto 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radiuslg);padding:20px;box-shadow:var(--shadow);transition:opacity .3s}
+.card.locked{opacity:.38;pointer-events:none}
+.ch{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.si{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;background:var(--y7l)}
+.ch-text h2{font-size:15px;font-weight:800;color:var(--ink)}
+.ch-text p{font-size:12px;color:var(--ink3);margin-top:2px}
+
+/* ── Chips ── */
+.chips{display:grid;gap:7px}
+.chips.c2{grid-template-columns:1fr 1fr}
+.chips.c3{grid-template-columns:1fr 1fr 1fr}
+.chip{border:1.5px solid var(--border2);background:var(--surface2);color:var(--ink2);padding:9px 10px;border-radius:var(--radius);cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:700;text-align:center;transition:all .15s;user-select:none;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.3}
+.chip:hover{border-color:var(--y7);background:var(--y7l);color:var(--y7d)}
+.chip.on{border-color:var(--y7);background:var(--y7l);color:var(--y7d);box-shadow:0 0 0 3px rgba(24,95,165,.12)}
+.chip.green.on{border-color:var(--green);background:var(--greenl);color:var(--green);box-shadow:0 0 0 3px rgba(59,109,17,.1)}
+.chip.purple.on{border-color:var(--y910);background:var(--y910l);color:var(--y910d);box-shadow:0 0 0 3px rgba(83,74,183,.12)}
+.chip.amber.on{border-color:var(--amber);background:var(--amberl);color:var(--amber);box-shadow:0 0 0 3px rgba(133,79,11,.1)}
+
+/* ── Input ── */
+input[type=text]{width:100%;border:1.5px solid var(--border2);background:var(--surface2);color:var(--ink);padding:10px 13px;border-radius:var(--radius);font-family:var(--sans);font-size:14px;font-weight:600;outline:none;transition:border-color .15s,box-shadow .15s}
+input[type=text]:focus{border-color:var(--y7);box-shadow:0 0 0 3px rgba(24,95,165,.12);background:var(--surface)}
+input[type=text]::placeholder{color:var(--ink3);font-weight:500}
+.hint-text{margin-top:5px;font-size:11px;color:var(--ink3);font-weight:600}
+.section-label{font-size:11px;font-weight:800;color:var(--ink3);margin-bottom:7px;margin-top:13px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Buttons ── */
+.btn-row{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:var(--sans);font-weight:800;font-size:13px;padding:10px 18px;border-radius:var(--radius);border:1.5px solid transparent;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--y7);color:#fff;border-color:var(--y7);box-shadow:0 3px 10px rgba(24,95,165,.25)}
+.btn-primary:hover{background:var(--y7d)}
+.btn-ghost{background:transparent;color:var(--ink3);border-color:var(--border2)}
+.btn-ghost:hover{background:var(--surface2);color:var(--ink)}
+
+/* ── Result card ── */
+.result-card{max-width:680px;margin:0 auto 10px;background:linear-gradient(135deg,var(--y7),var(--y910));border-radius:var(--radiuslg);padding:22px;color:#fff;display:none;box-shadow:0 6px 28px rgba(24,95,165,.32)}
+.result-card.show{display:block;animation:popIn .4s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes popIn{from{opacity:0;transform:scale(.93) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.r-title{font-size:18px;font-weight:900;margin-bottom:2px}
+.r-sub{font-size:12px;opacity:.8;font-weight:600;margin-bottom:14px}
+.rl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.rfn{font-family:var(--mono);font-size:13px;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.22);border-radius:10px;padding:12px 14px;word-break:break-all;line-height:1.8;margin-bottom:12px}
+.part-date{color:#fde68a}.part-subj{color:#a5f3fc}.part-type{color:#bbf7d0}.part-title{color:#f5d0fe}.part-ext{color:#fed7aa}.part-sep{opacity:.5}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;font-size:11px;font-weight:700}
+.copy-btn{font-family:var(--sans);font-size:13px;font-weight:700;padding:8px 15px;border-radius:var(--radius);border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.copy-btn:hover{background:rgba(255,255,255,.26)}
+
+/* ── Folder path card ── */
+.folder-path-card{max-width:680px;margin:0 auto 10px;background:var(--greenl);border:1.5px solid rgba(59,109,17,.3);border-radius:var(--radiuslg);padding:18px 20px;display:none}
+.folder-path-card.show{display:block;animation:popIn .4s .1s cubic-bezier(.34,1.56,.64,1) both}
+.fp-title{font-size:13px;font-weight:800;color:var(--green);margin-bottom:11px;display:flex;align-items:center;gap:7px}
+.fp-crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:13px}
+.fp-crumb{background:var(--surface);border:1.5px solid rgba(59,109,17,.25);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--green);display:flex;align-items:center;gap:4px}
+.fp-arrow{font-size:14px;color:var(--green);font-weight:900;opacity:.5}
+.fp-crumb.active{background:var(--green);color:#fff;border-color:var(--green)}
+.save-steps{display:flex;flex-direction:column;gap:6px}
+.save-step{display:flex;align-items:flex-start;gap:9px;background:rgba(255,255,255,.55);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:700;color:var(--y7d);line-height:1.45}
+.sn{width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.kbd{display:inline-block;background:var(--y7d);color:#fff;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700}
+
+/* ── How-to tip ── */
+.how-card{max-width:680px;margin:0 auto 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radiuslg);padding:14px 18px;display:none}
+.how-card.show{display:block;animation:popIn .4s .2s cubic-bezier(.34,1.56,.64,1) both}
+
+/* ── New-file tip ── */
+.new-file-tip{max-width:680px;margin:0 auto 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radiuslg);padding:18px 20px;display:none}
+.new-file-tip.show{display:block;animation:popIn .4s .18s cubic-bezier(.34,1.56,.64,1) both}
+.nft-title{font-size:13px;font-weight:800;margin-bottom:11px;display:flex;align-items:center;gap:7px}
+.method-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.method{border-radius:11px;padding:12px 13px;border:1.5px solid var(--border2)}
+.method.blue{border-color:rgba(24,95,165,.35);background:var(--y7l)}
+.method.amber{border-color:rgba(133,79,11,.3);background:var(--amberl)}
+.method-title{font-size:12px;font-weight:800;margin-bottom:6px}
+.method.blue .method-title{color:var(--y7d)}
+.method.amber .method-title{color:var(--amber)}
+.method ol{margin-left:15px;display:flex;flex-direction:column;gap:4px}
+.method ol li{font-size:12px;font-weight:600;color:var(--ink);line-height:1.4}
+
+/* ── Reset row ── */
+.reset-row{max-width:680px;margin:4px auto 0;text-align:center;display:none}
+.reset-row.show{display:block}
+
+/* ═══ CHECKER PANEL ═══ */
+.drop-zone{max-width:680px;margin:0 auto 14px;border:2px dashed var(--border2);background:var(--surface);border-radius:var(--radiuslg);padding:38px 22px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop-zone.over{border-color:var(--y7);background:var(--y7l)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.drop-icon{font-size:40px;margin-bottom:10px}
+.drop-title{font-size:17px;font-weight:800;margin-bottom:5px}
+.drop-sub{font-size:13px;color:var(--ink3);font-weight:600}
+
+.detect-card{max-width:680px;margin:0 auto 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radiuslg);padding:18px 20px;display:none;box-shadow:var(--shadow)}
+.detect-card.show{display:block;animation:popIn .4s cubic-bezier(.34,1.56,.64,1) both}
+
+.file-row{display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:13px}
+.fi-icon{font-size:26px;flex-shrink:0}
+.fi-name{font-size:13px;font-weight:800;word-break:break-all}
+.fi-meta{font-size:11px;color:var(--ink3);font-weight:600;margin-top:2px;font-family:var(--mono)}
+
+.detected-fields{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:13px}
+.df{border-radius:var(--radius);padding:9px 11px;border:1px solid var(--border);background:var(--surface2)}
+.df-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.df-val{font-size:13px;font-weight:800;color:var(--ink)}
+.df-val.detected{color:var(--green)}
+.df-val.guessed{color:var(--amber)}
+.df-val.needed{color:var(--ink3);font-style:italic;font-weight:600}
+.detect-pill{font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px}
+.pill-auto{background:var(--greenl);color:var(--green)}
+.pill-guess{background:var(--amberl);color:var(--amber)}
+.pill-needed{background:var(--surface2);color:var(--ink3);border:1px solid var(--border2)}
+
+.new-name-wrap{max-width:680px;margin:0 auto 10px;background:linear-gradient(135deg,var(--y7),var(--y910));border-radius:var(--radiuslg);padding:16px 18px;color:#fff;display:none}
+.new-name-wrap.show{display:block;animation:popIn .3s cubic-bezier(.34,1.56,.64,1) both}
+.nn-label{font-size:10px;font-weight:800;opacity:.75;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+.nn-text{font-family:var(--mono);font-size:13px;word-break:break-all;line-height:1.8}
+
+.checker-path{max-width:680px;margin:0 auto 10px;background:var(--greenl);border:1.5px solid rgba(59,109,17,.3);border-radius:var(--radiuslg);padding:18px 20px;display:none}
+.checker-path.show{display:block;animation:popIn .3s .1s cubic-bezier(.34,1.56,.64,1) both}
+
+.try-again{max-width:680px;margin:4px auto 0;text-align:center;display:none}
+.try-again.show{display:block}
+
+/* ── Confetti ── */
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:999}
+.confetti-piece{position:absolute;width:9px;height:9px;border-radius:2px;animation:fall linear forwards;opacity:0}
+@keyframes fall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+
+@media(max-width:500px){
+  .chips.c3{grid-template-columns:1fr 1fr}
+  .method-grid{grid-template-columns:1fr}
+  .detected-fields{grid-template-columns:1fr}
+  .header-badges{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="confetti-wrap" id="confettiWrap"></div>
+
+<!-- Header -->
+<div class="site-header">
+  <div class="header-logo">💡</div>
+  <div>
+    <div class="header-title">DigiTech Hub</div>
+    <div class="header-sub">Emmanuel Christian School · Mr Miller</div>
+  </div>
+  <div class="header-badges">
+    <span class="hbadge hb-y7">Year 7</span>
+    <span class="hbadge hb-tool">File Name Wizard 🧙</span>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('wizard')">🧙 Name a new file</button>
+  <button class="tab" onclick="switchTab('checker')">📂 Check a file from your teacher</button>
+</div>
+
+
+<!-- ══════════ WIZARD PANEL ══════════ -->
+<div class="panel active" id="panel-wizard">
+
+  <div class="prog" id="prog">
+    <div class="ps active" id="ps1"><div class="pd">1</div><div class="pl">Class</div></div>
+    <div class="ps" id="ps2"><div class="pd">2</div><div class="pl">Type</div></div>
+    <div class="ps" id="ps3"><div class="pd">3</div><div class="pl">Title</div></div>
+    <div class="ps" id="ps4"><div class="pd">4</div><div class="pl">Save to</div></div>
+    <div class="ps" id="ps5"><div class="pd">✓</div><div class="pl">Done!</div></div>
+  </div>
+
+  <!-- Step 1: Class -->
+  <div class="card" id="step1">
+    <div class="ch">
+      <div class="si">💻</div>
+      <div class="ch-text"><h2>Which class is this for?</h2><p>Tap the one that matches what you're doing right now</p></div>
+    </div>
+    <div class="chips c2" id="classChips">
+      <div class="chip" data-val="Year7" data-label="Year 7">🔵 Year 7 – Digital Systems</div>
+      <div class="chip" data-val="Year8" data-label="Year 8">🟢 Year 8 – Networks &amp; Data</div>
+      <div class="chip" data-val="Year910" data-label="Year 9/10">🟣 Year 9/10 – Programming</div>
+      <div class="chip" data-val="Inquiry" data-label="Inquiry">🔷 Inquiry – Open Exploration</div>
+    </div>
+  </div>
+
+  <!-- Step 2: Type -->
+  <div class="card locked" id="step2">
+    <div class="ch">
+      <div class="si">📄</div>
+      <div class="ch-text"><h2>What kind of work is it?</h2><p>What did your teacher ask you to create or complete?</p></div>
+    </div>
+    <div class="chips c2 purple" id="typeChips">
+      <div class="chip purple" data-val="Notes" data-ext="docx">📝 Notes</div>
+      <div class="chip purple" data-val="Worksheet" data-ext="docx">📄 Worksheet</div>
+      <div class="chip purple" data-val="Classwork" data-ext="docx">🏫 Classwork</div>
+      <div class="chip purple" data-val="Assessment" data-ext="docx">✅ Assessment</div>
+      <div class="chip purple" data-val="Reference" data-ext="pdf">📚 Reference / Guide</div>
+      <div class="chip purple" data-val="LessonOutline" data-ext="html">📋 Lesson Outline</div>
+      <div class="chip purple" data-val="Rubric" data-ext="docx">📊 Rubric</div>
+      <div class="chip purple" data-val="Presentation" data-ext="pptx">🎤 Presentation</div>
+    </div>
+  </div>
+
+  <!-- Step 3: Title + extension -->
+  <div class="card locked" id="step3">
+    <div class="ch">
+      <div class="si">🏷️</div>
+      <div class="ch-text"><h2>Give it a short title</h2><p>2–4 words about what the file is about</p></div>
+    </div>
+    <input type="text" id="titleInput" maxlength="50" placeholder="e.g. Binary Images, Python Loops, Cyber Poster">
+    <div class="hint-text">Short and clear – no emojis, no spaces (use underscores if you like)</div>
+    <div class="section-label">What app will you use?</div>
+    <div class="chips c3 amber" id="extChips">
+      <div class="chip amber on" data-val="docx">📝 Word</div>
+      <div class="chip amber" data-val="pptx">📊 PowerPoint</div>
+      <div class="chip amber" data-val="xlsx">📈 Excel</div>
+      <div class="chip amber" data-val="pdf">📑 PDF</div>
+      <div class="chip amber" data-val="html">🌐 HTML</div>
+      <div class="chip amber" data-val="py">🐍 Python</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="step3Next()">Looks good → Next ✨</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Save location -->
+  <div class="card locked" id="step4">
+    <div class="ch">
+      <div class="si">📁</div>
+      <div class="ch-text"><h2>Where will you save it?</h2><p>Pick the right Drive folder – we'll show you the exact path</p></div>
+    </div>
+    <div class="chips c2 green" id="saveChips">
+      <div class="chip green" data-val="Classwork">📁 Classwork</div>
+      <div class="chip green" data-val="Assessments">🧾 Assessments</div>
+    </div>
+    <div style="margin-top:9px;font-size:12px;font-weight:700;color:var(--ink3)">
+      🤔 Not sure? <b>Classwork</b> is right for most things you make in class.
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="resultCard">
+    <div class="r-title">🎉 Your filename is ready!</div>
+    <div class="r-sub">Copy it → rename your file → move it to the folder below → done!</div>
+    <div class="rl">YOUR FILENAME</div>
+    <div class="rfn" id="resultFilename">—</div>
+    <div class="legend">
+      <span style="color:#fde68a">■ Date</span>
+      <span style="color:#a5f3fc">■ Class</span>
+      <span style="color:#bbf7d0">■ Type</span>
+      <span style="color:#f5d0fe">■ Title</span>
+      <span style="color:#fed7aa">■ Extension</span>
+    </div>
+    <button class="copy-btn" onclick="copyFilename()" id="copyFileBtn">📋 Copy Filename</button>
+  </div>
+
+  <!-- Visual folder path -->
+  <div class="folder-path-card" id="folderPathCard">
+    <div class="fp-title">📁 Follow this path on OneDrive to save your file</div>
+    <div class="fp-crumbs" id="fpCrumbs"></div>
+    <div class="save-steps">
+      <div class="save-step"><div class="sn">1</div><span>Copy the filename above</span></div>
+      <div class="save-step"><div class="sn">2</div><span>Open <b>File Explorer</b> → find <b>OneDrive</b> in the left sidebar → follow the path shown above</span></div>
+      <div class="save-step"><div class="sn">3</div><span>Drag your file into that folder, then click it once → press <span class="kbd">F2</span> → paste the filename → <span class="kbd">Enter</span></span></div>
+    </div>
+  </div>
+
+  <!-- New file tip -->
+  <div class="new-file-tip" id="newFileTip">
+    <div class="nft-title">💡 Starting a brand new file? Two ways to save it correctly</div>
+    <div class="method-grid">
+      <div class="method blue">
+        <div class="method-title">⭐ Best: Use Save As</div>
+        <ol>
+          <li>Open Word / PowerPoint / Excel</li>
+          <li>Press <b>Ctrl + Shift + S</b> (or File → Save As)</li>
+          <li>Navigate to the folder shown above</li>
+          <li>Paste your filename in the name box</li>
+          <li>Click <b>Save</b> — done!</li>
+        </ol>
+      </div>
+      <div class="method amber">
+        <div class="method-title">🔁 Or: Rename after saving</div>
+        <ol>
+          <li>Save the file anywhere first</li>
+          <li>Find it in File Explorer</li>
+          <li>Click once → press <b>F2</b></li>
+          <li>Paste your filename → Enter</li>
+          <li>Drag it into the correct folder</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="how-card" id="howCard">
+    <div style="font-size:12px;font-weight:700;color:var(--ink2)">💡 Using OneDrive in a browser? Right-click the file → <b>Rename</b> → paste → Save.</div>
+  </div>
+
+  <div class="reset-row" id="resetRow">
+    <button class="btn btn-ghost" onclick="resetAll()">↩ Start over</button>
+  </div>
+
+</div><!-- /wizard -->
+
+
+<!-- ══════════ CHECKER PANEL ══════════ -->
+<div class="panel" id="panel-checker">
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="ch">
+      <div class="si">📂</div>
+      <div class="ch-text"><h2>Got a file from your teacher?</h2><p>Drop it in — we'll read what we can and build the correct name for you</p></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink3);font-weight:600;line-height:1.5">We can't move the file for you (browsers aren't allowed to do that) but we'll detect as much as possible and give you the exact name to use, plus the folder path to follow.</p>
+  </div>
+
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept="*/*">
+    <div class="drop-icon">📥</div>
+    <div class="drop-title">Drop your file here</div>
+    <div class="drop-sub">or click to browse — any file type works</div>
+  </div>
+
+  <!-- Detected fields -->
+  <div class="detect-card" id="detectCard">
+    <div class="ch">
+      <div class="si">🔍</div>
+      <div class="ch-text"><h2>Here's what we found</h2><p>Check it's right and fix anything that's wrong</p></div>
+    </div>
+
+    <div class="file-row">
+      <div class="fi-icon" id="dFileIcon">📄</div>
+      <div>
+        <div class="fi-name" id="dFileName">—</div>
+        <div class="fi-meta" id="dFileMeta">—</div>
+      </div>
+    </div>
+
+    <div class="detected-fields">
+      <div class="df">
+        <div class="df-label">📅 Date <span class="detect-pill pill-auto" id="datePill">auto</span></div>
+        <div class="df-val detected" id="dDate">—</div>
+      </div>
+      <div class="df">
+        <div class="df-label">💻 Class <span class="detect-pill" id="classPill">—</span></div>
+        <div class="df-val" id="dClassDisplay">—</div>
+      </div>
+      <div class="df">
+        <div class="df-label">📄 Type <span class="detect-pill" id="typePill">—</span></div>
+        <div class="df-val" id="dTypeDisplay">—</div>
+      </div>
+      <div class="df">
+        <div class="df-label">🏷️ Title <span class="detect-pill" id="titlePill">—</span></div>
+        <div class="df-val" id="dTitleDisplay">—</div>
+      </div>
+    </div>
+
+    <!-- Corrections -->
+    <div id="correctionArea">
+      <div id="cClassWrap" style="display:none;margin-bottom:10px">
+        <div class="section-label">Which class? (tap to set)</div>
+        <div class="chips c2" id="cClassChips">
+          <div class="chip" data-val="Year7" data-label="Year 7">🔵 Year 7</div>
+          <div class="chip" data-val="Year8" data-label="Year 8">🟢 Year 8</div>
+          <div class="chip" data-val="Year910" data-label="Year 9/10">🟣 Year 9/10</div>
+          <div class="chip" data-val="Inquiry" data-label="Inquiry">🔷 Inquiry</div>
+        </div>
+      </div>
+      <div id="cTitleWrap" style="display:none;margin-bottom:10px">
+        <div class="section-label">Short title (edit if needed)</div>
+        <input type="text" id="cTitleInput" maxlength="50" placeholder="2–4 words describing the file">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="buildCheckerBtn" onclick="buildCheckerResult()" style="display:none">✨ Build my filename</button>
+    </div>
+  </div>
+
+  <!-- New name -->
+  <div class="new-name-wrap" id="newNameWrap">
+    <div class="nn-label">✏️ Rename your file to this</div>
+    <div class="nn-text" id="newNameText">—</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="copy-btn" onclick="copyCheckerName()" id="copyCheckerBtn">📋 Copy New Filename</button>
+    </div>
+  </div>
+
+  <!-- Checker folder path -->
+  <div class="checker-path" id="checkerPath">
+    <div class="fp-title">📁 Follow this path on OneDrive to save your file</div>
+    <div class="fp-crumbs" id="cFpCrumbs"></div>
+    <div class="save-steps">
+      <div class="save-step"><div class="sn">1</div><span>Copy the new filename above</span></div>
+      <div class="save-step"><div class="sn">2</div><span>Find the file in <b>File Explorer</b> → click once → <span class="kbd">F2</span> → paste → <span class="kbd">Enter</span></span></div>
+      <div class="save-step"><div class="sn">3</div><span>Drag it into the folder shown above. You're done! ✅</span></div>
+    </div>
+  </div>
+
+  <div class="try-again" id="tryAgain">
+    <button class="btn btn-ghost" onclick="resetChecker()">↩ Drop another file</button>
+  </div>
+
+</div><!-- /checker -->
+
+
+<script>
+// ── Helpers ──
+const today = (() => {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+})();
+function clean(t){ return t.trim().replace(/\s+/g,'_').replace(/[\\/:*?"<>|#,]/g,''); }
+function titleCase(s){ return s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
+
+// DigiTech Hub metadata
+const CLASS_LABELS = { Year7:'Year7', Year8:'Year8', Year910:'Year910', Inquiry:'Inquiry' };
+const CLASS_NICE   = { Year7:'Year 7', Year8:'Year 8', Year910:'Year 9-10', Inquiry:'Inquiry' };
+const TYPES        = ['Notes','Worksheet','Classwork','Assessment','Reference','LessonOutline','Rubric','Presentation'];
+const EXT_TYPE     = { docx:'Classwork', doc:'Classwork', pptx:'Presentation', ppt:'Presentation', xlsx:'Classwork', xls:'Classwork', pdf:'Reference', html:'LessonOutline', htm:'LessonOutline', py:'Classwork', js:'Classwork' };
+const EXT_ICON     = { docx:'📝', doc:'📝', pptx:'📊', ppt:'📊', xlsx:'📈', xls:'📈', pdf:'📑', html:'🌐', htm:'🌐', py:'🐍', js:'📜', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', mp4:'🎬' };
+
+// ── Tab switch ──
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['wizard','checker'][i]===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+// ── Wizard state ──
+const W = { cls:'', clsLabel:'', type:'', title:'', ext:'docx', save:'' };
+
+function setProgress(n){
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('ps'+i);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done');
+    else if(i===n) el.classList.add('active');
+  }
+}
+function unlock(n){
+  const el=document.getElementById('step'+n);
+  if(!el) return;
+  el.classList.remove('locked');
+  setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),80);
+}
+
+// Step 1: class
+document.getElementById('classChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  document.querySelectorAll('#classChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');
+  W.cls=c.dataset.val;
+  W.clsLabel=c.dataset.label;
+  setProgress(2); unlock(2);
+});
+
+// Step 2: type
+document.getElementById('typeChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  document.querySelectorAll('#typeChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');
+  W.type=c.dataset.val;
+  if(c.dataset.ext) setActiveExt(c.dataset.ext);
+  setProgress(3); unlock(3);
+  document.getElementById('titleInput').focus();
+});
+
+// Step 3: extension chips
+function setActiveExt(val){
+  document.querySelectorAll('#extChips .chip').forEach(c=>c.classList.toggle('on',c.dataset.val===val));
+  W.ext=val;
+}
+document.getElementById('extChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return; setActiveExt(c.dataset.val);
+});
+document.getElementById('titleInput').addEventListener('keydown',e=>{ if(e.key==='Enter') step3Next(); });
+function step3Next(){
+  const raw=document.getElementById('titleInput').value.trim();
+  if(!raw){ document.getElementById('titleInput').style.borderColor='var(--amber)'; document.getElementById('titleInput').focus(); return; }
+  document.getElementById('titleInput').style.borderColor='';
+  W.title=raw; setProgress(4); unlock(4);
+}
+
+// Step 4: save location
+document.getElementById('saveChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  document.querySelectorAll('#saveChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');
+  W.save=c.dataset.val;
+  buildWizardResult();
+});
+
+// Build coloured filename
+function coloured(date,cls,type,title,ext){
+  return `<span class="part-date">${date}</span><span class="part-sep">_</span>`
+    +`<span class="part-subj">${cls}</span><span class="part-sep">_</span>`
+    +`<span class="part-type">${type}</span><span class="part-sep">_</span>`
+    +`<span class="part-title">${title}</span><span class="part-sep">.</span>`
+    +`<span class="part-ext">${ext}</span>`;
+}
+
+// Build folder crumbs — matches actual Drive structure
+function buildFolderCrumbs(containerId, cls, folder){
+  // DigiTech Hub Drive path: DigiTech Resources 2026 / [Classwork or Assessments] / [Class folder]
+  const crumbs = ['☁️ OneDrive', '📂 DigiTech Resources 2026', '📁 ' + folder, '📁 ' + CLASS_NICE[cls]];
+  const wrap=document.getElementById(containerId);
+  wrap.innerHTML='';
+  crumbs.forEach((c,i)=>{
+    const div=document.createElement('div');
+    div.className='fp-crumb'+(i===crumbs.length-1?' active':'');
+    div.textContent=c;
+    wrap.appendChild(div);
+    if(i<crumbs.length-1){
+      const arr=document.createElement('span');
+      arr.className='fp-arrow'; arr.textContent='→';
+      wrap.appendChild(arr);
+    }
+  });
+}
+
+function buildWizardResult(){
+  const fn=`${today}_${W.cls}_${clean(W.type)}_${clean(W.title)}.${W.ext}`;
+  W._filename=fn;
+  document.getElementById('resultFilename').innerHTML=coloured(today,W.cls,clean(W.type),clean(W.title),W.ext);
+  buildFolderCrumbs('fpCrumbs', W.cls, W.save);
+  ['resultCard','folderPathCard','newFileTip','howCard'].forEach(id=>document.getElementById(id).classList.add('show'));
+  document.getElementById('resetRow').classList.add('show');
+  setProgress(5);
+  setTimeout(()=>document.getElementById('resultCard').scrollIntoView({behavior:'smooth',block:'start'}),80);
+  setTimeout(launchConfetti,350);
+}
+
+function copyFilename(){ doCopy(W._filename||'','copyFileBtn'); }
+
+async function doCopy(text,btnId){
+  try{ await navigator.clipboard.writeText(text); }
+  catch{ const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta); }
+  const btn=document.getElementById(btnId);
+  const orig=btn.innerHTML; btn.innerHTML='✅ Copied!';
+  setTimeout(()=>{ btn.innerHTML=orig; },2000);
+}
+
+function resetAll(){
+  W.cls='';W.clsLabel='';W.type='';W.title='';W.ext='docx';W.save='';W._filename='';
+  document.querySelectorAll('#panel-wizard .chip').forEach(c=>c.classList.remove('on'));
+  document.getElementById('titleInput').value='';
+  setActiveExt('docx');
+  [2,3,4].forEach(n=>document.getElementById('step'+n).classList.add('locked'));
+  ['resultCard','folderPathCard','newFileTip','howCard'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  document.getElementById('resetRow').classList.remove('show');
+  setProgress(1);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Confetti ──
+function launchConfetti(){
+  const wrap=document.getElementById('confettiWrap'); wrap.innerHTML='';
+  const colors=['#185FA5','#534AB7','#2E7D32','#854F0B','#A32D2D','#00695C','#378ADD'];
+  for(let i=0;i<55;i++){
+    const p=document.createElement('div'); p.className='confetti-piece';
+    p.style.cssText=`left:${Math.random()*100}%;background:${colors[~~(Math.random()*colors.length)]};width:${5+Math.random()*8}px;height:${5+Math.random()*8}px;border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.4+Math.random()*2}s;animation-delay:${Math.random()*.6}s;`;
+    wrap.appendChild(p);
+  }
+  setTimeout(()=>{ wrap.innerHTML=''; },4000);
+}
+
+
+// ══════════════════════
+// ── CHECKER LOGIC ──
+// ══════════════════════
+
+const C = { cls:'', clsLabel:'', type:'', title:'', ext:'', origName:'', _newName:'', _folder:'' };
+
+const dropZone=document.getElementById('dropZone');
+const fileInput=document.getElementById('fileInput');
+dropZone.addEventListener('dragover',e=>{ e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+dropZone.addEventListener('drop',e=>{ e.preventDefault(); dropZone.classList.remove('over'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change',e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file){
+  C.origName = file.name;
+  const lastDot = file.name.lastIndexOf('.');
+  const ext = lastDot > -1 ? file.name.slice(lastDot+1).toLowerCase() : '';
+  const base = lastDot > -1 ? file.name.slice(0,lastDot) : file.name;
+  C.ext = ext;
+
+  document.getElementById('dFileIcon').textContent = EXT_ICON[ext] || '📄';
+  document.getElementById('dFileName').textContent  = file.name;
+  document.getElementById('dFileMeta').textContent  = `${ext.toUpperCase()||'Unknown'} · ${(file.size/1024).toFixed(0)} KB`;
+
+  // Date
+  const dateMatch = base.match(/^(\d{4}-\d{2}-\d{2})[_\-\s]/);
+  const detectedDate = dateMatch ? dateMatch[1] : today;
+
+  const afterDate = dateMatch ? base.slice(dateMatch[0].length) : base;
+  const tokens = afterDate.split(/[_\-\s]+/).filter(Boolean);
+
+  // Class detection
+  let detectedClass=null, clsConf='needed';
+  const classAliases = {
+    'y7':'Year7','year7':'Year7','yr7':'Year7',
+    'y8':'Year8','year8':'Year8','yr8':'Year8',
+    'y9':'Year910','y10':'Year910','year9':'Year910','year10':'Year910','y910':'Year910','yr910':'Year910',
+    'inquiry':'Inquiry','inq':'Inquiry','open':'Inquiry',
+  };
+  for(const tok of tokens){
+    const k=tok.toLowerCase();
+    if(classAliases[k]){ detectedClass=classAliases[k]; clsConf='detected'; break; }
+    for(const [alias,cls] of Object.entries(classAliases)){
+      if(k.includes(alias)||alias.includes(k)){ detectedClass=cls; clsConf='guessed'; break; }
+    }
+    if(detectedClass) break;
+  }
+
+  // Type detection
+  let detectedType = EXT_TYPE[ext] || 'Classwork';
+  let typeConf = 'guessed';
+  const typeAliases = {
+    'notes':'Notes','note':'Notes',
+    'worksheet':'Worksheet','ws':'Worksheet','sheet':'Worksheet',
+    'classwork':'Classwork','cw':'Classwork',
+    'assessment':'Assessment','task':'Assessment','test':'Assessment','exam':'Assessment',
+    'reference':'Reference','ref':'Reference','guide':'Reference',
+    'lessonoutline':'LessonOutline','lesson':'LessonOutline','outline':'LessonOutline',
+    'rubric':'Rubric',
+    'presentation':'Presentation','preso':'Presentation','slides':'Presentation',
+  };
+  for(const tok of tokens){
+    const k=tok.toLowerCase();
+    if(typeAliases[k]){ detectedType=typeAliases[k]; typeConf='detected'; break; }
+  }
+
+  // Title — remaining tokens after stripping known class/type/date words
+  const skipWords = new Set([
+    ...Object.keys(classAliases),...Object.keys(typeAliases),
+    'year7','year8','year9','year10','digitech','hub','mr','miller',
+  ]);
+  const titleTokens = tokens.filter(t=>{
+    const k=t.toLowerCase();
+    return !skipWords.has(k) && !/^\d{4}-\d{2}-\d{2}$/.test(t) && t.length>1;
+  });
+  let detectedTitle = titleTokens.slice(0,4).join('_');
+  let titleConf = detectedTitle ? 'guessed' : 'needed';
+
+  C.cls  = detectedClass || '';
+  C.type = detectedType;
+  C.title= detectedTitle;
+
+  // Populate display
+  document.getElementById('dDate').textContent = detectedDate;
+
+  const classDisp=document.getElementById('dClassDisplay');
+  const classPill=document.getElementById('classPill');
+  if(detectedClass){
+    classDisp.textContent = CLASS_NICE[detectedClass]||detectedClass;
+    classDisp.className = `df-val ${clsConf==='detected'?'detected':'guessed'}`;
+    classPill.textContent = clsConf==='detected'?'auto-detected':'guessed';
+    classPill.className = `detect-pill ${clsConf==='detected'?'pill-auto':'pill-guess'}`;
+  } else {
+    classDisp.textContent='Not found — pick below';
+    classDisp.className='df-val needed';
+    classPill.textContent='needs you';
+    classPill.className='detect-pill pill-needed';
+  }
+
+  const typeDisp=document.getElementById('dTypeDisplay');
+  const typePill=document.getElementById('typePill');
+  typeDisp.textContent=detectedType;
+  typeDisp.className=`df-val ${typeConf==='detected'?'detected':'guessed'}`;
+  typePill.textContent=typeConf==='detected'?'auto-detected':'guessed from extension';
+  typePill.className=`detect-pill ${typeConf==='detected'?'pill-auto':'pill-guess'}`;
+
+  const titleDisp=document.getElementById('dTitleDisplay');
+  const titlePill=document.getElementById('titlePill');
+  if(detectedTitle){
+    titleDisp.textContent=titleCase(detectedTitle);
+    titleDisp.className='df-val guessed';
+    titlePill.textContent='guessed — check it!';
+    titlePill.className='detect-pill pill-guess';
+  } else {
+    titleDisp.textContent='Not found — type below';
+    titleDisp.className='df-val needed';
+    titlePill.textContent='needs you';
+    titlePill.className='detect-pill pill-needed';
+  }
+
+  document.getElementById('cClassWrap').style.display = !detectedClass ? 'block' : 'none';
+  document.getElementById('cTitleWrap').style.display = 'block';
+  if(detectedTitle) document.getElementById('cTitleInput').value = titleCase(detectedTitle).replace(/_/g,' ');
+
+  document.getElementById('buildCheckerBtn').style.display = detectedClass ? 'flex' : 'none';
+
+  document.getElementById('detectCard').classList.add('show');
+  ['newNameWrap','checkerPath','tryAgain'].forEach(id=>document.getElementById(id).classList.remove('show'));
+
+  setTimeout(()=>document.getElementById('detectCard').scrollIntoView({behavior:'smooth',block:'start'}),80);
+}
+
+// Class picker in checker
+document.getElementById('cClassChips').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c) return;
+  document.querySelectorAll('#cClassChips .chip').forEach(x=>x.classList.remove('on'));
+  c.classList.add('on');
+  C.cls = c.dataset.val;
+  const d=document.getElementById('dClassDisplay');
+  d.textContent=CLASS_NICE[C.cls]||C.cls; d.className='df-val detected';
+  document.getElementById('classPill').textContent='set by you';
+  document.getElementById('classPill').className='detect-pill pill-auto';
+  document.getElementById('buildCheckerBtn').style.display='flex';
+});
+
+function buildCheckerResult(){
+  const titleRaw = document.getElementById('cTitleInput').value.trim() || C.title || 'Rename_Me';
+  C.title = titleRaw;
+  const folder = (C.type==='Assessment'||C.type==='Rubric') ? 'Assessments' : 'Classwork';
+  const newName = `${today}_${C.cls}_${clean(C.type)}_${clean(titleRaw)}.${C.ext||'docx'}`;
+  C._newName = newName;
+  C._folder  = folder;
+
+  document.getElementById('newNameText').innerHTML = coloured(today,C.cls,clean(C.type),clean(titleRaw),C.ext||'docx');
+  document.getElementById('newNameWrap').classList.add('show');
+
+  buildFolderCrumbs('cFpCrumbs', C.cls, folder);
+  document.getElementById('checkerPath').classList.add('show');
+  document.getElementById('tryAgain').classList.add('show');
+
+  setTimeout(()=>document.getElementById('newNameWrap').scrollIntoView({behavior:'smooth',block:'center'}),80);
+  launchConfetti();
+}
+
+function copyCheckerName(){ doCopy(C._newName||'','copyCheckerBtn'); }
+
+function resetChecker(){
+  C.cls='';C.type='';C.title='';C.ext='';C.origName='';C._newName='';
+  document.querySelectorAll('#cClassChips .chip').forEach(c=>c.classList.remove('on'));
+  document.getElementById('cTitleInput').value='';
+  ['detectCard','newNameWrap','checkerPath','tryAgain'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  fileInput.value='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
