@@ -421,14 +421,14 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxw254mQLvvulpgCrn2d
 
 // The write token only lives in the converter (index.html), not here.
 // Chat is a public action - no token needed, nothing sensitive in transit.
-const CURRENT_WEEK = 7;
+const CURRENT_WEEK = 6;
 
 
 // Quiz scoring constants. Adjust these to tune difficulty without touching
 // any quiz logic. QUIZ_OPTION_WORD_CAP trims long answer options so they
 // fit cleanly on one line - 8 words is usually enough to be unambiguous.
 const QUIZ_POINTS_PER_CORRECT    = 10;
-const QUIZ_MIN_CORRECT_TO_SUBMIT = 30;
+const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
 const QUIZ_OPTION_WORD_CAP       = 8;
 const QUIZ_MAX_MISSES            = 3;
 
@@ -697,7 +697,7 @@ function buildResourceCard(r) {
     if (r.type === 'Interactive') {
       actions = `<button class="ract ${acc}" onclick="${openUrl}">&#9654; Launch</button>`;
     } else {
-      actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button><button class="ract ract-ghost" onclick="window.open('${esc(r.url)}','_blank')">&#128065; Preview</button>`;
+      actions = `<button class="ract ${acc}" onclick="${openUrl}">&#8599; Open</button>`;
     }
   } else if (fmt==='docx'||fmt==='gdoc') {
     const wordUrl  = r.url?r.url.replace('/view','/edit'):'#';
