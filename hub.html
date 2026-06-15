@@ -1,32 +1,43 @@
 <!DOCTYPE html>
 <!--
-  =============================================================================
-  DigiTech Hub - Student Interface v2
-  =============================================================================
+  DigiTech Hub - Student Interface
+  M. Miller, Emmanuel Christian School, Tasmania
 
-  Student-facing AI companion and resource browser.
-  Reads live from two Google Sheet tabs:
-    - Resources  : all files, links, definitions, success criteria
-    - Schedule   : which module is active for each class right now
+  This is the student-facing side of the DigiTech Hub. One HTML file,
+  no server, no framework, no build step. The browser talks directly
+  to Google Sheets (via Apps Script) and to the Anthropic API (proxied
+  through that same Apps Script so the key never touches this file).
 
-  The Schedule tab drives everything:
-    1. Hub fetches Schedule - finds active=TRUE row for student's class
-    2. Gets current module name from that row
-    3. Filters Resources to matching module rows
-    4. Injects definitions + criteria + tasks into AI system prompt
-    5. AI answers with full context of what the class is actually doing
+  HOW IT WORKS
 
-  Updating the current module: flip active=TRUE/FALSE in the Schedule tab.
-  Public holiday: change start_week or end_week in the Schedule tab.
-  No code changes needed for either.
+  Two Google Sheet tabs drive everything:
 
-  Classes: Year 7 (blue), Year 8 (green), Year 9/10 (purple), Inquiry (teal)
-  AI modes: ELI5, Explain it, Quiz me, Let's debate, Help me think
-  Inquiry modes: ELI5, Explain it, Quiz me, Give me ideas, Help me build
+    Resources   One row per file/link. Stores titles, summaries,
+                definitions, success criteria, tasks, and the module
+                each resource belongs to.
 
-  Author  : M. Miller - Emmanuel Christian School, Tasmania
-  Version : 2.0 - Schedule tab integration + 4 classes
-  =============================================================================
+    Schedule    One row per class. The active=TRUE flag marks which
+                module each class is currently studying.
+
+  On load, the hub fetches both tabs. It finds the active module for
+  the student's class, filters Resources to that module, and uses the
+  result for both the card list and the AI's system prompt context.
+
+  To move a class to a new module: flip two cells in the Schedule tab.
+  No redeployment. No code change. The next page load picks it up.
+
+  SECURITY
+
+  The Anthropic API key lives in Apps Script only, server-side. This
+  page sends { class, mode, messages } and nothing else. The system
+  prompt is assembled by Apps Script from live Sheet data. Students
+  can read every line of this file and find nothing sensitive.
+
+  CLASSES
+  Year 7      Blue    #185FA5
+  Year 8      Green   #2E7D32
+  Year 9/10   Purple  #534AB7
+  Inquiry     Teal    #00695C   Y6-10 mixed, ungraded, free exploration
 -->
 <html lang="en">
 <head>
@@ -188,6 +199,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 .tts-btn{padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);color:var(--ink2);transition:all .13s}
 .tts-btn:hover{background:var(--surface2)}
 .tts-btn.active{background:var(--y7l);color:var(--y7d);border-color:var(--y7)}
+.tts-select{font-size:11px;font-family:var(--sans);border:1px solid var(--border2);border-radius:12px;padding:3px 7px;background:var(--surface);color:var(--ink2);cursor:pointer;max-width:140px;outline:none}
+.tts-slider{-webkit-appearance:none;appearance:none;width:70px;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer}
+.tts-slider::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--y7);cursor:pointer}
+.tts-rate-val{font-size:11px;color:var(--ink3);font-weight:600;min-width:22px}
+.tts-replay{background:none;border:none;cursor:pointer;font-size:13px;opacity:0.45;padding:2px 4px;line-height:1;transition:opacity .15s;float:right;margin-left:6px}
+.tts-replay:hover{opacity:1}
 .disclaimer{margin-top:12px;padding:10px 14px;border-radius:var(--radius);background:var(--amberl);border:1px solid rgba(133,79,11,.2);font-size:12px;color:var(--amber);line-height:1.6;display:flex;gap:8px}
 
 /* Resource card - collapsible "Key info" section */
@@ -325,9 +342,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
       </div>
       <div class="mode-pills" id="modePills"></div>
       <div class="tts-bar" id="ttsBar" style="display:none">
-        <span class="tts-label">&#128266; Read aloud</span>
+        <span class="tts-label">&#128266;</span>
         <button class="tts-btn" id="ttsToggle" onclick="toggleTTS()">Off</button>
-        <button class="tts-btn" onclick="stopTTS()">&#9632; Stop</button>
+        <button class="tts-btn" onclick="stopTTS()" title="Stop">&#9632;</button>
+        <select id="ttsVoice" class="tts-select" onchange="onVoiceChange()" title="Voice"></select>
+        <span class="tts-label" style="margin-left:4px">Speed</span>
+        <input type="range" id="ttsRate" min="0.7" max="1.4" step="0.05" value="0.95" class="tts-slider" oninput="onRateChange(this.value)" title="Speed">
+        <span class="tts-rate-val" id="ttsRateVal">1×</span>
       </div>
       <div class="chat-msgs" id="chatMsgs"></div>
       <div class="quick-strip" id="quickStrip"></div>
@@ -372,65 +393,55 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:10
 
 </div>
 <script>
-/**
- * =============================================================================
- * DigiTech Hub v2 - Client Script
- * =============================================================================
- *
- * Data flow:
- *   Page load
- *     -> loadSchedule()   fetch Schedule tab, find active module for class
- *     -> loadResources()  fetch Resources tab, filter by class
- *     -> renderResources() show filtered + module-highlighted cards
- *     -> newChat()        show mode welcome message
- *
- *   Student sends message
- *     -> Apps Script buildDynamicPrompt() - built server-side from Sheet
- *     -> POST to Apps Script AI proxy
- *     -> renderAIResponse()   chunks into readable blocks
- *
- *   Schedule update (teacher flips active=TRUE in Sheet)
- *     -> Next page load picks it up automatically - no code change needed
- * =============================================================================
- */
+/*
+  Client-side script for the DigiTech Hub.
+
+  Page load sequence:
+    loadSchedule()    fetches the Schedule tab, finds the active module
+    loadResources()   fetches Resources, renders filtered cards
+    newChat()         shows the mode welcome message
+
+  Student sends a message:
+    sendMsg() posts { action, class, mode, messages } to Apps Script
+    Apps Script builds the system prompt from live Sheet data
+    Response comes back and renders in chunked AI bubbles
+
+  The only thing that changes week to week is CURRENT_WEEK below,
+  and occasionally the active=TRUE flag in the Schedule tab.
+  Everything else runs itself.
+*/
 
 // =============================================================================
-// CONFIG - update CURRENT_WEEK each Monday
+// CONFIG
+// The only line that needs updating week to week is CURRENT_WEEK.
+// Change it each Monday morning before students arrive.
 // =============================================================================
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxw254mQLvvulpgCrn2dO2PTuEx7JA9wgOPcl7kdMDxDGfl6nsfVMdwFN-M1fzVKx1f/exec';
 
-/**
- * Write token - only needed for converter (append/update/delete).
- * Chat action is public - no token needed. This is intentionally
- * NOT used in the hub so it does not appear in browser network traffic.
- */
-const CURRENT_WEEK = 6;
+// The write token only lives in the converter (index.html), not here.
+// Chat is a public action - no token needed, nothing sensitive in transit.
+const CURRENT_WEEK = 7;
 
 
-/**
- * Quiz configuration.
- * QUIZ_POINTS_PER_CORRECT - points per correct answer.
- * QUIZ_MIN_CORRECT_TO_SUBMIT - minimum correct before Submit unlocks.
- * QUIZ_OPTION_WORD_CAP - max words per answer option (trims to shortest).
- * QUIZ_MAX_MISSES - misses before score resets to zero.
- */
+// Quiz scoring constants. Adjust these to tune difficulty without touching
+// any quiz logic. QUIZ_OPTION_WORD_CAP trims long answer options so they
+// fit cleanly on one line - 8 words is usually enough to be unambiguous.
 const QUIZ_POINTS_PER_CORRECT    = 10;
-const QUIZ_MIN_CORRECT_TO_SUBMIT = 5;
+const QUIZ_MIN_CORRECT_TO_SUBMIT = 30;
 const QUIZ_OPTION_WORD_CAP       = 8;
 const QUIZ_MAX_MISSES            = 3;
 
-/**
- * Column schema - must match Sheet header row exactly.
- * The 'module' column is the join key between Resources and Schedule tabs.
- */
+// Column order must match the Sheet header row exactly.
+// If a column is added to the Sheet, add it here too - order matters because
+// the Apps Script returns rows as arrays and we zip them with this list.
+// The 'module' column is the join key between Resources and Schedule tabs.
 const COLS = ['id','class','term','week','module','type','title','summary','topics',
   'file_format','url','source','print_ready','onenote_path','definitions',
   'success_criteria','tasks','key_concepts','current','locked'];
 
-/**
- * Class name mapping - internal key -> Sheet value
- */
+// Internal class keys map to the exact strings stored in the Sheet.
+// 'inq' is Inquiry - mixed Y6-10, no grades, student-directed projects.
 const CLASS_NAMES = {'7':'Year 7','8':'Year 8','910':'Year 9/10','inq':'Inquiry'};
 
 /**
@@ -469,6 +480,10 @@ const QUICK_PROMPTS = {
 
 // =============================================================================
 // STATE
+// All mutable state lives here at the top rather than scattered through
+// functions. This makes it easier to reason about what the page "knows"
+// at any point. currentClass and currentMode are the two things that drive
+// most of what the user sees - almost every render function reads from them.
 // =============================================================================
 
 let currentClass = '7';
@@ -498,14 +513,15 @@ let qzJustReset     = false;
 
 // =============================================================================
 // SCHEDULE TAB
-// Fetches the Schedule tab and finds the active module for a given class.
+// The Schedule tab is what makes this hub context-aware. Rather than
+// hardcoding which module each class is doing, I store that in the Sheet
+// and fetch it fresh on every load. Flipping active=TRUE takes 10 seconds
+// and the whole hub updates for every student automatically.
 // =============================================================================
 
-/**
- * Fetches the Schedule tab from the Apps Script endpoint.
- * Looks for action=getSchedule - falls back gracefully if not yet deployed.
- * Once loaded, calls updateActiveModule() to highlight the current module.
- */
+// Fetches the Schedule tab and hands it to updateActiveModule().
+// If the tab doesn't exist yet (early in setup), the hub degrades gracefully -
+// resources still load, the AI just won't have module context injected.
 async function loadSchedule() {
   try {
     const res  = await fetch(`${SCRIPT_URL}?action=getSchedule`);
@@ -520,10 +536,10 @@ async function loadSchedule() {
   updateActiveModule();
 }
 
-/**
- * Finds the active module for the current class from the cached schedule.
- * Updates the module badge in the header and the module banner above resources.
- */
+// Scans the cached schedule array for the active=TRUE row matching the
+// current class, then updates the module badge in the header and the
+// banner above the resource list. Both are purely cosmetic - the real
+// filtering happens in renderResources() which also reads activeModule.
 function updateActiveModule() {
   const className = CLASS_NAMES[currentClass];
 
@@ -556,11 +572,16 @@ function updateActiveModule() {
 
 // =============================================================================
 // RESOURCE LOADING AND RENDERING
+// Resources come from the Sheet as a flat array of rows. The hub filters
+// and sorts them client-side rather than asking Apps Script to do it -
+// that keeps the Apps Script simple and lets us refilter instantly when
+// a student changes class, term, or type without another network request.
 // =============================================================================
 
-/**
- * Fetches all unlocked rows for the current class from the Sheet.
- */
+// Fetches all unlocked rows for the current class. The locked=TRUE flag
+// hides assessment rubrics and teacher-only files from the student view.
+// The TYPE_MAP renames some legacy labels from an earlier version of the
+// Sheet schema - easier to normalise here than to re-import 100+ rows.
 async function loadResources() {
   const className = CLASS_NAMES[currentClass];
   document.getElementById('resList').innerHTML = `
@@ -574,8 +595,9 @@ async function loadResources() {
     const res  = await fetch(`${SCRIPT_URL}?action=getRows&class=${encodeURIComponent(className)}`);
     const data = await res.json();
     if (data.success && data.rows) {
-      // Normalise legacy type labels from before the rename (June 2025)
-      // Reference -> Guide, Explainer -> Interactive
+      // Normalise legacy type labels from before the June 2025 schema rename.
+      // Reference became Guide, Explainer became Interactive. Rows already in
+      // the Sheet still carry the old names, so we map them on the way in.
       const TYPE_MAP = {'Reference':'Guide','Explainer':'Interactive'};
       allResources = data.rows.map(r => ({
         ...r,
@@ -599,7 +621,8 @@ function showResourceError(msg) {
     </div>`;
 }
 
-/** Renders filter pills for current class */
+// Renders the term and type filter pills. The active class colour is applied
+// to whichever pill is currently selected, so the UI stays colour-consistent.
 function renderFilters() {
   const ac = `active-${currentClass === '910' ? '910' : currentClass}`;
   const termBtns = [{label:'All terms',val:0},{label:'Term 1',val:1},{label:'Term 2',val:2},{label:'Term 3',val:3},{label:'Term 4',val:4}];
@@ -610,10 +633,9 @@ function renderFilters() {
     typeBtns.map(t => `<button class="filter-pill ${currentType===t?ac:''}" onclick="setTypeFilter('${t}')">${t==='all'?'All types':t}</button>`).join('');
 }
 
-/**
- * Filters and renders resource cards.
- * Resources matching the active module get a green left border and sort first.
- */
+// Filters allResources by class, term, type, and search text, then renders
+// cards. Active module resources sort to the top and get a coloured left
+// border - a visual cue that says "this is what we're doing right now".
 function renderResources() {
   const search    = (document.getElementById('searchBox')?.value||'').toLowerCase();
   const className = CLASS_NAMES[currentClass];
@@ -648,10 +670,15 @@ function renderResources() {
   list.innerHTML = filtered.map(r => buildResourceCard(r)).join('');
 }
 
-/**
- * Builds a resource card HTML string.
- * Cards from the active module get the green left border (.current-mod).
- */
+// Builds the HTML string for one resource card. I'm generating HTML as a
+// string here rather than creating DOM nodes - it's faster for re-rendering
+// a long list and simpler to read. The tradeoff is that you need esc() on
+// every user-supplied value to avoid XSS. Don't skip that.
+//
+// The action buttons adapt to file format: DOCX gets Word+Print, PDF gets
+// Open+Print, HTML gets Open, video gets Watch, OneNote gets path steps.
+// The "Key info" section is collapsed by default - students who want
+// definitions and success criteria can expand it, others aren't overwhelmed.
 function buildResourceCard(r) {
   const isActive = activeModule && r.module === activeModule;
   const fmt      = (r.file_format||'html').toLowerCase();
@@ -688,7 +715,9 @@ function buildResourceCard(r) {
     ? `<div id="on-${esc(r.id)}" style="display:none"><div class="onenote-box"><div class="onenote-title">&#128211; How to find this in OneNote</div><div class="onenote-steps">${r.onenote_path.split('>').map((s,i)=>`${i+1}. ${s.trim()}`).join('<br>')}</div></div></div>`
     : '';
 
-  // Parse chunk fields for the collapsible "Key info" section
+  // These three fields are pipe-delimited strings in the Sheet.
+  // Splitting them here into arrays makes the template logic below cleaner.
+  // If a field is empty the split returns [''] so .filter(Boolean) cleans that up.
   const defs  = (r.definitions || '').split('|').filter(Boolean);
   const sc    = (r.success_criteria || '').split('|').filter(Boolean);
   const tasks = (r.tasks || '').split('|').filter(Boolean);
@@ -758,19 +787,24 @@ function toggleExtra(id) {
 
 // =============================================================================
 // FLASHCARDS
-// Builds a deck of term/definition pairs from the 'definitions' field of
-// resources matching the current class, optionally filtered to one module.
+// Cards are built from the 'definitions' field in the Resources tab, which
+// stores pipe-delimited "Term: Definition" strings. I chose that format over
+// a separate Sheet tab to keep the data co-located with the resource it
+// describes. The tradeoff is that adding new terms means editing a cell
+// rather than adding a row, which is a bit fussier.
+//
+// Deduplication runs on term text (case-insensitive) so the same term from
+// two different resources only appears once in the deck.
 // =============================================================================
 
 let fcDeck    = [];
 let fcIndex   = 0;
 let fcFlipped = false;
 
-/**
- * Opens the flashcards modal, populates the module dropdown from the
- * current class's resources, and builds the initial deck.
- * Defaults to the active module if one exists.
- */
+// Opens the modal, populates the module dropdown from whatever the current
+// class has definitions for, and defaults to the active module if it has
+// any - otherwise falls back to all modules so the student isn't shown
+// an empty deck.
 function openFlashcards() {
   const className = CLASS_NAMES[currentClass];
   const modules = [...new Set(
@@ -795,10 +829,8 @@ function closeFlashcards() {
   document.getElementById('fcOverlay').classList.remove('show');
 }
 
-/**
- * Rebuilds the flashcard deck from allResources based on the selected
- * module filter. Each definition entry "Term: Definition" becomes one card.
- */
+// Rebuilds the deck from scratch based on the current module filter.
+// Called on modal open and whenever the student changes the dropdown.
 function fcRebuildDeck() {
   const className   = CLASS_NAMES[currentClass];
   const selected    = document.getElementById('fcModuleSelect').value;
@@ -833,7 +865,9 @@ function fcRebuildDeck() {
   fcRender();
 }
 
-/** Shuffles the current deck (Fisher-Yates) and shows the first card */
+// Fisher-Yates shuffle - the standard in-place algorithm. Every position
+// gets an equal chance of receiving any card, which true random shuffles
+// don't always guarantee. Worth knowing if you haven't seen it before.
 function fcShuffle() {
   for (let i = fcDeck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -865,7 +899,9 @@ function fcPrev() {
   }
 }
 
-/** Renders the current card, progress counter, and nav buttons */
+// Renders the current card. Rebuilds the entire modal body HTML each time
+// rather than trying to update individual elements - it's simpler and the
+// content is small enough that redrawing the whole thing is instant.
 function fcRender() {
   const body = document.getElementById('fcBody');
 
@@ -898,14 +934,33 @@ function fcRender() {
 
 // =============================================================================
 // QUIZ
+// The quiz pulls from two sources and merges them into one shuffled deck:
+//
+//   1. Definition questions - auto-generated from the 'definitions' field
+//      in Resources. Every term becomes "What does X mean?" with the other
+//      definitions as distractors. No manual quiz authoring needed.
+//
+//   2. General questions - fetched from the Quiz tab in the Sheet. These
+//      are manually authored and can cover anything - code syntax, concepts,
+//      procedures. Format: question | correct | wrong1 | wrong2 | wrong3.
+//
+// The miss cap (QUIZ_MAX_MISSES) resets the score to zero rather than just
+// stopping the quiz. That's a deliberate pressure mechanic - students who
+// guess randomly get punished more than those who actually try.
 // =============================================================================
 
+// Trims text to n words and adds an ellipsis if it was longer.
+// Used to keep answer options a consistent readable length.
 function qzTrimWords(text, n) {
   const words = String(text).trim().split(/\s+/);
   if (words.length <= n) return words.join(' ');
   return words.slice(0, n).join(' ') + '\u2026';
 }
 
+// Combines the correct answer with distractors, trims all options to the
+// same word count (avoids the "longest option is always correct" tell),
+// then shuffles them so the correct answer isn't always in position 0.
+// Returns both the shuffled options array and the new correct index.
 function qzBuildOptions(correctText, distractors) {
   const all = [correctText, ...distractors];
   let minWords = Math.min(...all.map(t => String(t).trim().split(/\s+/).length));
@@ -918,6 +973,10 @@ function qzBuildOptions(correctText, distractors) {
   return { options: items.map(it => it.text), correctIndex: items.findIndex(it => it.correct) };
 }
 
+// Auto-generates MCQ questions from the definitions stored in Resources.
+// Needs at least 4 definitions to work - otherwise there aren't enough
+// distractors to build a valid 4-option question. Returns empty array
+// if that threshold isn't met rather than showing a broken question.
 function qzBuildDefinitionQuestions() {
   const className = CLASS_NAMES[currentClass];
   const pairs = [];
@@ -939,6 +998,9 @@ function qzBuildDefinitionQuestions() {
   });
 }
 
+// Fetches manually authored questions from the Quiz Sheet tab.
+// Results are cached in qzGeneralPool so repeated quiz opens don't
+// hit the network again. Cache persists for the page session only.
 async function qzBuildGeneralQuestions() {
   const className = CLASS_NAMES[currentClass];
   if (qzGeneralPool === null) {
@@ -1075,6 +1137,10 @@ function setTypeFilter(t){currentType=t;renderFilters();renderResources()}
 
 // =============================================================================
 // CLASS AND MODE SWITCHING
+// setClass() and setMode() are the two main UI state transitions. Both do
+// the same pattern: update the state variable, re-render everything that
+// depends on it, then reload data if needed. Mode switches don't need a
+// network call - the resource list doesn't change, only the AI context does.
 // =============================================================================
 
 function setClass(cls) {
@@ -1123,8 +1189,9 @@ function renderQuickBtns() {
   const pool      = QUICK_PROMPTS[currentClass]?.[currentMode]||[];
   const shuffled  = pool.slice().sort(()=>Math.random()-0.5);
 
-  // Budget: ~60 chars of label text fits comfortably on one strip row.
-  // Pick prompts greedily until budget is spent, max 4.
+  // Pick prompts greedily until we hit ~60 chars of label text or 4 buttons.
+  // This keeps the strip to one row on most screen sizes without hardcoding
+  // which prompts are "short enough" - the budget does that automatically.
   const BUDGET = 60;
   const picked = [];
   let spent = 0;
@@ -1143,6 +1210,14 @@ function renderQuickBtns() {
 
 // =============================================================================
 // CHAT
+// The AI companion is intentionally thin on the client side. This function
+// sends the minimum possible payload: class, mode, and message history.
+// Everything else - system prompt, curriculum context, mode instructions,
+// history capping at 8 turns - is handled by Apps Script server-side.
+//
+// That design means I can update the AI's personality, add curriculum
+// context, or change how it behaves in different modes without touching
+// this file at all. The HTML is just the transport layer.
 // =============================================================================
 
 function newChat() {
@@ -1178,9 +1253,9 @@ async function sendMsg() {
   document.getElementById('sendBtn').disabled = true;
   const thinkEl = appendMsg('Thinking...','thinking');
   try {
-    // Send only class, mode and message history.
-    // System prompt is built server-side in Apps Script from live Sheet data.
-    // Write token is NOT sent - chat action is public and token-free.
+    // Only class, mode and history go over the wire.
+    // System prompt is built server-side - students can't see or influence it.
+    // No write token here - chat is a public Apps Script action.
     const res = await fetch(SCRIPT_URL,{
       method:'POST',
       headers:{'Content-Type':'text/plain'},
@@ -1205,11 +1280,11 @@ async function sendMsg() {
   document.getElementById('sendBtn').disabled = false;
 }
 
-/**
- * Handles a resource retrieval request.
- * Scores resources by keyword match against the query.
- * Boosts resources from the current module.
- */
+// When the AI detects a student is asking for a specific file, it returns
+// a RESOURCE_REQUEST: prefix instead of a normal reply. This function scores
+// all resources by keyword match against that query and opens the best one.
+// Boosting current-module resources means "open the worksheet" almost always
+// finds the right thing without the student having to be specific.
 function handleResourceRequest(query) {
   const q         = query.toLowerCase();
   const className = CLASS_NAMES[currentClass];
@@ -1265,12 +1340,16 @@ function handleResourceRequest(query) {
 
 // =============================================================================
 // MESSAGE RENDERING
+// The AI tends to return markdown-ish text with **bold** and blank-line
+// separated paragraphs. formatAIResponse() converts that into chunked divs
+// so responses have visible breathing room rather than one dense block.
+// Full markdown parsing would be overkill here - this handles 90% of what
+// the AI actually produces without pulling in a library.
 // =============================================================================
 
-/**
- * Formats AI response text into chunked HTML.
- * Converts **bold** and emoji headers into spaced readable blocks.
- */
+// Converts the AI's plain-text response into readable HTML chunks.
+// Strips markdown syntax (bold, headers, backticks) and splits on double
+// newlines so each paragraph becomes its own spaced block.
 function formatAIResponse(text) {
   let html = esc(text);
   html = html.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
@@ -1289,6 +1368,9 @@ function appendAIMsg(text) {
   el.innerHTML=formatAIResponse(text);
   container.appendChild(el);
   container.scrollTop=container.scrollHeight;
+  // Add a replay button to every AI bubble regardless of whether global
+  // TTS is on. Students can read silently but replay any message they want.
+  if ('speechSynthesis' in window) addReplayButton(el, text);
   return el;
 }
 
@@ -1310,51 +1392,142 @@ function appendMsgElement(type) {
 }
 
 // =============================================================================
-// TTS
+// TTS - Text to Speech
+// Uses the browser's built-in SpeechSynthesis API - no external service,
+// no cost, no API key. Quality varies by device and OS. Chrome on Windows
+// and Mac has noticeably better voices than the browser default.
+//
+// Voice loading is async in Chrome - getVoices() returns empty on first call
+// and fires a voiceschanged event when ready. We listen for that event before
+// populating the picker. Firefox has voices available immediately so the
+// event never fires there - hence the length check first.
 // =============================================================================
 
+let ttsVoices = [];  // populated after voiceschanged fires
+let ttsRate   = 0.95;
+let ttsVoice  = null; // selected SpeechSynthesisVoice object
+
 function initTTS() {
-  if(!('speechSynthesis' in window)) return;
-  document.getElementById('ttsBar').style.display='flex';
+  if (!('speechSynthesis' in window)) return;
+  document.getElementById('ttsBar').style.display = 'flex';
+  // Chrome fires voiceschanged once voices are ready; Firefox has them immediately
+  if (speechSynthesis.getVoices().length) {
+    populateVoices();
+  } else {
+    speechSynthesis.addEventListener('voiceschanged', populateVoices, { once: true });
+  }
+}
+
+function populateVoices() {
+  const all = speechSynthesis.getVoices();
+  // Prefer English voices; sort so en-AU and en-GB come first
+  ttsVoices = all.filter(v => v.lang.startsWith('en'));
+  ttsVoices.sort((a, b) => {
+    const priority = ['en-AU','en-GB','en-US'];
+    const ai = priority.findIndex(p => a.lang.startsWith(p));
+    const bi = priority.findIndex(p => b.lang.startsWith(p));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const sel = document.getElementById('ttsVoice');
+  sel.innerHTML = '';
+  ttsVoices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    // Shorten label: strip "Google " prefix and show lang tag
+    opt.textContent = v.name.replace(/^Google\s+/i,'') + ' (' + v.lang + ')';
+    opt.value = i;
+    sel.appendChild(opt);
+  });
+
+  // Auto-pick: prefer a non-default local en-AU or en-GB voice (sounds better than neural)
+  const preferred = ttsVoices.findIndex(v =>
+    (v.lang === 'en-AU' || v.lang === 'en-GB') && !v.default
+  );
+  sel.selectedIndex = preferred >= 0 ? preferred : 0;
+  ttsVoice = ttsVoices[sel.selectedIndex] || null;
+}
+
+function onVoiceChange() {
+  const idx = parseInt(document.getElementById('ttsVoice').value);
+  ttsVoice = ttsVoices[idx] || null;
+}
+
+function onRateChange(val) {
+  ttsRate = parseFloat(val);
+  // Display as a clean multiplier, e.g. 0.95 → "1×", 1.2 → "1.2×"
+  const display = Math.abs(ttsRate - 1.0) < 0.04 ? '1×' : ttsRate.toFixed(2).replace(/\.?0+$/,'') + '×';
+  document.getElementById('ttsRateVal').textContent = display;
 }
 
 function toggleTTS() {
-  ttsEnabled=!ttsEnabled;
-  const btn=document.getElementById('ttsToggle');
-  btn.textContent=ttsEnabled?'On':'Off';
-  btn.classList.toggle('active',ttsEnabled);
-  if(!ttsEnabled) stopTTS();
+  ttsEnabled = !ttsEnabled;
+  const btn = document.getElementById('ttsToggle');
+  btn.textContent = ttsEnabled ? 'On' : 'Off';
+  btn.classList.toggle('active', ttsEnabled);
+  if (!ttsEnabled) stopTTS();
+}
+
+function cleanForSpeech(text) {
+  return text
+    .replace(/\*\*/g,'').replace(/\*/g,'')
+    .replace(/#{1,6}\s/g,'').replace(/`/g,'')
+    .replace(/<[^>]+>/g,' ')      // strip any HTML tags
+    .replace(/\s{2,}/g,' ').trim();
 }
 
 function speakText(text) {
-  if(!ttsEnabled||!('speechSynthesis' in window)) return;
+  if (!('speechSynthesis' in window)) return;
   stopTTS();
-  const clean=text.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').replace(/`/g,'');
-  currentUtterance=new SpeechSynthesisUtterance(clean);
-  currentUtterance.rate=0.95;currentUtterance.pitch=1;currentUtterance.lang='en-AU';
-  window.speechSynthesis.speak(currentUtterance);
+  const u = new SpeechSynthesisUtterance(cleanForSpeech(text));
+  if (ttsVoice) u.voice = ttsVoice;
+  u.rate  = ttsRate;
+  u.pitch = 1;
+  u.lang  = ttsVoice ? ttsVoice.lang : 'en-AU';
+  currentUtterance = u;
+  window.speechSynthesis.speak(u);
 }
 
 function stopTTS() {
-  if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  currentUtterance=null;
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  currentUtterance = null;
+}
+
+// Injects a small speaker button into the first chunk of an AI message bubble.
+// The raw text is captured in the closure so we can clean and speak it on
+// demand without having to scrape it back out of the rendered HTML.
+function addReplayButton(el, rawText) {
+  const btn = document.createElement('button');
+  btn.className = 'tts-replay';
+  btn.title = 'Read aloud';
+  btn.textContent = '🔊';
+  btn.onclick = () => speakText(rawText);
+  // Prepend into the first ai-chunk so it floats right inside the bubble
+  const firstChunk = el.querySelector('.ai-chunk') || el;
+  firstChunk.prepend(btn);
 }
 
 // =============================================================================
 // UTILITIES
 // =============================================================================
 
+// Escapes HTML special characters before inserting any user-supplied or
+// Sheet-supplied text into innerHTML. Skip this and you get XSS. Every
+// call to innerHTML in this file should have esc() around untrusted strings.
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // =============================================================================
 // INITIALISATION
-// Check URL params for pre-selected class (from homepage class cards)
+// Everything kicks off here on page load. The sequence matters:
+// schedule loads first because updateActiveModule() needs it before
+// renderResources() runs - otherwise the active module banner is empty
+// for a moment and the sort order is wrong on first render.
 // =============================================================================
 
 window.addEventListener('load', () => {
-  // Read ?class= param from URL for direct linking from homepage
+  // ?class= in the URL lets the homepage link directly to a class tab.
+  // e.g. hub.html?class=910 opens straight to Year 9/10.
   const params = new URLSearchParams(window.location.search);
   const urlClass = params.get('class');
   if (urlClass && ['7','8','910','inq'].includes(urlClass)) {
@@ -1376,7 +1549,8 @@ window.addEventListener('load', () => {
   document.getElementById('tabinq').className = 'class-tab'+(currentClass==='inq'?' active-inq':'');
   document.getElementById('sendBtn').className='send-btn sb'+currentClass;
 
-  // Load schedule first, then resources
+  // Schedule loads first so the active module is known before resources render.
+  // .then() chains them so resources don't start fetching until schedule is done.
   loadSchedule().then(() => loadResources());
 });
 </script>
